@@ -23,11 +23,14 @@ Open a spreadsheet project to edit cells and formulas, select ranges, copy/paste
 
 Graph and spreadsheet data are separate, save with the project, and are included in library backups. Undo/redo is session-local. Spreadsheet cells commit on Enter, Tab, or blur; Escape cancels. Save failures keep a draft and guard navigation. Multiple worksheets, cross-sheet/custom functions, imports, and links between the tools are future work. Graph formatted math, implicit equations, shaded inequalities, and calculus are also deferred. Numeric plotting is approximate and can miss very narrow or rapidly oscillating features.
 
-Data stays in this browser's local storage for this exact site address. There is no account, server storage, or synchronization. Clearing site data removes this copy. The library can be downloaded as a JSON backup; backup restoration is not implemented yet.
+Data stays in this browser's local storage for this exact site address. There is no account, server storage, or synchronization. Clearing site data removes this copy. **Download library backup** saves a native JSON snapshot; **Restore library backup** validates and previews a file (up to 10 MB), then adds independent copies by default. Whole-library replacement requires explicit acknowledgment and offers a download of existing data first. A preview becomes stale if another tab changes the stored library; refresh it before restoring.
+
+Backups include saved content and unsaved notes, graph changes, and spreadsheet cell edits retained on the page. Save failures offer **Download unsaved work** without clearing drafts or marking them saved. Apply project details and calculator settings before downloading. If stored data is unreadable, recovery offers an unchanged raw-data download and replacement from a known-good backup. This is manual backup/recovery, not automatic history or synchronization.
 
 ## Repository
 
 - `src/`: application, project model, persistence, and styles.
+- `src/backup.ts` and `src/BackupRestore.tsx`: native backup validation, draft snapshots, restoration, and preview/confirmation UI.
 - `src/graph/`: graph document, numeric parser/evaluator, sampling, editor, and plot.
 - `src/sheet/`: spreadsheet document, bounded formula engine, clipboard/fill operations, and editor.
 - `tests/`: browser acceptance tests.

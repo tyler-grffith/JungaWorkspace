@@ -4,11 +4,15 @@
 
 Current priorities and follow-ups live in the shared [task list](../sharedProjectManagement/taskList.md).
 
-Current increment: **working spreadsheet**, on top of the calculator and library. Local branch: `codex/spreadsheet`, based on `codex/graphing-calculator`. All three MVP components now have working first versions.
+Current increment: **complete manual backup recovery**, on top of the spreadsheet, calculator, and library. Local branch: `codex/backup-recovery`, based on `codex/spreadsheet`. All three MVP components have working first versions.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 
 ### Try this
+
+Use **Download library backup** and **Restore library backup** at the bottom of the sidebar. Select the downloaded JSON to preview projects and collections. **Restore copies** preserves the current library and gives collisions “(restored)” names. **Replace current library** requires acknowledgment and offers **Download current data** first. Review replacement in a separate browser profile. Restored archived/trashed projects appear in their corresponding views. Tests exercised this with isolated browser storage; the user's live library was not replaced.
+
+When saving fails, **Download unsaved work** produces a restorable backup with the current notes, graph, or spreadsheet draft included. It does not mark those edits as saved. Unreadable-storage recovery also offers a raw unchanged download and restoration from a good backup. Apply project-details and calculator-settings forms before downloading; unfinished spreadsheet cell edits are included.
 
 1. Open **Motion model → Open spreadsheet** in the local review browser. In any new spreadsheet project, **Load motion example** creates a small native model.
 2. Change B2 (initial velocity) or B3 (acceleration). The velocity and distance table recalculates. Select a result to inspect its formula in the bar.
@@ -25,8 +29,8 @@ Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 - Multiple sheets, cross-sheet references, custom functions, row/column insertion/deletion, dates, wrapping, sorting/filtering, imports, and links to graph data remain future work. The engine bounds formula length, nesting, dependencies, and calculation work.
 - Graph formatted math input, implicit equations, shaded inequalities, calculus, tables/points, animation, and presentation modes remain future work. Numeric plotting has sampling limits; narrow/high-frequency features and crowded labels need future refinement.
 - Projects live in local storage in the current browser at the exact site address. No authentication, backend, synchronization, or deployment.
-- Downloadable JSON backups are available. Restoration/import is deferred. Trash is recoverable; no permanent deletion is exposed.
-- Failed note, graph, or spreadsheet saves retain a draft and warn before navigation. A cell still being edited also guards browser navigation. Unreadable saved data is left untouched with a raw-data download available. Both editors' undo/redo histories are limited to the current session.
+- Native Junga JSON backup downloads/restoration are available, including older downloads. File selection accepts up to 10 MB; all data is validated before one storage write. A changed storage snapshot blocks restoration until the preview is refreshed. Restore works with complete libraries, not selected projects. External spreadsheet/Desmos import remains deferred. Trash is recoverable; replacing the library can remove projects and requires explicit acknowledgment.
+- Failed note, graph, or spreadsheet saves retain a draft, offer backup download, and warn before navigation. A cell still being edited also guards browser navigation and can be rescued if storage becomes unreadable. Backups use the last readable page snapshot if the stored library cannot be read. Unreadable saved data is left untouched until explicit replacement. Both editors' undo/redo histories are limited to the current session.
 - Other tabs receive changes. This is a single-user prototype, not a collaborative editing system.
 - A read-only inventory of the engineering workbook found 22 worksheets, many trigonometric formulas, and named function calls. Its models and formatting still need an owner-guided review before choosing the next spreadsheet capabilities.
 - No ProductManagement file has been edited. Existing owner changes remain outside the implementation commit.
@@ -38,6 +42,7 @@ Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 - Does plain-text expression entry make the first example practical? What should change in notation and parameter controls?
 - Are graph size, curve labels, and the narrow-screen layout useful for your actual work?
 - How does spreadsheet selection/editing feel compared with your usual workflow, and which missing capability first prevents useful work?
+- Are the distinction between restoring copies and replacing the library, and the unsaved-work recovery messages, clear?
 
 ### Next increment
 

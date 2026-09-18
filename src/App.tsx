@@ -49,6 +49,7 @@ import {
   starterInput,
   starterNotes,
   STORAGE_KEY,
+  parseLibrary,
   type Collection,
   type Library,
   type Project,
@@ -62,13 +63,16 @@ import { useLibrary } from './useLibrary'
 import GraphCalculator from './graph/GraphCalculator'
 import { emptyGraph, laplaceGraph, LAPLACE_URL, type GraphDocument } from './graph/model'
 import SheetEditor from './sheet/SheetEditor'
-import { emptySheet, type SheetDocument } from './sheet/model'
+import { emptySheet, writeCells, type SheetDocument } from './sheet/model'
+import BackupRestore from './BackupRestore'
+import { downloadData, libraryWithDrafts, serializeBackup } from './backup'
 
 type ModalState =
   | { kind: 'project'; project?: Project }
   | { kind: 'collection'; collection?: Collection }
   | { kind: 'removeCollection'; collection: Collection }
   | { kind: 'storage' }
+  | { kind: 'backup' }
   | null
 const toolNames: Record<Tool, string> = { graph: 'Graphing', sheet: 'Spreadsheet' }
 const formatDate = (date: string) =>
@@ -492,7 +496,7 @@ function ProjectCard({
 }
 
 export default function App() {
-  const { library, error, saveError, commit, reload } = useLibrary()
+  const { library, error, saveError, commit, restore, reload } = useLibrary()
   const [route, setRoute] = useState(readRoute)
   const [query, setQuery] = useState('')
   const [tool, setTool] = useState<Tool | 'all'>('all')
@@ -504,7 +508,8 @@ export default function App() {
   const [notesDraft, setNotesDraft] = useState<{ id: string; value: string } | null>(null)
   const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
   const [sheetDraft, setSheetDraft] = useState<{ id: string; value: SheetDocument } | null>(null)
-  const [sheetEditing, setSheetEditing] = useState(false)
+  const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
+  const draftBase = useRef<Library | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
@@ -520,7 +525,7 @@ export default function App() {
         setNotesDraft(null)
         setGraphDraft(null)
         setSheetDraft(null)
-        setSheetEditing(false)
+        setSheetEditing(null)
       }
       setRoute(readRoute())
     }
@@ -567,6 +572,7 @@ export default function App() {
           : 'all'
   const projectId = route.startsWith('#/project/') ? route.slice(10).split('/')[0] : null
   const currentProject = library?.projects.find((p) => p.id === projectId)
+  if (library && currentProject) draftBase.current = library
   const graphOpen = !!currentProject?.tools.includes('graph') && route.endsWith('/graph')
   const sheetOpen = !!currentProject?.tools.includes('sheet') && route.endsWith('/sheet')
   const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
@@ -574,6 +580,21 @@ export default function App() {
     () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
     [currentProject?.id, currentProject?.referenceUrl],
   )
+  useEffect(() => {
+    // Keep an unfinished cell if a storage error removes the editor from the page.
+    if (!sheetEditing || !projectId || (!error && sheetOpen)) return
+    const base =
+      sheetDraft?.value ??
+      draftBase.current?.projects.find((p) => p.id === projectId)?.sheet ??
+      fallbackSheet
+    setSheetDraft({
+      id: projectId,
+      value: writeCells(base, {
+        [sheetEditing.ref]: { ...base.cells[sheetEditing.ref], input: sheetEditing.value },
+      }),
+    })
+    setSheetEditing(null)
+  }, [error, sheetOpen, sheetEditing, projectId, sheetDraft, fallbackSheet])
   const currentCollection = library?.collections.find((c) => `collection:${c.id}` === view)
   const title =
     view === 'favorites'
@@ -659,18 +680,106 @@ export default function App() {
   }
   function exportBackup() {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY) ?? JSON.stringify(library, null, 2)
-      const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }))
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `junga-library-${new Date().toISOString().slice(0, 10)}.json`
-      anchor.click()
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setToast({ text: 'Library backup downloaded.' })
-    } catch {
-      setToast({ text: 'The backup could not be downloaded. Browser storage is unavailable.' })
+      let base = library
+      try {
+        base = parseLibrary(window.localStorage.getItem(STORAGE_KEY))
+      } catch {
+        /* Use the last readable page snapshot to rescue drafts. */
+      }
+      const ids = [
+        notesDraft?.id,
+        graphDraft?.id,
+        sheetDraft?.id,
+        sheetEditing ? projectId : null,
+      ].filter(Boolean)
+      if (!base || ids.some((id) => !base!.projects.some((p) => p.id === id)))
+        base = draftBase.current
+      if (!base)
+        throw new Error(
+          'No readable library is available. Download stored data to preserve it, or restore a known-good backup.',
+        )
+      let pendingSheet = sheetDraft
+      if (sheetEditing && projectId) {
+        const sheet =
+          sheetDraft?.value ?? base.projects.find((p) => p.id === projectId)?.sheet ?? fallbackSheet
+        pendingSheet = {
+          id: projectId,
+          value: writeCells(sheet, {
+            [sheetEditing.ref]: { ...sheet.cells[sheetEditing.ref], input: sheetEditing.value },
+          }),
+        }
+      }
+      const snapshot = libraryWithDrafts(base, {
+        notes: notesDraft,
+        graph: graphDraft,
+        sheet: pendingSheet,
+      })
+      downloadData(serializeBackup(snapshot))
+      setToast({
+        text:
+          notesDraft || graphDraft || pendingSheet
+            ? 'Backup downloaded, including unsaved project edits. This does not save them in the browser.'
+            : 'Library backup downloaded.',
+      })
+      return true
+    } catch (e) {
+      setToast({
+        text:
+          e instanceof Error
+            ? e.message
+            : 'The backup could not be downloaded. Keep this page open and try again.',
+      })
+      return false
     }
   }
+
+  function downloadStoredData() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      if (raw === null) throw new Error('No stored library was found at this site address.')
+      downloadData(raw, 'junga-stored-data')
+      setToast({
+        text: 'Stored data downloaded unchanged. It may need repair before it can be restored.',
+      })
+    } catch (e) {
+      setToast({
+        text:
+          e instanceof Error
+            ? e.message
+            : 'Browser storage cannot be accessed. Keep this page open and try again.',
+      })
+    }
+  }
+  const hasDrafts = !!(notesDraft || graphDraft || sheetDraft || sheetEditing)
+  const backupDialog = modal?.kind === 'backup' && (
+    <Modal
+      title="Restore library backup"
+      subtitle="Preview a saved library before making changes."
+      onClose={() => setModal(null)}
+    >
+      <BackupRestore
+        hasDrafts={hasDrafts}
+        onDownloadDrafts={exportBackup}
+        onClose={() => setModal(null)}
+        onRestore={(backup, mode, expectedRaw) => {
+          restore(backup, mode, expectedRaw)
+          setNotesDraft(null)
+          setGraphDraft(null)
+          setSheetDraft(null)
+          setSheetEditing(null)
+          setModal(null)
+          setQuery('')
+          setTool('all')
+          setSidebarOpen(false)
+          window.history.pushState(null, '', '#/all')
+          setRoute('#/all')
+          setToast({
+            text: `${mode === 'copies' ? 'Restored copies of' : 'Library replaced with'} ${backup.projects.length} projects and ${backup.collections.length} collections. Archived and trashed projects stay in Archive and Trash.`,
+          })
+        }}
+      />
+    </Modal>
+  )
   if (!library || error)
     return (
       <main className="recovery">
@@ -681,14 +790,28 @@ export default function App() {
           Nothing has been overwritten. Download the stored library before trying to recover it.
         </p>
         <div className="button-row">
-          <button className="button primary" onClick={exportBackup}>
+          <button className="button secondary" onClick={downloadStoredData}>
             <ArrowDownToLine size={17} />
             Download stored data
           </button>
           <button className="button secondary" onClick={reload}>
             Try again
           </button>
+          <button className="button primary" onClick={() => setModal({ kind: 'backup' })}>
+            Restore library backup
+          </button>
+          {hasDrafts && (
+            <button className="button secondary" onClick={exportBackup}>
+              Download unsaved work
+            </button>
+          )}
         </div>
+        <p>
+          Keep any downloaded data before replacing the library. If browser storage is unavailable,
+          allow storage for this site and try again.
+        </p>
+        {toast && <p role="status">{toast.text}</p>}
+        {backupDialog}
       </main>
     )
 
@@ -820,6 +943,10 @@ export default function App() {
             <ArrowDownToLine size={15} />
             Download library backup
           </button>
+          <button className="backup-link" onClick={() => showModal({ kind: 'backup' })}>
+            <RotateCcw size={15} />
+            Restore library backup
+          </button>
           <div className="sidebar-signoff">
             <span className="tiny-mark">J</span>
             <span>Junga Workspace</span>
@@ -872,6 +999,16 @@ export default function App() {
           {saveError && (
             <div className="error-banner" role="alert">
               <strong>Change not saved.</strong> {saveError}
+              {hasDrafts && (
+                <div className="backup-actions">
+                  <span>
+                    Your project edits are still on this page. Download a backup before closing it.
+                  </span>
+                  <button className="button secondary" onClick={exportBackup}>
+                    Download unsaved work
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {projectId ? (
@@ -1572,8 +1709,13 @@ export default function App() {
               data also clears this copy of your library.
             </p>
             <p>
-              You can download a backup of the library. Restoring a backup will be added in a later
-              build.
+              Download a backup to keep a separate copy of your work. Backups include saved
+              projects, collections, graphs, spreadsheets, and unsaved notes, graph changes, and
+              spreadsheet cell edits on this page. Restore a backup as separate copies, or
+              explicitly replace the library.
+            </p>
+            <p>
+              Apply changes in project details and calculator settings forms before downloading.
             </p>
           </div>
           <div className="modal-footer">
@@ -1581,12 +1723,16 @@ export default function App() {
               <ArrowDownToLine size={16} />
               Download backup
             </button>
+            <button className="button secondary" onClick={() => setModal({ kind: 'backup' })}>
+              Restore backup
+            </button>
             <button className="button primary" onClick={() => setModal(null)}>
               Got it
             </button>
           </div>
         </Modal>
       )}
+      {backupDialog}
     </div>
   )
 }

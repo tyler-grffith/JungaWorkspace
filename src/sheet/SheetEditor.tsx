@@ -53,7 +53,7 @@ type Props = {
   title: string
   sheet: SheetDocument
   onChange: (sheet: SheetDocument) => boolean
-  onEditingChange: (editing: boolean) => void
+  onEditingChange: (edit: { ref: string; value: string } | null) => void
   onBack: () => void
   readOnly: boolean
   unsaved: boolean
@@ -110,9 +110,10 @@ export default function SheetEditor({
     }
   }, [sheet])
   useEffect(() => {
-    onEditingChange(!!edit && edit.value !== edit.original)
+    onEditingChange(
+      edit && edit.value !== edit.original ? { ref: edit.ref, value: edit.value } : null,
+    )
   }, [edit, onEditingChange])
-  useEffect(() => () => onEditingChange(false), [onEditingChange])
   useEffect(() => {
     setRangeInput(selectionName(selection))
   }, [selection])
@@ -160,7 +161,7 @@ export default function SheetEditor({
     const current = editRef.current
     if (!current) return
     setEdit(null)
-    onEditingChange(false)
+    onEditingChange(null)
     if (current.value !== current.original)
       safely(() =>
         change(
@@ -226,7 +227,7 @@ export default function SheetEditor({
       e.preventDefault()
       e.stopPropagation()
       setEdit(null)
-      onEditingChange(false)
+      onEditingChange(null)
       focusRequested.current = true
     }
     if (e.key === 'Enter' || e.key === 'Tab') {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { commitLibrary, readLibrary, STORAGE_KEY, type Library } from './library'
+import { restoreBackup, type RestoreMode } from './backup'
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : 'Browser storage is unavailable.'
@@ -16,7 +17,10 @@ export function useLibrary() {
   const [saveError, setSaveError] = useState('')
   useEffect(() => {
     const changed = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY || event.key === null) setState(load())
+      if (event.key === STORAGE_KEY || event.key === null) {
+        const next = load()
+        setState((previous) => (next.error ? { ...next, library: previous.library } : next))
+      }
     }
     window.addEventListener('storage', changed)
     return () => window.removeEventListener('storage', changed)
@@ -32,5 +36,20 @@ export function useLibrary() {
       return false
     }
   }, [])
-  return { ...state, saveError, commit, reload: () => setState(load()) }
+  const restore = (backup: Library, mode: RestoreMode, expectedRaw: string | null) => {
+    const library = restoreBackup(window.localStorage, backup, mode, expectedRaw)
+    setState({ library, error: '' })
+    setSaveError('')
+  }
+  return {
+    ...state,
+    saveError,
+    commit,
+    restore,
+    reload: () => {
+      const next = load()
+      setState((previous) => (next.error ? { ...next, library: previous.library } : next))
+      if (!next.error) setSaveError('')
+    },
+  }
 }

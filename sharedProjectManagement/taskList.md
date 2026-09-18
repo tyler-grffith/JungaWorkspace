@@ -7,16 +7,17 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 ## Next up
 
 - [ ] **Review the spreadsheet together.** Open Motion model, change the yellow inputs, enter formulas, paste a small table, and reopen the project. Review selection, editing, formatting, keyboard behavior, and the first worksheet size limits. Turn feedback into concrete changes here.
+- [ ] **Review backup recovery.** Download a library backup, inspect its restore preview, and try restoring copies. Review the replacement confirmation and unsaved-work download messages. Use a separate browser profile for replacement experiments.
 - [ ] **Review the graphing calculator together.** Try the LaPlace example, change p and a, edit a function, and reopen the project. Discuss expression entry, slider controls, curve labels, and the amount of space given to the graph. The first working calculator is ready locally.
 - [ ] **Review the library together.** Gather feedback on collections, project lifecycle, navigation, and visual direction. Revisit the unreviewed choices in [the decision log](../docs/DECISIONS.md); record what is accepted or needs changing.
 - [ ] **Apply the library feedback.** Capture concrete changes here after the discussion and verify the affected workflows.
-- [ ] **Complete the first GitHub PR/CI cycle.** Push the implementation branches, open reviewable pull requests, run the configured checks, and address failures. The spreadsheet branch builds on graphing, which builds on the library branch. Bring the result to the product owner for the merge decision.
+- [ ] **Complete the first GitHub PR/CI cycle.** Push the implementation branches, open reviewable pull requests, run the configured checks, and address failures. Backup recovery builds on the spreadsheet branch, which builds on graphing and the library. Bring the result to the product owner for the merge decision.
 
-The owner requested graphing, then the spreadsheet, on September 18. All three MVP components now have working first versions. Next priorities are hands-on product review and the first remote PR/CI cycle. Merges and deployments still require the product owner's decision.
+The owner requested graphing, then the spreadsheet and backup recovery, on September 18. All three MVP components now have working first versions, with a complete manual backup/restore workflow. Next priorities are hands-on product review and the first remote PR/CI cycle. Merges and deployments still require the product owner's decision.
 
 ## Come back to
 
-- [ ] **Restore library backups.** Complete the existing JSON download workflow with validated restoration and clear handling of existing projects. Verify recovery without losing saved work.
+- [ ] **Revisit recovery as storage evolves.** Manual full-library backups and restoration are implemented. Selective project recovery, scheduled backups, persistent version history, and coordinated simultaneous editing remain future decisions alongside server storage.
 - [ ] **Review new examples as they arrive.** Keep the first example as the early target. Turn newly identified needs into specific tasks without silently expanding the prototype scope.
 - [ ] **Inspect the larger engineering workbook in depth.** Initial read-only inventory found 22 worksheets, extensive arithmetic/trigonometry, and named function calls such as TRAT. Trace representative models with the owner to prioritize multiple sheets, cross-sheet references, custom functions, and larger grids. The current prototype is not compatible with the whole workbook.
 - [ ] **Refine spreadsheet interaction from actual use.** Prioritize pointing at cells while entering a formula, a drag fill handle, row/column insertion and deletion with reference updates, wrapping and dates, richer number formatting, sorting/filtering, and larger virtualized grids. The first editor supports a single worksheet up to 200 rows × 26 columns, growth at the end, resize/autofit, and explicit fill down/right.
@@ -58,5 +59,13 @@ The owner requested graphing, then the spreadsheet, on September 18. All three M
 - [x] Failed saves keep a draft, unfinished edits guard browser navigation, and unreadable data is preserved. Existing projects remain compatible. Verified on reload and across sequential tab updates.
 - [x] 40 unit tests and 26 Chromium browser tests pass after the keyboard-focus fix and targeted reruns. TypeScript/production build, desktop/mobile accessibility, and a 390px layout pass.
 - [x] Local implementation on `codex/spreadsheet`, based on `codex/graphing-calculator`. No ProductManagement edits, remote push, merge, or deployment.
+
+## Backup recovery increment — September 18, 2026
+
+- [x] Validate current and older Junga JSON backups, preview project/collection counts and lifecycle status, and restore as independent copies by default with unique names and remapped collections.
+- [x] Explicit whole-library replacement with acknowledgment, a download of the existing data, and protection against changes made after preview. Unreadable stored data can be downloaded unchanged and replaced with a known-good backup.
+- [x] Backup downloads include unsaved notes, graph changes, and spreadsheet edits retained on the page. Recovery preserves an unfinished cell even if another tab makes storage unreadable. Failed writes retain both the existing library and the restore preview.
+- [x] 48 unit tests and 38 browser tests pass across the full run and targeted reruns, including end-to-end download/restore in a fresh browser, storage failures, invalid files, stale previews, draft rescue, keyboard accessibility, and mobile layout. TypeScript/production build pass.
+- [x] Local implementation on `codex/backup-recovery`, based on `codex/spreadsheet`. ProductManagement and the user's live library are unchanged by recovery testing; no merge or deployment.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

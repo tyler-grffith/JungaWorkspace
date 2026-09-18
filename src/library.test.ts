@@ -11,12 +11,15 @@ import {
   removeCollection,
   saveCollection,
   saveNotes,
+  saveGraph,
+  initializeGraph,
   selectProjects,
   STORAGE_KEY,
   starterInput,
   type Library,
   type StorageAccess,
 } from './library'
+import { laplaceGraph } from './graph/model'
 
 const create = () => addProject(emptyLibrary(), starterInput)
 function memoryStorage(initial: Library = emptyLibrary()): StorageAccess {
@@ -129,6 +132,52 @@ describe('project lifecycle', () => {
 })
 
 describe('storage integrity', () => {
+  it('opens legacy projects without replacing their notes or graph after initialization', () => {
+    const { library, project } = create()
+    const legacy = parseLibrary(JSON.stringify(library))
+    expect(legacy.projects[0].graph).toBeUndefined()
+    const initialized = initializeGraph(
+      saveNotes(legacy, project.id, 'My existing notes'),
+      project.id,
+    )
+    expect(initialized.projects[0].graph?.entries).toHaveLength(8)
+    expect(initialized.projects[0].notes).toBe('My existing notes')
+    expect(initializeGraph(initialized, project.id)).toBe(initialized)
+  })
+
+  it('preserves graphs through duplication, metadata edits, archive, trash, restoration, and reload', () => {
+    const { library, project } = create()
+    const graph = laplaceGraph()
+    const saved = saveGraph(library, project.id, graph)
+    const copied = duplicateProject(saved, project.id)
+    expect(copied.project.graph).toEqual(graph)
+    expect(copied.project.graph).not.toBe(graph)
+    let next = saveGraph(copied.library, copied.project.id, { ...graph, entries: [] })
+    next = editProject(next, project.id, { ...starterInput, title: 'Renamed', tools: ['sheet'] })
+    expect(next.projects.find((p) => p.id === project.id)?.graph).toEqual(graph)
+    expect(() => saveGraph(next, project.id, graph)).toThrow('Add the graphing tool')
+    next = editProject(next, project.id, starterInput)
+    next = actOnProject(next, project.id, 'archive')
+    next = actOnProject(next, project.id, 'trash')
+    expect(() => saveGraph(next, project.id, graph)).toThrow('Restore')
+    next = actOnProject(next, project.id, 'restore')
+    const original = parseLibrary(JSON.stringify(next)).projects.find((p) => p.id === project.id)!
+    expect(original.graph).toEqual(graph)
+    expect(original.status).toBe('archived')
+  })
+
+  it('rejects invalid graph payloads without changing storage', () => {
+    const { library, project } = create()
+    const storage = memoryStorage(library)
+    const graph = { ...laplaceGraph(), viewport: { xMin: 5, xMax: 1, yMin: -1, yMax: 1 } }
+    expect(() =>
+      commitLibrary(storage, (current) => saveGraph(current, project.id, graph)),
+    ).toThrow('could not be saved')
+    expect(readLibrary(storage)).toEqual(library)
+    expect(() =>
+      parseLibrary(JSON.stringify({ ...library, projects: [{ ...project, graph }] })),
+    ).toThrow('untouched')
+  })
   it('treats absent data as a new library, but rejects corrupted and unknown-version data', () => {
     expect(parseLibrary(null)).toEqual(emptyLibrary())
     expect(() => parseLibrary('broken')).toThrow('untouched')

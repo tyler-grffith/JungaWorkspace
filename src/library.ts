@@ -1,3 +1,11 @@
+import {
+  emptyGraph,
+  laplaceGraph,
+  LAPLACE_URL,
+  validGraph,
+  type GraphDocument,
+} from './graph/model'
+
 export type Tool = 'graph' | 'sheet'
 export type ProjectStatus = 'active' | 'archived' | 'trashed'
 export type Collection = { id: string; name: string }
@@ -15,6 +23,7 @@ export type Project = {
   createdAt: string
   updatedAt: string
   openedAt: string | null
+  graph?: GraphDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -52,10 +61,10 @@ export function validateInput(input: ProjectInput, library: Library): ProjectInp
       throw new Error('Reference links must start with https:// or http://.')
   }
   return {
-    ...input,
     title,
     description: input.description.trim(),
     tools: [...new Set(input.tools)],
+    collectionId: input.collectionId,
     referenceUrl,
   }
 }
@@ -64,6 +73,7 @@ export function addProject(
   library: Library,
   input: ProjectInput,
   notes = '',
+  graph?: GraphDocument,
 ): { library: Library; project: Project } {
   const now = timestamp()
   const project: Project = {
@@ -76,6 +86,7 @@ export function addProject(
     createdAt: now,
     updatedAt: now,
     openedAt: null,
+    ...(graph ? { graph: structuredClone(graph) } : {}),
   }
   return { library: { ...library, projects: [project, ...library.projects] }, project }
 }
@@ -130,7 +141,29 @@ export function duplicateProject(library: Library, id: string) {
   let title = `${base} (copy)`
   let n = 2
   while (titles.has(title)) title = `${base} (copy ${n++})`
-  return addProject(library, { ...original, title }, original.notes)
+  return addProject(library, { ...original, title }, original.notes, original.graph)
+}
+
+export function saveGraph(library: Library, id: string, graph: GraphDocument): Library {
+  if (!validGraph(graph)) throw new Error('The graph could not be saved. Check its settings.')
+  return changeProject(library, id, (project) => {
+    if (project.status === 'trashed')
+      throw new Error('Restore this project before editing its graph.')
+    if (!project.tools.includes('graph'))
+      throw new Error('Add the graphing tool to this project before editing it.')
+    return { ...project, graph, updatedAt: timestamp() }
+  })
+}
+
+export function initializeGraph(library: Library, id: string): Library {
+  const project = library.projects.find((p) => p.id === id)
+  if (!project) throw new Error('This project is no longer available.')
+  if (project.graph) return library
+  return saveGraph(
+    library,
+    id,
+    project.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph(),
+  )
 }
 
 export function saveCollection(library: Library, value: string, id?: string): Library {
@@ -261,6 +294,7 @@ export function parseLibrary(raw: string | null): Library {
         isDate(p.updatedAt) &&
         (p.openedAt === null || isDate(p.openedAt))
       if (!valid) return false
+      if (p.graph !== undefined && !validGraph(p.graph)) return false
       if (p.referenceUrl) {
         try {
           if (!['http:', 'https:'].includes(new URL(p.referenceUrl as string).protocol))
@@ -310,4 +344,4 @@ export const starterInput: ProjectInput = {
   referenceUrl: 'https://www.desmos.com/calculator/2awcmk9fzy',
 }
 export const starterNotes =
-  'Reference for the first graphing prototype.\n\nf(t) = e^(-t) sin(t), for t > 0\nf₂(t) = e^(a t), for t > 0\nfₚ(t) = sin(p t)\nzₜ(t) = f(t) f₂(t) fₚ(t)\nzₚ(t) = f(t) f₂(t)\n\nParameters in the reference: p = 3.8 (0 to 10); a = 1.16 (-0.5 to 2).\n\nSupport function definitions, dependencies, domain restrictions, sliders, and text notes in the graphing increment. This project currently stores the reference and notes; it does not calculate or import the graph.'
+  'Reference for the first graphing prototype.\n\nf(t) = e^(-t) sin(t), for t > 0\nf₂(t) = e^(a t), for t > 0\nfₚ(t) = sin(p t)\nzₜ(t) = f(t) f₂(t) fₚ(t)\nzₚ(t) = f(t) f₂(t)\n\nParameters in the reference: p = 3.8 (0 to 10); a = 1.16 (-0.5 to 2).\n\nOpen the calculator to explore this recreated example with editable functions, sliders, domain restrictions, and graph notes. The original Desmos project remains linked as a reference.'

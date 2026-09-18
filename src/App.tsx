@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Archive,
   ArrowDownToLine,
@@ -41,6 +41,8 @@ import {
   removeCollection,
   saveCollection,
   saveNotes,
+  saveGraph,
+  initializeGraph,
   selectProjects,
   starterInput,
   starterNotes,
@@ -55,6 +57,8 @@ import {
   type View,
 } from './library'
 import { useLibrary } from './useLibrary'
+import GraphCalculator from './graph/GraphCalculator'
+import { emptyGraph, laplaceGraph, LAPLACE_URL, type GraphDocument } from './graph/model'
 
 type ModalState =
   | { kind: 'project'; project?: Project }
@@ -250,7 +254,7 @@ function ProjectForm({
           ))}
         </div>
         <p className="field-hint">
-          Choose your project’s tools. Their editors are coming in the next builds.
+          The graphing calculator is ready. The spreadsheet editor comes next.
         </p>
       </fieldset>
       <label>
@@ -494,34 +498,36 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null)
   const [notesDraft, setNotesDraft] = useState<{ id: string; value: string } | null>(null)
+  const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
-      if (notesDraft && readRoute() !== route) {
+      if ((notesDraft || graphDraft) && readRoute() !== route) {
         if (
           !window.confirm(
-            'Your latest notes have not been saved. Leave this project and discard those unsaved changes?',
+            'Your latest changes have not been saved. Leave this project and discard those unsaved changes?',
           )
         ) {
           window.history.replaceState(null, '', route)
           return
         }
         setNotesDraft(null)
+        setGraphDraft(null)
       }
       setRoute(readRoute())
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
-  }, [notesDraft, route])
+  }, [notesDraft, graphDraft, route])
   useEffect(() => {
-    if (!notesDraft) return
+    if (!notesDraft && !graphDraft) return
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [notesDraft])
+  }, [notesDraft, graphDraft])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -551,8 +557,13 @@ export default function App() {
         : route === '#/trash'
           ? 'trash'
           : 'all'
-  const projectId = route.startsWith('#/project/') ? route.slice(10) : null
+  const projectId = route.startsWith('#/project/') ? route.slice(10).split('/')[0] : null
   const currentProject = library?.projects.find((p) => p.id === projectId)
+  const graphOpen = !!currentProject?.tools.includes('graph') && route.endsWith('/graph')
+  const fallbackGraph = useMemo(
+    () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
+    [currentProject?.id, currentProject?.referenceUrl],
+  )
   const currentCollection = library?.collections.find((c) => `collection:${c.id}` === view)
   const title =
     view === 'favorites'
@@ -605,6 +616,11 @@ export default function App() {
       })
     }
   }
+  function openGraph(project: Project) {
+    if (project.status === 'trashed' || commit((current) => initializeGraph(current, project.id))) {
+      window.location.hash = `${projectRoute(project.id)}/graph`
+    }
+  }
   function duplicate(project: Project) {
     if (commit((current) => duplicateProject(current, project.id).library))
       setToast({ text: 'A copy was added to your library.' })
@@ -617,13 +633,14 @@ export default function App() {
           current,
           { ...starterInput, collectionId: currentCollection?.id ?? null },
           starterNotes,
+          laplaceGraph(),
         )
         id = result.project.id
         return result.library
       })
     ) {
       window.location.hash = projectRoute(id)
-      setToast({ text: 'Example reference project created.' })
+      setToast({ text: 'LaPlace example project created.' })
     }
   }
   function exportBackup() {
@@ -811,15 +828,27 @@ export default function App() {
             <Layers3 size={16} />
             <a href="#/all">Workspace</a>
             <ChevronRight size={14} />
-            <span>{projectId ? 'Project' : currentCollection ? 'Collection' : 'Library'}</span>
+            <span>
+              {graphOpen
+                ? 'Graphing'
+                : projectId
+                  ? 'Project'
+                  : currentCollection
+                    ? 'Collection'
+                    : 'Library'}
+            </span>
           </div>
           <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
             <span className="status-dot" />
-            {saveError || notesDraft ? 'Changes not saved' : 'Saved on this device'}
+            {saveError || notesDraft || graphDraft ? 'Changes not saved' : 'Saved on this device'}
             <ChevronDown size={12} />
           </button>
         </header>
-        <main id="main-content" className="main-content" tabIndex={-1}>
+        <main
+          id="main-content"
+          className={`main-content ${graphOpen ? 'calculator-main' : ''}`}
+          tabIndex={-1}
+        >
           {saveError && (
             <div className="error-banner" role="alert">
               <strong>Change not saved.</strong> {saveError}
@@ -827,228 +856,265 @@ export default function App() {
           )}
           {projectId ? (
             currentProject ? (
-              <>
-                <button
-                  className="back-link"
-                  onClick={() =>
-                    navigate(
-                      currentProject.status === 'trashed'
-                        ? 'trash'
-                        : currentProject.status === 'archived'
-                          ? 'archive'
-                          : 'all',
-                    )
+              graphOpen ? (
+                <GraphCalculator
+                  key={currentProject.id}
+                  title={currentProject.title}
+                  graph={
+                    graphDraft?.id === currentProject.id
+                      ? graphDraft.value
+                      : (currentProject.graph ?? fallbackGraph)
                   }
-                >
-                  <ArrowLeft size={15} />
-                  Back to{' '}
-                  {currentProject.status === 'trashed'
-                    ? 'trash'
-                    : currentProject.status === 'archived'
-                      ? 'archive'
-                      : 'library'}
-                </button>
-                <div className="project-detail-heading">
-                  <div className="detail-icon">
-                    {currentProject.tools.length === 2 ? (
-                      <Layers3 size={27} />
-                    ) : (
-                      <ToolIcon tool={currentProject.tools[0]} size={27} />
-                    )}
-                  </div>
-                  <div className="detail-title">
-                    <div className="eyebrow">PROJECT OVERVIEW</div>
-                    <h1>{currentProject.title}</h1>
-                  </div>
-                  <div className="detail-actions">
-                    {currentProject.status !== 'trashed' && (
-                      <>
-                        <button
-                          className={`icon-button ${currentProject.favorite ? 'is-favorite' : ''}`}
-                          aria-label={`${currentProject.favorite ? 'Unfavorite' : 'Favorite'} ${currentProject.title}`}
-                          onClick={() => action(currentProject, 'favorite')}
-                        >
-                          <Star
-                            size={20}
-                            fill={currentProject.favorite ? 'currentColor' : 'none'}
-                          />
-                        </button>
-                        <button
-                          className="button secondary"
-                          onClick={() => showModal({ kind: 'project', project: currentProject })}
-                        >
-                          <Pencil size={15} />
-                          Edit details
-                        </button>
-                      </>
-                    )}
-                    <ProjectMenu
-                      project={currentProject}
-                      onAction={action}
-                      onEdit={(p) => showModal({ kind: 'project', project: p })}
-                      onDuplicate={duplicate}
-                    />
-                  </div>
-                </div>
-                {currentProject.status !== 'active' && (
-                  <div className="state-banner">
-                    <Archive size={17} />
-                    <span>
-                      {currentProject.status === 'trashed'
-                        ? 'This project is in the trash. Restore it to continue working.'
-                        : 'This project is archived. Your work is kept here for later.'}
-                    </span>
-                    <button
-                      onClick={() =>
-                        action(
-                          currentProject,
-                          currentProject.status === 'trashed' ? 'restore' : 'activate',
-                        )
-                      }
-                    >
-                      {currentProject.status === 'trashed' ? 'Restore project' : 'Move to library'}
-                      <RotateCcw size={14} />
-                    </button>
-                  </div>
-                )}
-                <p className="detail-description">
-                  {currentProject.description ||
-                    'Add a description to give this project a little context.'}
-                </p>
-                <div className="detail-meta">
-                  <span>
-                    <Folder size={14} />
-                    {library.collections.find((c) => c.id === currentProject.collectionId)?.name ??
-                      'Unfiled'}
-                  </span>
-                  <span>Created {formatDate(currentProject.createdAt)}</span>
-                  <span>Updated {formatDate(currentProject.updatedAt)}</span>
-                </div>
-                <div className="project-detail-grid">
-                  <section className="project-main">
-                    <div className="section-heading">
-                      <h2>Project tools</h2>
-                      <span>
-                        {currentProject.tools.length}{' '}
-                        {currentProject.tools.length === 1 ? 'tool' : 'tools'}
-                      </span>
+                  readOnly={currentProject.status === 'trashed'}
+                  unsaved={graphDraft?.id === currentProject.id}
+                  onBack={() => {
+                    window.location.hash = projectRoute(currentProject.id)
+                  }}
+                  onChange={(graph) => {
+                    setGraphDraft({ id: currentProject.id, value: graph })
+                    const saved = commit((current) => saveGraph(current, currentProject.id, graph))
+                    if (saved) setGraphDraft(null)
+                    return saved
+                  }}
+                />
+              ) : (
+                <>
+                  <button
+                    className="back-link"
+                    onClick={() =>
+                      navigate(
+                        currentProject.status === 'trashed'
+                          ? 'trash'
+                          : currentProject.status === 'archived'
+                            ? 'archive'
+                            : 'all',
+                      )
+                    }
+                  >
+                    <ArrowLeft size={15} />
+                    Back to{' '}
+                    {currentProject.status === 'trashed'
+                      ? 'trash'
+                      : currentProject.status === 'archived'
+                        ? 'archive'
+                        : 'library'}
+                  </button>
+                  <div className="project-detail-heading">
+                    <div className="detail-icon">
+                      {currentProject.tools.length === 2 ? (
+                        <Layers3 size={27} />
+                      ) : (
+                        <ToolIcon tool={currentProject.tools[0]} size={27} />
+                      )}
                     </div>
-                    <div className="tool-panels">
-                      {currentProject.tools.map((t) => (
-                        <div className={`tool-panel ${t}`} key={t}>
-                          <div className="tool-panel-icon">
-                            <ToolIcon tool={t} size={25} />
-                          </div>
-                          <h3>
-                            {toolNames[t] === 'Graphing' ? 'Graphing calculator' : 'Spreadsheet'}
-                          </h3>
-                          <p>
-                            {t === 'graph'
-                              ? 'A space to explore functions, parameters, and the shapes they make.'
-                              : 'A space to organize values, build formulas, and work through ideas.'}
-                          </p>
-                          <span className="coming-label">Editor in a later build</span>
-                        </div>
-                      ))}
+                    <div className="detail-title">
+                      <div className="eyebrow">PROJECT OVERVIEW</div>
+                      <h1>{currentProject.title}</h1>
                     </div>
-                    <div className="section-heading notes-heading">
-                      <h2>
-                        <StickyNote size={18} />
-                        Project notes
-                      </h2>
-                      <span>
-                        <CheckCheck size={14} />
-                        {notesDraft ? 'Draft not saved' : 'Saved as you type'}
-                      </span>
-                    </div>
-                    <textarea
-                      className="notes-editor"
-                      aria-label="Project notes"
-                      placeholder="Capture an idea, outline your model, or leave a note for next time…"
-                      value={
-                        notesDraft?.id === currentProject.id
-                          ? notesDraft.value
-                          : currentProject.notes
-                      }
-                      maxLength={20000}
-                      disabled={currentProject.status === 'trashed'}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setNotesDraft({ id: currentProject.id, value })
-                        if (commit((current) => saveNotes(current, currentProject.id, value)))
-                          setNotesDraft(null)
-                      }}
-                    />
-                    <>
-                      {notesDraft?.id === currentProject.id && (
-                        <div className="unsaved-note" role="status">
-                          <span>Your draft is kept on this page. Save it before leaving.</span>
+                    <div className="detail-actions">
+                      {currentProject.status !== 'trashed' && (
+                        <>
+                          <button
+                            className={`icon-button ${currentProject.favorite ? 'is-favorite' : ''}`}
+                            aria-label={`${currentProject.favorite ? 'Unfavorite' : 'Favorite'} ${currentProject.title}`}
+                            onClick={() => action(currentProject, 'favorite')}
+                          >
+                            <Star
+                              size={20}
+                              fill={currentProject.favorite ? 'currentColor' : 'none'}
+                            />
+                          </button>
                           <button
                             className="button secondary"
-                            onClick={() => {
-                              if (
-                                commit((current) =>
-                                  saveNotes(current, currentProject.id, notesDraft.value),
-                                )
-                              ) {
-                                setNotesDraft(null)
-                                setToast({ text: 'Notes saved.' })
-                              }
-                            }}
-                          >
-                            Retry saving notes
-                          </button>
-                        </div>
-                      )}
-                    </>
-                    <p className="notes-footnote">
-                      A little context now makes it easier to pick up later.
-                    </p>
-                  </section>
-                  <aside className="project-context" aria-label="Project references and context">
-                    <h2>Project reference</h2>
-                    {currentProject.referenceUrl ? (
-                      <a
-                        className="reference-card"
-                        href={currentProject.referenceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <span className="reference-icon">
-                          <ExternalLink size={18} />
-                        </span>
-                        <strong>{new URL(currentProject.referenceUrl).hostname}</strong>
-                        <span>
-                          Open reference
-                          <ExternalLink size={13} />
-                        </span>
-                      </a>
-                    ) : (
-                      <div className="no-reference">
-                        <ExternalLink size={21} />
-                        <p>Keep a link to the inspiration or source behind your project.</p>
-                        {currentProject.status !== 'trashed' && (
-                          <button
-                            className="text-button"
                             onClick={() => showModal({ kind: 'project', project: currentProject })}
                           >
-                            Add a reference
-                            <Plus size={14} />
+                            <Pencil size={15} />
+                            Edit details
                           </button>
-                        )}
-                      </div>
-                    )}
-                    <div className="context-tip">
-                      <FolderOpen size={22} />
-                      <h3>A home for the whole project</h3>
-                      <p>
-                        Your notes, references, and tools stay together. Each tool will have its own
-                        working data.
-                      </p>
+                        </>
+                      )}
+                      <ProjectMenu
+                        project={currentProject}
+                        onAction={action}
+                        onEdit={(p) => showModal({ kind: 'project', project: p })}
+                        onDuplicate={duplicate}
+                      />
                     </div>
-                  </aside>
-                </div>
-              </>
+                  </div>
+                  {currentProject.status !== 'active' && (
+                    <div className="state-banner">
+                      <Archive size={17} />
+                      <span>
+                        {currentProject.status === 'trashed'
+                          ? 'This project is in the trash. Restore it to continue working.'
+                          : 'This project is archived. Your work is kept here for later.'}
+                      </span>
+                      <button
+                        onClick={() =>
+                          action(
+                            currentProject,
+                            currentProject.status === 'trashed' ? 'restore' : 'activate',
+                          )
+                        }
+                      >
+                        {currentProject.status === 'trashed'
+                          ? 'Restore project'
+                          : 'Move to library'}
+                        <RotateCcw size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <p className="detail-description">
+                    {currentProject.description ||
+                      'Add a description to give this project a little context.'}
+                  </p>
+                  <div className="detail-meta">
+                    <span>
+                      <Folder size={14} />
+                      {library.collections.find((c) => c.id === currentProject.collectionId)
+                        ?.name ?? 'Unfiled'}
+                    </span>
+                    <span>Created {formatDate(currentProject.createdAt)}</span>
+                    <span>Updated {formatDate(currentProject.updatedAt)}</span>
+                  </div>
+                  <div className="project-detail-grid">
+                    <section className="project-main">
+                      <div className="section-heading">
+                        <h2>Project tools</h2>
+                        <span>
+                          {currentProject.tools.length}{' '}
+                          {currentProject.tools.length === 1 ? 'tool' : 'tools'}
+                        </span>
+                      </div>
+                      <div className="tool-panels">
+                        {currentProject.tools.map((t) => (
+                          <div className={`tool-panel ${t}`} key={t}>
+                            <div className="tool-panel-icon">
+                              <ToolIcon tool={t} size={25} />
+                            </div>
+                            <h3>
+                              {toolNames[t] === 'Graphing' ? 'Graphing calculator' : 'Spreadsheet'}
+                            </h3>
+                            <p>
+                              {t === 'graph'
+                                ? 'A space to explore functions, parameters, and the shapes they make.'
+                                : 'A space to organize values, build formulas, and work through ideas.'}
+                            </p>
+                            {t === 'graph' ? (
+                              <button
+                                className="button primary open-calculator"
+                                onClick={() => openGraph(currentProject)}
+                              >
+                                Open calculator
+                                <ArrowRight size={15} />
+                              </button>
+                            ) : (
+                              <span className="coming-label">Editor in a later build</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="section-heading notes-heading">
+                        <h2>
+                          <StickyNote size={18} />
+                          Project notes
+                        </h2>
+                        <span>
+                          <CheckCheck size={14} />
+                          {notesDraft ? 'Draft not saved' : 'Saved as you type'}
+                        </span>
+                      </div>
+                      <textarea
+                        className="notes-editor"
+                        aria-label="Project notes"
+                        placeholder="Capture an idea, outline your model, or leave a note for next time…"
+                        value={
+                          notesDraft?.id === currentProject.id
+                            ? notesDraft.value
+                            : currentProject.notes
+                        }
+                        maxLength={20000}
+                        disabled={currentProject.status === 'trashed'}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setNotesDraft({ id: currentProject.id, value })
+                          if (commit((current) => saveNotes(current, currentProject.id, value)))
+                            setNotesDraft(null)
+                        }}
+                      />
+                      <>
+                        {notesDraft?.id === currentProject.id && (
+                          <div className="unsaved-note" role="status">
+                            <span>Your draft is kept on this page. Save it before leaving.</span>
+                            <button
+                              className="button secondary"
+                              onClick={() => {
+                                if (
+                                  commit((current) =>
+                                    saveNotes(current, currentProject.id, notesDraft.value),
+                                  )
+                                ) {
+                                  setNotesDraft(null)
+                                  setToast({ text: 'Notes saved.' })
+                                }
+                              }}
+                            >
+                              Retry saving notes
+                            </button>
+                          </div>
+                        )}
+                      </>
+                      <p className="notes-footnote">
+                        A little context now makes it easier to pick up later.
+                      </p>
+                    </section>
+                    <aside className="project-context" aria-label="Project references and context">
+                      <h2>Project reference</h2>
+                      {currentProject.referenceUrl ? (
+                        <a
+                          className="reference-card"
+                          href={currentProject.referenceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <span className="reference-icon">
+                            <ExternalLink size={18} />
+                          </span>
+                          <strong>{new URL(currentProject.referenceUrl).hostname}</strong>
+                          <span>
+                            Open reference
+                            <ExternalLink size={13} />
+                          </span>
+                        </a>
+                      ) : (
+                        <div className="no-reference">
+                          <ExternalLink size={21} />
+                          <p>Keep a link to the inspiration or source behind your project.</p>
+                          {currentProject.status !== 'trashed' && (
+                            <button
+                              className="text-button"
+                              onClick={() =>
+                                showModal({ kind: 'project', project: currentProject })
+                              }
+                            >
+                              Add a reference
+                              <Plus size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className="context-tip">
+                        <FolderOpen size={22} />
+                        <h3>A home for the whole project</h3>
+                        <p>
+                          Your notes, references, and tools stay together. Each tool will have its
+                          own working data.
+                        </p>
+                      </div>
+                    </aside>
+                  </div>
+                </>
+              )
             ) : (
               <div className="empty-state">
                 <FolderOpen size={42} />
@@ -1256,7 +1322,7 @@ export default function App() {
                     <div>
                       <span className="eyebrow">FROM YOUR EXAMPLES</span>
                       <h3>LaPlace Intuition</h3>
-                      <p>Start a project with your Desmos reference and a few notes.</p>
+                      <p>Explore the recreated graph with editable functions and sliders.</p>
                     </div>
                     <button className="button secondary" onClick={addStarter}>
                       Use this example

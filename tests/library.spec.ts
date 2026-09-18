@@ -136,14 +136,14 @@ test('search, tool filters, list view, and collection removal preserve projects'
   await expect(page.getByRole('article')).toHaveCount(2)
 })
 
-test('starter stores an honest reference project and exports a backup', async ({ page }) => {
+test('starter stores a working example and exports a complete backup', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Use this example' }).click()
   await expect(page.getByRole('heading', { name: 'LaPlace Intuition' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Project notes' })).toHaveValue(
     /f\(t\) = e\^\(-t\)/,
   )
-  await expect(page.getByText('Editor in a later build')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open calculator' })).toBeVisible()
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download library backup' }).click()
   const download = await downloading
@@ -151,7 +151,9 @@ test('starter stores an honest reference project and exports a backup', async ({
   const stream = await download.createReadStream()
   const chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(chunk)
-  expect(JSON.parse(Buffer.concat(chunks).toString()).projects[0].title).toBe('LaPlace Intuition')
+  const project = JSON.parse(Buffer.concat(chunks).toString()).projects[0]
+  expect(project.title).toBe('LaPlace Intuition')
+  expect(project.graph.entries).toHaveLength(8)
 })
 
 test('another tab receives saved changes', async ({ page, context }) => {

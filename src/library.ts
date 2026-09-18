@@ -5,6 +5,7 @@ import {
   validGraph,
   type GraphDocument,
 } from './graph/model'
+import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
 
 export type Tool = 'graph' | 'sheet'
 export type ProjectStatus = 'active' | 'archived' | 'trashed'
@@ -24,6 +25,7 @@ export type Project = {
   updatedAt: string
   openedAt: string | null
   graph?: GraphDocument
+  sheet?: SheetDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -74,6 +76,7 @@ export function addProject(
   input: ProjectInput,
   notes = '',
   graph?: GraphDocument,
+  sheet?: SheetDocument,
 ): { library: Library; project: Project } {
   const now = timestamp()
   const project: Project = {
@@ -87,6 +90,7 @@ export function addProject(
     updatedAt: now,
     openedAt: null,
     ...(graph ? { graph: structuredClone(graph) } : {}),
+    ...(sheet ? { sheet: structuredClone(sheet) } : {}),
   }
   return { library: { ...library, projects: [project, ...library.projects] }, project }
 }
@@ -141,7 +145,7 @@ export function duplicateProject(library: Library, id: string) {
   let title = `${base} (copy)`
   let n = 2
   while (titles.has(title)) title = `${base} (copy ${n++})`
-  return addProject(library, { ...original, title }, original.notes, original.graph)
+  return addProject(library, { ...original, title }, original.notes, original.graph, original.sheet)
 }
 
 export function saveGraph(library: Library, id: string, graph: GraphDocument): Library {
@@ -164,6 +168,24 @@ export function initializeGraph(library: Library, id: string): Library {
     id,
     project.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph(),
   )
+}
+
+export function saveSheet(library: Library, id: string, sheet: SheetDocument): Library {
+  if (!validSheet(sheet))
+    throw new Error('The spreadsheet could not be saved. Check its cells and dimensions.')
+  return changeProject(library, id, (project) => {
+    if (project.status === 'trashed')
+      throw new Error('Restore this project before editing its spreadsheet.')
+    if (!project.tools.includes('sheet'))
+      throw new Error('Add the spreadsheet tool before editing its cells.')
+    return { ...project, sheet, updatedAt: timestamp() }
+  })
+}
+
+export function initializeSheet(library: Library, id: string): Library {
+  const project = library.projects.find((p) => p.id === id)
+  if (!project) throw new Error('This project is no longer available.')
+  return project.sheet ? library : saveSheet(library, id, emptySheet())
 }
 
 export function saveCollection(library: Library, value: string, id?: string): Library {
@@ -295,6 +317,7 @@ export function parseLibrary(raw: string | null): Library {
         (p.openedAt === null || isDate(p.openedAt))
       if (!valid) return false
       if (p.graph !== undefined && !validGraph(p.graph)) return false
+      if (p.sheet !== undefined && !validSheet(p.sheet)) return false
       if (p.referenceUrl) {
         try {
           if (!['http:', 'https:'].includes(new URL(p.referenceUrl as string).protocol))

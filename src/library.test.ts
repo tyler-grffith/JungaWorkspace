@@ -13,6 +13,8 @@ import {
   saveNotes,
   saveGraph,
   initializeGraph,
+  saveSheet,
+  initializeSheet,
   selectProjects,
   STORAGE_KEY,
   starterInput,
@@ -20,6 +22,7 @@ import {
   type StorageAccess,
 } from './library'
 import { laplaceGraph } from './graph/model'
+import { motionExample, emptySheet } from './sheet/model'
 
 const create = () => addProject(emptyLibrary(), starterInput)
 function memoryStorage(initial: Library = emptyLibrary()): StorageAccess {
@@ -132,6 +135,54 @@ describe('project lifecycle', () => {
 })
 
 describe('storage integrity', () => {
+  it('keeps independent graph and spreadsheet data through edits, duplication, and lifecycle changes', () => {
+    const { library, project } = addProject(
+      emptyLibrary(),
+      { ...starterInput, tools: ['graph', 'sheet'] },
+      'Keep these notes',
+      laplaceGraph(),
+    )
+    expect(parseLibrary(JSON.stringify(library)).projects[0].sheet).toBeUndefined()
+    const initialized = initializeSheet(library, project.id)
+    expect(initializeSheet(initialized, project.id)).toBe(initialized)
+    const sheet = motionExample()
+    let next = saveSheet(initialized, project.id, sheet)
+    const duplicate = duplicateProject(next, project.id)
+    expect(duplicate.project.sheet).toEqual(sheet)
+    expect(duplicate.project.sheet).not.toBe(sheet)
+    next = saveSheet(duplicate.library, duplicate.project.id, emptySheet())
+    next = actOnProject(next, project.id, 'archive')
+    next = actOnProject(next, project.id, 'trash')
+    expect(() => saveSheet(next, project.id, emptySheet())).toThrow('Restore')
+    next = actOnProject(next, project.id, 'restore')
+    const restored = parseLibrary(JSON.stringify(next)).projects.find((p) => p.id === project.id)!
+    expect(restored.sheet).toEqual(sheet)
+    expect(restored.graph).toEqual(project.graph)
+    expect(restored.notes).toBe('Keep these notes')
+    expect(restored.status).toBe('archived')
+  })
+
+  it('preserves a disabled spreadsheet and rejects damaged payloads without writing', () => {
+    const { library, project } = addProject(
+      emptyLibrary(),
+      { ...starterInput, tools: ['sheet'] },
+      '',
+      undefined,
+      motionExample(),
+    )
+    const disabled = editProject(library, project.id, { ...starterInput, tools: ['graph'] })
+    expect(disabled.projects[0].sheet).toEqual(project.sheet)
+    expect(() => saveSheet(disabled, project.id, emptySheet())).toThrow('Add the spreadsheet')
+    const storage = memoryStorage(library)
+    const bad = { ...emptySheet(), rows: 0 }
+    expect(() => commitLibrary(storage, (current) => saveSheet(current, project.id, bad))).toThrow(
+      'could not be saved',
+    )
+    expect(readLibrary(storage)).toEqual(library)
+    expect(() =>
+      parseLibrary(JSON.stringify({ ...library, projects: [{ ...project, sheet: bad }] })),
+    ).toThrow('untouched')
+  })
   it('opens legacy projects without replacing their notes or graph after initialization', () => {
     const { library, project } = create()
     const legacy = parseLibrary(JSON.stringify(library))

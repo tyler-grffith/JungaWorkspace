@@ -6,19 +6,20 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 ## Next up
 
+- [ ] **Review the spreadsheet together.** Open Motion model, change the yellow inputs, enter formulas, paste a small table, and reopen the project. Review selection, editing, formatting, keyboard behavior, and the first worksheet size limits. Turn feedback into concrete changes here.
 - [ ] **Review the graphing calculator together.** Try the LaPlace example, change p and a, edit a function, and reopen the project. Discuss expression entry, slider controls, curve labels, and the amount of space given to the graph. The first working calculator is ready locally.
 - [ ] **Review the library together.** Gather feedback on collections, project lifecycle, navigation, and visual direction. Revisit the unreviewed choices in [the decision log](../docs/DECISIONS.md); record what is accepted or needs changing.
 - [ ] **Apply the library feedback.** Capture concrete changes here after the discussion and verify the affected workflows.
-- [ ] **Complete the first GitHub PR/CI cycle.** Push the implementation branches, open reviewable pull requests, run the configured checks, and address failures. The graphing branch builds on the library branch. Bring the result to the product owner for the merge decision.
-- [ ] **Build the first spreadsheet.** Start with an editable grid, keyboard navigation, copy/paste, basic arithmetic formulas and cell references, and saved content. Acceptance: create a small useful sheet, close its project, and reopen it without losing values or formulas.
+- [ ] **Complete the first GitHub PR/CI cycle.** Push the implementation branches, open reviewable pull requests, run the configured checks, and address failures. The spreadsheet branch builds on graphing, which builds on the library branch. Bring the result to the product owner for the merge decision.
 
-The owner requested graphing next on September 18; that increment is now implemented. The spreadsheet remains the next component to build, with review feedback folded in as it arrives. The list records planned work; merges and deployments still require the product owner's decision.
+The owner requested graphing, then the spreadsheet, on September 18. All three MVP components now have working first versions. Next priorities are hands-on product review and the first remote PR/CI cycle. Merges and deployments still require the product owner's decision.
 
 ## Come back to
 
 - [ ] **Restore library backups.** Complete the existing JSON download workflow with validated restoration and clear handling of existing projects. Verify recovery without losing saved work.
 - [ ] **Review new examples as they arrive.** Keep the first example as the early target. Turn newly identified needs into specific tasks without silently expanding the prototype scope.
-- [ ] **Inspect the larger engineering workbook.** Identify the formulas, formatting, organization, and interactions the owner uses most; distinguish early requirements from later capabilities.
+- [ ] **Inspect the larger engineering workbook in depth.** Initial read-only inventory found 22 worksheets, extensive arithmetic/trigonometry, and named function calls such as TRAT. Trace representative models with the owner to prioritize multiple sheets, cross-sheet references, custom functions, and larger grids. The current prototype is not compatible with the whole workbook.
+- [ ] **Refine spreadsheet interaction from actual use.** Prioritize pointing at cells while entering a formula, a drag fill handle, row/column insertion and deletion with reference updates, wrapping and dates, richer number formatting, sorting/filtering, and larger virtualized grids. The first editor supports a single worksheet up to 200 rows × 26 columns, growth at the end, resize/autofit, and explicit fill down/right.
 - [ ] **Revisit the advanced aircraft graph.** Track constants separately from adjustable sliders, distinguish author parameters from end-user controls, and explore labels attached to plot lines.
 - [ ] **Refine calculator interaction from actual use.** Review formatted math entry versus the current plain-text fields; expression reordering; slider animation; keyboard workflows; graph/controls layout on smaller screens; and avoiding overlapping curve labels. Constants, sliders, and attached labels already have basic implementations.
 - [ ] **Choose the next mathematical capabilities from examples.** The current engine handles explicit functions of one variable. Implicit curves, shaded inequalities, tables/points, piecewise branches, calculus, complex numbers, and author/presentation modes need separate prioritization. Numeric sampling can miss very narrow or high-frequency features; refine plotting against selected examples.
@@ -48,5 +49,14 @@ The owner requested graphing next on September 18; that increment is now impleme
 - [x] Failed saves retain the graph draft and protect navigation until retry or explicit discard. Bad formulas show row errors without stopping valid curves.
 - [x] 24 unit tests and 17 Chromium browser tests pass after targeted fixes, including calculator accessibility and a 390px viewport. TypeScript and production build pass.
 - [x] Local implementation on `codex/graphing-calculator`, based on `codex/library-prototype`. No merge or deployment performed.
+
+## Spreadsheet increment — September 18, 2026
+
+- [x] Editable grid and formula bar; keyboard navigation and range selection; text, numbers, booleans, percentages, arithmetic, A1 ranges, relative/fixed references, common aggregate/logical/engineering functions, and clear formula errors.
+- [x] Tabular clipboard paste; internal copy with adjusted references and formatting; fill down/right; bold, alignment, fills, numeric display formats; column resize/autofit; row/column growth; session undo/redo; selection statistics.
+- [x] Optional native motion model with editable inputs and calculated velocity/distance. Saved spreadsheet data remains separate from graph data and survives duplication, archive/trash/restore, and backup download. Removing the tool preserves its contents.
+- [x] Failed saves keep a draft, unfinished edits guard browser navigation, and unreadable data is preserved. Existing projects remain compatible. Verified on reload and across sequential tab updates.
+- [x] 40 unit tests and 26 Chromium browser tests pass after the keyboard-focus fix and targeted reruns. TypeScript/production build, desktop/mobile accessibility, and a 390px layout pass.
+- [x] Local implementation on `codex/spreadsheet`, based on `codex/graphing-calculator`. No ProductManagement edits, remote push, merge, or deployment.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

@@ -43,6 +43,8 @@ import {
   saveNotes,
   saveGraph,
   initializeGraph,
+  saveSheet,
+  initializeSheet,
   selectProjects,
   starterInput,
   starterNotes,
@@ -59,6 +61,8 @@ import {
 import { useLibrary } from './useLibrary'
 import GraphCalculator from './graph/GraphCalculator'
 import { emptyGraph, laplaceGraph, LAPLACE_URL, type GraphDocument } from './graph/model'
+import SheetEditor from './sheet/SheetEditor'
+import { emptySheet, type SheetDocument } from './sheet/model'
 
 type ModalState =
   | { kind: 'project'; project?: Project }
@@ -254,7 +258,7 @@ function ProjectForm({
           ))}
         </div>
         <p className="field-hint">
-          The graphing calculator is ready. The spreadsheet editor comes next.
+          Choose graphing, spreadsheet, or both. Each tool keeps its own working data.
         </p>
       </fieldset>
       <label>
@@ -499,10 +503,12 @@ export default function App() {
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null)
   const [notesDraft, setNotesDraft] = useState<{ id: string; value: string } | null>(null)
   const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
+  const [sheetDraft, setSheetDraft] = useState<{ id: string; value: SheetDocument } | null>(null)
+  const [sheetEditing, setSheetEditing] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
-      if ((notesDraft || graphDraft) && readRoute() !== route) {
+      if ((notesDraft || graphDraft || sheetDraft || sheetEditing) && readRoute() !== route) {
         if (
           !window.confirm(
             'Your latest changes have not been saved. Leave this project and discard those unsaved changes?',
@@ -513,21 +519,23 @@ export default function App() {
         }
         setNotesDraft(null)
         setGraphDraft(null)
+        setSheetDraft(null)
+        setSheetEditing(false)
       }
       setRoute(readRoute())
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
-  }, [notesDraft, graphDraft, route])
+  }, [notesDraft, graphDraft, sheetDraft, sheetEditing, route])
   useEffect(() => {
-    if (!notesDraft && !graphDraft) return
+    if (!notesDraft && !graphDraft && !sheetDraft && !sheetEditing) return
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [notesDraft, graphDraft])
+  }, [notesDraft, graphDraft, sheetDraft, sheetEditing])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -560,6 +568,8 @@ export default function App() {
   const projectId = route.startsWith('#/project/') ? route.slice(10).split('/')[0] : null
   const currentProject = library?.projects.find((p) => p.id === projectId)
   const graphOpen = !!currentProject?.tools.includes('graph') && route.endsWith('/graph')
+  const sheetOpen = !!currentProject?.tools.includes('sheet') && route.endsWith('/sheet')
+  const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
   const fallbackGraph = useMemo(
     () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
     [currentProject?.id, currentProject?.referenceUrl],
@@ -620,6 +630,10 @@ export default function App() {
     if (project.status === 'trashed' || commit((current) => initializeGraph(current, project.id))) {
       window.location.hash = `${projectRoute(project.id)}/graph`
     }
+  }
+  function openSheet(project: Project) {
+    if (project.status === 'trashed' || commit((current) => initializeSheet(current, project.id)))
+      window.location.hash = `${projectRoute(project.id)}/sheet`
   }
   function duplicate(project: Project) {
     if (commit((current) => duplicateProject(current, project.id).library))
@@ -831,22 +845,28 @@ export default function App() {
             <span>
               {graphOpen
                 ? 'Graphing'
-                : projectId
-                  ? 'Project'
-                  : currentCollection
-                    ? 'Collection'
-                    : 'Library'}
+                : sheetOpen
+                  ? 'Spreadsheet'
+                  : projectId
+                    ? 'Project'
+                    : currentCollection
+                      ? 'Collection'
+                      : 'Library'}
             </span>
           </div>
           <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
             <span className="status-dot" />
-            {saveError || notesDraft || graphDraft ? 'Changes not saved' : 'Saved on this device'}
+            {saveError || notesDraft || graphDraft || sheetDraft
+              ? 'Changes not saved'
+              : sheetEditing
+                ? 'Editing cell'
+                : 'Saved on this device'}
             <ChevronDown size={12} />
           </button>
         </header>
         <main
           id="main-content"
-          className={`main-content ${graphOpen ? 'calculator-main' : ''}`}
+          className={`main-content ${graphOpen ? 'calculator-main' : sheetOpen ? 'spreadsheet-main' : ''}`}
           tabIndex={-1}
         >
           {saveError && (
@@ -856,7 +876,29 @@ export default function App() {
           )}
           {projectId ? (
             currentProject ? (
-              graphOpen ? (
+              sheetOpen ? (
+                <SheetEditor
+                  key={currentProject.id}
+                  title={currentProject.title}
+                  sheet={
+                    sheetDraft?.id === currentProject.id
+                      ? sheetDraft.value
+                      : (currentProject.sheet ?? fallbackSheet)
+                  }
+                  readOnly={currentProject.status === 'trashed'}
+                  unsaved={sheetDraft?.id === currentProject.id}
+                  onEditingChange={setSheetEditing}
+                  onBack={() => {
+                    window.location.hash = projectRoute(currentProject.id)
+                  }}
+                  onChange={(sheet) => {
+                    setSheetDraft({ id: currentProject.id, value: sheet })
+                    const saved = commit((current) => saveSheet(current, currentProject.id, sheet))
+                    if (saved) setSheetDraft(null)
+                    return saved
+                  }}
+                />
+              ) : graphOpen ? (
                 <GraphCalculator
                   key={currentProject.id}
                   title={currentProject.title}
@@ -1009,7 +1051,13 @@ export default function App() {
                                 <ArrowRight size={15} />
                               </button>
                             ) : (
-                              <span className="coming-label">Editor in a later build</span>
+                              <button
+                                className="button primary open-calculator"
+                                onClick={() => openSheet(currentProject)}
+                              >
+                                Open spreadsheet
+                                <ArrowRight size={15} />
+                              </button>
                             )}
                           </div>
                         ))}

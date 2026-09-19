@@ -13,6 +13,11 @@ import {
   Trash2,
   Undo2,
   X,
+  GripVertical,
+  Play,
+  Pause,
+  Settings2,
+  Minus,
 } from 'lucide-react'
 import { compileGraph } from './engine'
 import { numberLabel } from './plot'
@@ -21,6 +26,9 @@ import {
   laplaceGraph,
   MAX_ENTRIES,
   newExpression,
+  isPlotEntry,
+  entryName,
+  DEFAULT_ANIMATION,
   type GraphDocument,
   type GraphEntry,
   type ParameterEntry,
@@ -29,15 +37,21 @@ import GraphPlot from './GraphPlot'
 import './graph.css'
 import type { SheetDocument } from '../sheet/model'
 import { resolveSheetPlots } from '../linked/model'
+import ColorPicker from './ColorPicker'
+import { useParameterAnimation } from './useParameterAnimation'
 
 function ParameterControl({
   entry,
   update,
   readOnly,
+  playing,
+  onPlay,
 }: {
   entry: ParameterEntry
   update: (entry: ParameterEntry) => void
   readOnly: boolean
+  playing: boolean
+  onPlay: () => void
 }) {
   const [value, setValue] = useState(String(entry.value)),
     [error, setError] = useState('')
@@ -49,6 +63,8 @@ function ParameterControl({
     [entry.min, entry.max, entry.step],
   )
   const constant = entry.mode === 'constant' || entry.min === entry.max
+  const [animationOpen, setAnimationOpen] = useState(false)
+  const animation = entry.animation ?? DEFAULT_ANIMATION
   function submitValue() {
     const next = Number(value)
     if (
@@ -95,24 +111,104 @@ function ParameterControl({
       </div>
       {!constant && (
         <>
-          <input
-            className="parameter-range"
-            type="range"
-            aria-label={`Slider ${entry.name}`}
-            min={entry.min}
-            max={entry.max}
-            step={entry.step}
-            value={entry.value}
-            disabled={readOnly}
-            onChange={(e) => {
-              setError('')
-              update({ ...entry, value: Number(e.target.value) })
-            }}
-          />
-          <div className="parameter-extents">
+          <div className="slider-playback">
+            <button
+              className="icon-button"
+              aria-label={`${playing ? 'Pause' : 'Play'} ${entry.name}`}
+              title={playing ? 'Pause animation' : 'Play animation'}
+              disabled={readOnly}
+              onClick={onPlay}
+            >
+              {playing ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+            <button
+              className="icon-button"
+              aria-label={`Animation settings for ${entry.name}`}
+              title="Animation settings"
+              aria-expanded={animationOpen}
+              onClick={() => setAnimationOpen(!animationOpen)}
+            >
+              <Settings2 size={15} />
+            </button>
+            <input
+              className="parameter-range"
+              type="range"
+              aria-label={`Slider ${entry.name}`}
+              min={entry.min}
+              max={entry.max}
+              step={entry.step}
+              value={entry.value}
+              disabled={readOnly}
+              onChange={(e) => {
+                setError('')
+                update({ ...entry, value: Number(e.target.value) })
+              }}
+            />
+          </div>
+          <div className="parameter-extents playback-extents">
             <span>{entry.min}</span>
             <span>{entry.max}</span>
           </div>
+          {animationOpen && (
+            <div
+              className="animation-settings"
+              role="group"
+              aria-label={`Animation for ${entry.name}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setAnimationOpen(false)
+              }}
+            >
+              <div className="animation-speed">
+                <span>Speed</span>
+                <button
+                  className="icon-button"
+                  aria-label={`Slow down ${entry.name}`}
+                  disabled={readOnly || animation.speed <= 0.125}
+                  onClick={() =>
+                    update({
+                      ...entry,
+                      animation: { ...animation, speed: Math.max(0.125, animation.speed / 2) },
+                    })
+                  }
+                >
+                  <Minus size={14} />
+                </button>
+                <output aria-label={`Animation speed for ${entry.name}`}>{animation.speed}×</output>
+                <button
+                  className="icon-button"
+                  aria-label={`Speed up ${entry.name}`}
+                  disabled={readOnly || animation.speed >= 16}
+                  onClick={() =>
+                    update({
+                      ...entry,
+                      animation: { ...animation, speed: Math.min(16, animation.speed * 2) },
+                    })
+                  }
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              <p>Low → high in {5 / animation.speed} seconds.</p>
+              <label>
+                At the end{' '}
+                <select
+                  aria-label={`Animation mode for ${entry.name}`}
+                  disabled={readOnly}
+                  value={animation.mode}
+                  onChange={(e) =>
+                    update({
+                      ...entry,
+                      animation: { ...animation, mode: e.target.value as typeof animation.mode },
+                    })
+                  }
+                >
+                  <option value="loop">Loop from the start</option>
+                  <option value="reverse">Reverse direction</option>
+                  <option value="once">Stop at the end</option>
+                </select>
+              </label>
+            </div>
+          )}
         </>
       )}
       <details className="parameter-settings" ref={settings}>
@@ -228,10 +324,24 @@ export default function GraphCalculator({
     group = useRef({ key: '', time: 0 }),
     list = useRef<HTMLDivElement>(null)
   const [focusId, setFocusId] = useState('')
+  const [dragId, setDragId] = useState('')
+  const [dropId, setDropId] = useState('')
+  const [reorderNotice, setReorderNotice] = useState('')
+  const touchDrag = useRef<{
+    id: string
+    pointer: number
+    y: number
+    target: string
+    active: boolean
+  } | null>(null)
+  const animation = useParameterAnimation(graph, readOnly || unsaved, (next) =>
+    change(next, 'animation', true),
+  )
   useEffect(() => {
     if (latest.current !== graph) {
       setHistory({ past: [], future: [] })
       latest.current = graph
+      animation.stop()
     }
   }, [graph])
   useEffect(() => {
@@ -242,13 +352,24 @@ export default function GraphCalculator({
         )
         ?.focus()
   }, [focusId])
-  function change(next: GraphDocument, key = '') {
+  function change(next: GraphDocument, key = '', animating = false) {
     if (readOnly) return
+    if (!animating) animation.stop()
     const coalesce = key && key === group.current.key && Date.now() - group.current.time < 600
     setHistory((h) => ({ past: coalesce ? h.past : [...h.past, graph].slice(-50), future: [] }))
     group.current = { key, time: Date.now() }
     latest.current = next
     onChange(next)
+  }
+  function reorder(id: string, targetId: string) {
+    const from = graph.entries.findIndex((e) => e.id === id)
+    const to = graph.entries.findIndex((e) => e.id === targetId)
+    if (from < 0 || to < 0 || from === to || readOnly) return
+    const entries = [...graph.entries]
+    const [moved] = entries.splice(from, 1)
+    entries.splice(to, 0, moved)
+    change({ ...graph, entries })
+    setReorderNotice(`${entryName(moved)} moved to position ${to + 1}.`)
   }
   function update(entry: GraphEntry) {
     change(
@@ -279,11 +400,11 @@ export default function GraphCalculator({
       name = `a_${n}`
     }
     const entry: GraphEntry =
-      kind === 'expression'
-        ? newExpression(
-            '',
-            COLORS[graph.entries.filter((e) => e.kind === 'expression').length % COLORS.length],
-          )
+      kind === 'expression' || kind === 'point' || kind === 'implicit'
+        ? {
+            ...newExpression('', COLORS[graph.entries.filter(isPlotEntry).length % COLORS.length]),
+            kind,
+          }
         : kind === 'note'
           ? { id: crypto.randomUUID(), kind, text: '' }
           : {
@@ -300,6 +421,7 @@ export default function GraphCalculator({
     setFocusId(entry.id)
   }
   function undo() {
+    animation.stop()
     const previous = history.past.at(-1)
     if (!previous) return
     setHistory({ past: history.past.slice(0, -1), future: [graph, ...history.future] })
@@ -308,6 +430,7 @@ export default function GraphCalculator({
     onChange(previous)
   }
   function redo() {
+    animation.stop()
     const next = history.future[0]
     if (!next) return
     setHistory({ past: [...history.past, graph], future: history.future.slice(1) })
@@ -320,7 +443,7 @@ export default function GraphCalculator({
     setConfirmExample(false)
   }
   const hasContent = graph.entries.some((e) =>
-    e.kind === 'expression' ? e.formula.trim() : e.kind === 'note' ? e.text.trim() : true,
+    isPlotEntry(e) ? e.formula.trim() : e.kind === 'note' ? e.text.trim() : true,
   )
   return (
     <div className="calculator">
@@ -411,8 +534,16 @@ export default function GraphCalculator({
             Supported: sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, sqrt, abs, ln/log
             (natural logarithm), log10, floor, ceil, round, sign, min, max, pow, atan2; constants e,
             pi, tau. Use underscores for subscripts, such as <code>f_2(t)</code>. Add a parameter
-            for a slider or fixed constant. Implicit equations, inequalities as shaded regions, and
+            for a slider or fixed constant. Points accept ordered pairs such as{' '}
+            <code>(a, sin(a))</code>. Implicit equations accept <code>x^2 + y^2 = 9</code> or{' '}
+            <code>x = 2</code>. Implicit curves are numerical approximations; very small features
+            and repeated roots may need a closer zoom or a simpler equation. Shaded inequalities and
             calculus operators come later.
+          </p>
+          <p>
+            Drag a row by its grip to reorder it, or focus the grip and press Alt + ↑ / ↓. Drag a
+            curve label along its line; double-click it (or focus it and press Enter) to edit its
+            text, size, and angle. Playback pauses when you edit the graph or leave this tab.
           </p>
         </section>
       )}
@@ -428,7 +559,21 @@ export default function GraphCalculator({
               onClick={() => add('expression')}
             >
               <Plus size={14} />
-              Expression
+              Formulas
+            </button>
+            <button
+              disabled={readOnly || graph.entries.length >= MAX_ENTRIES}
+              onClick={() => add('point')}
+            >
+              <Plus size={14} />
+              Points
+            </button>
+            <button
+              disabled={readOnly || graph.entries.length >= MAX_ENTRIES}
+              onClick={() => add('implicit')}
+            >
+              <Plus size={14} />
+              Implicit equation
             </button>
             <button
               disabled={readOnly || graph.entries.length >= MAX_ENTRIES}
@@ -445,28 +590,107 @@ export default function GraphCalculator({
               Note
             </button>
           </div>
+          <span className="sr-only" role="status">
+            {reorderNotice}
+          </span>
           <div className="expression-list" ref={list}>
             {graph.entries.map((entry, i) => (
               <div
-                className={`expression-row ${entry.kind} ${compiled.errors[entry.id] ? 'has-error' : ''}`}
+                className={`expression-row ${entry.kind} ${compiled.errors[entry.id] ? 'has-error' : ''} ${dropId === entry.id ? 'drop-target' : ''} ${dragId === entry.id ? 'is-dragging' : ''}`}
                 key={entry.id}
                 data-entry-id={entry.id}
+                onDragOver={(event) => {
+                  if (!readOnly && dragId) {
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                    setDropId(entry.id)
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  reorder(dragId, entry.id)
+                  setDragId('')
+                  setDropId('')
+                }}
               >
                 <div className="expression-row-top">
+                  <button
+                    className="icon-button entry-drag-handle"
+                    draggable={!readOnly}
+                    disabled={readOnly}
+                    aria-label={`Reorder ${entryName(entry).toLowerCase()} ${i + 1}`}
+                    title="Drag to reorder · Alt + ↑ / ↓"
+                    onPointerDown={(event) => {
+                      if (readOnly || event.pointerType === 'mouse') return
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                      touchDrag.current = {
+                        id: entry.id,
+                        pointer: event.pointerId,
+                        y: event.clientY,
+                        target: entry.id,
+                        active: false,
+                      }
+                    }}
+                    onPointerMove={(event) => {
+                      const touch = touchDrag.current
+                      if (!touch || touch.pointer !== event.pointerId) return
+                      if (!touch.active && Math.abs(event.clientY - touch.y) < 5) return
+                      touch.active = true
+                      setDragId(touch.id)
+                      const row = document
+                        .elementFromPoint(event.clientX, event.clientY)
+                        ?.closest<HTMLElement>('.expression-row')
+                      if (row?.dataset.entryId) {
+                        touch.target = row.dataset.entryId
+                        setDropId(touch.target)
+                      }
+                      const rect = list.current?.getBoundingClientRect()
+                      if (rect && list.current) {
+                        if (event.clientY > rect.bottom - 35) list.current.scrollTop += 14
+                        else if (event.clientY < rect.top + 35) list.current.scrollTop -= 14
+                      }
+                    }}
+                    onPointerUp={(event) => {
+                      const touch = touchDrag.current
+                      if (!touch || touch.pointer !== event.pointerId) return
+                      if (touch.active) reorder(touch.id, touch.target)
+                      touchDrag.current = null
+                      setDragId('')
+                      setDropId('')
+                      event.currentTarget.releasePointerCapture(event.pointerId)
+                    }}
+                    onPointerCancel={() => {
+                      touchDrag.current = null
+                      setDragId('')
+                      setDropId('')
+                    }}
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData('text/plain', entry.id)
+                      event.dataTransfer.effectAllowed = 'move'
+                      setDragId(entry.id)
+                    }}
+                    onDragEnd={() => {
+                      setDragId('')
+                      setDropId('')
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                        event.preventDefault()
+                        const target = graph.entries[i + (event.key === 'ArrowUp' ? -1 : 1)]
+                        if (target) reorder(entry.id, target.id)
+                      }
+                    }}
+                  >
+                    <GripVertical size={15} />
+                  </button>
                   <span className="expression-number">{String(i + 1).padStart(2, '0')}</span>
-                  <span className="entry-kind">
-                    {entry.kind === 'parameter'
-                      ? 'PARAMETER'
-                      : entry.kind === 'note'
-                        ? 'NOTE'
-                        : 'EXPRESSION'}
-                  </span>
-                  {entry.kind === 'expression' && (
+                  <span className="entry-kind">{entryName(entry).toUpperCase()}</span>
+                  {isPlotEntry(entry) && (
                     <button
                       className="icon-button curve-visibility"
                       style={{ color: entry.color }}
                       disabled={readOnly}
-                      aria-label={`${entry.visible ? 'Hide' : 'Show'} expression ${i + 1}`}
+                      aria-label={`${entry.visible ? 'Hide' : 'Show'} ${entryName(entry).toLowerCase()} ${i + 1}`}
                       aria-pressed={entry.visible}
                       onClick={() => update({ ...entry, visible: !entry.visible })}
                     >
@@ -476,7 +700,7 @@ export default function GraphCalculator({
                   <button
                     className="icon-button delete-entry"
                     disabled={readOnly}
-                    aria-label={`Remove ${entry.kind} ${i + 1}`}
+                    aria-label={`Remove ${entryName(entry).toLowerCase()} ${i + 1}`}
                     onClick={() =>
                       change({ ...graph, entries: graph.entries.filter((e) => e.id !== entry.id) })
                     }
@@ -484,19 +708,25 @@ export default function GraphCalculator({
                     <Trash2 size={13} />
                   </button>
                 </div>
-                {entry.kind === 'expression' ? (
+                {isPlotEntry(entry) ? (
                   <>
                     <input
                       className="formula-input"
                       type="text"
                       spellCheck={false}
-                      aria-label={`Expression ${i + 1}`}
+                      aria-label={`${entryName(entry)} ${i + 1}`}
                       aria-invalid={!!compiled.errors[entry.id]}
                       aria-describedby={compiled.errors[entry.id] ? `error-${entry.id}` : undefined}
                       maxLength={500}
                       value={entry.formula}
                       disabled={readOnly}
-                      placeholder="y = sin(x)"
+                      placeholder={
+                        entry.kind === 'point'
+                          ? '(2, sin(a))'
+                          : entry.kind === 'implicit'
+                            ? 'x^2 + y^2 = 9'
+                            : 'y = sin(x)'
+                      }
                       onChange={(e) => update({ ...entry, formula: e.target.value })}
                     />
                     <details className="expression-options">
@@ -515,24 +745,12 @@ export default function GraphCalculator({
                           onChange={(e) => update({ ...entry, label: e.target.value })}
                         />
                       </label>
-                      <label>
-                        Color
-                        <select
-                          aria-label={`Curve color ${i + 1}`}
-                          value={entry.color}
-                          disabled={readOnly}
-                          onChange={(e) => update({ ...entry, color: e.target.value })}
-                        >
-                          {COLORS.map((color, j) => (
-                            <option key={color} value={color}>
-                              {['Forest', 'Clay', 'Blue', 'Plum', 'Ochre', 'Teal'][j]}
-                            </option>
-                          ))}
-                          {!COLORS.some((c) => c === entry.color) && (
-                            <option value={entry.color}>Custom</option>
-                          )}
-                        </select>
-                      </label>
+                      <ColorPicker
+                        label={`Curve color ${i + 1}`}
+                        value={entry.color}
+                        disabled={readOnly}
+                        onChange={(color) => update({ ...entry, color })}
+                      />
                     </details>
                     {compiled.values[entry.id] !== undefined && (
                       <p className="constant-result">
@@ -541,7 +759,16 @@ export default function GraphCalculator({
                     )}
                   </>
                 ) : entry.kind === 'parameter' ? (
-                  <ParameterControl entry={entry} update={update} readOnly={readOnly} />
+                  <ParameterControl
+                    entry={entry}
+                    update={update}
+                    readOnly={readOnly}
+                    playing={animation.playing.includes(entry.id)}
+                    onPlay={() => {
+                      group.current.key = ''
+                      animation.toggle(entry)
+                    }}
+                  />
                 ) : (
                   <textarea
                     aria-label={`Graph note ${i + 1}`}
@@ -563,7 +790,7 @@ export default function GraphCalculator({
           </div>
           {!graph.entries.length && (
             <p className="expressions-empty">
-              Add an expression, a parameter, or a note to get started.
+              Add a formula, point, implicit equation, parameter, or note to get started.
             </p>
           )}
           <div className="expression-panel-footer">
@@ -602,13 +829,14 @@ export default function GraphCalculator({
               />
               Curve labels
             </label>
-            <span>Functions of one variable</span>
+            <span>Formulas · Points · Equations</span>
           </div>
           <GraphPlot
             graph={graph}
             compiled={compiled}
             series={series}
             readOnly={readOnly}
+            onEntryChange={update}
             onView={(viewport) => change({ ...graph, viewport }, 'viewport')}
           />
         </div>

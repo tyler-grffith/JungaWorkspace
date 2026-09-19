@@ -1,8 +1,18 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Crosshair, Minus, Plus, Move, Settings2 } from 'lucide-react'
-import { DEFAULT_VIEW, validViewport, type GraphDocument, type Viewport } from './model'
+import {
+  DEFAULT_VIEW,
+  validViewport,
+  isPlotEntry,
+  type PlotEntry,
+  type GraphDocument,
+  type Viewport,
+} from './model'
 import type { CompiledGraph } from './engine'
 import type { PointSeries } from '../linked/model'
+import { sampleImplicit } from './implicit'
+import CurveLabel from './CurveLabel'
+import LabelManager from './LabelManager'
 import {
   numberLabel,
   panView,
@@ -22,8 +32,16 @@ type Props = {
   onView: (view: Viewport) => void
   readOnly: boolean
   series?: PointSeries[]
+  onEntryChange?: (entry: PlotEntry) => void
 }
-export default function GraphPlot({ graph, compiled, onView, readOnly, series = [] }: Props) {
+export default function GraphPlot({
+  graph,
+  compiled,
+  onView,
+  readOnly,
+  series = [],
+  onEntryChange,
+}: Props) {
   const stage = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null)
   const [size, setSize] = useState({ width: 700, height: 530 })
@@ -32,16 +50,27 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
   const [settings, setSettings] = useState(false)
   const [bounds, setBounds] = useState<string[]>([])
   const [boundsError, setBoundsError] = useState('')
+  const [editingLabel, setEditingLabel] = useState('')
+  const labelEntry = graph.entries.find(
+    (entry) => entry.id === editingLabel && isPlotEntry(entry),
+  ) as PlotEntry | undefined
+  function closeLabel() {
+    setEditingLabel('')
+    Array.from(svg.current?.querySelectorAll<SVGTextElement>('[data-entry-id]') ?? [])
+      .find((node) => node.dataset.entryId === editingLabel)
+      ?.focus()
+  }
   const drag = useRef<{ pointer: number; start: Point; view: Viewport; next: Viewport } | null>(
     null,
   )
   const clipId = useId().replace(/:/g, '')
+  const equalAxes = !!(series.length || compiled.points.length || compiled.implicitCurves.length)
   const view = useMemo(
     () =>
-      series.length
+      equalAxes
         ? equalScaleView(dragView ?? graph.viewport, size.width, size.height)
         : (dragView ?? graph.viewport),
-    [dragView, graph.viewport, size.width, size.height, series.length],
+    [dragView, graph.viewport, size.width, size.height, equalAxes],
   )
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
@@ -81,11 +110,16 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
     return () => element.removeEventListener('wheel', wheel)
   }, [view, onView, readOnly, size])
   const curves = useMemo(
-    () =>
-      compiled.curves.map((curve) => ({
+    () => [
+      ...compiled.curves.map((curve) => ({
         curve,
         ...sampleCurve(curve, view, size.width, size.height),
       })),
+      ...compiled.implicitCurves.map((curve) => ({
+        curve,
+        ...sampleImplicit(curve, view, size.width, size.height),
+      })),
+    ],
     [compiled, view, size],
   )
   const origin = toPixel({ x: 0, y: 0 }, view, size.width, size.height)
@@ -101,13 +135,13 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
           <span className="status-dot" />
           CARTESIAN PLANE
         </span>
-        <span>{series.length ? 'Equal x / y scale' : 'Angles in radians'}</span>
+        <span>{equalAxes ? 'Equal x / y scale' : 'Angles in radians'}</span>
       </div>
       <div className={`plot-stage ${dragView ? 'is-panning' : ''}`} ref={stage}>
         <svg
           ref={svg}
           className="plot-svg"
-          role="img"
+          role="group"
           aria-label="Function graph. Drag to pan, scroll to zoom. Arrow keys pan; plus and minus zoom; zero resets."
           tabIndex={0}
           viewBox={`0 0 ${size.width} ${size.height}`}
@@ -190,6 +224,10 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
           <desc>
             {[
               ...compiled.curves.map((c) => c.entry.formula),
+              ...compiled.implicitCurves.map((c) => c.entry.formula),
+              ...compiled.points.map(
+                (p) => `${p.label}: (${numberLabel(p.x)}, ${numberLabel(p.y)})`,
+              ),
               ...series.flatMap((s) =>
                 s.points
                   .filter((p) => !!p)
@@ -315,34 +353,64 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
                 )}
               </g>
             ))}
-            {curves.map(({ curve, path, label }) => (
+            {compiled.points.map((point) => (
+              <g key={point.entry.id}>
+                <circle
+                  data-testid="graph-point"
+                  data-x={point.x}
+                  data-y={point.y}
+                  cx={toPixel(point, view, size.width, size.height).x}
+                  cy={toPixel(point, view, size.width, size.height).y}
+                  r={5}
+                  fill={point.entry.color}
+                  stroke="white"
+                  strokeWidth={1.2}
+                >
+                  <title>
+                    {point.label}: ({numberLabel(point.x)}, {numberLabel(point.y)})
+                  </title>
+                </circle>
+                {graph.showLabels && (
+                  <CurveLabel
+                    entry={point.entry}
+                    label={point.label}
+                    points={[point]}
+                    fallback={point}
+                    view={view}
+                    width={size.width}
+                    height={size.height}
+                    readOnly={readOnly}
+                    onChange={onEntryChange}
+                    onEdit={setEditingLabel}
+                  />
+                )}
+              </g>
+            ))}
+            {curves.map(({ curve, path, label, points }) => (
               <g key={curve.entry.id}>
                 <path
                   data-testid="curve"
                   data-formula={curve.entry.formula}
+                  data-kind={curve.entry.kind}
                   d={path}
                   stroke={curve.entry.color}
                   strokeWidth={2.2}
                   fill="none"
                   strokeLinejoin="round"
                 />
-                {graph.showLabels && label && (
-                  <text
-                    className="curve-label"
-                    fill={curve.entry.color}
-                    x={clamp(
-                      toPixel(label, view, size.width, size.height).x + 8,
-                      10,
-                      size.width - 110,
-                    )}
-                    y={clamp(
-                      toPixel(label, view, size.width, size.height).y - 9,
-                      18,
-                      size.height - 15,
-                    )}
-                  >
-                    {curve.label.length > 24 ? `${curve.label.slice(0, 23)}…` : curve.label}
-                  </text>
+                {graph.showLabels && (
+                  <CurveLabel
+                    entry={curve.entry}
+                    label={curve.label}
+                    points={points}
+                    fallback={label}
+                    view={view}
+                    width={size.width}
+                    height={size.height}
+                    readOnly={readOnly}
+                    onChange={onEntryChange}
+                    onEdit={setEditingLabel}
+                  />
                 )}
               </g>
             ))}
@@ -351,7 +419,7 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
             <line className="trace-line" x1={hover!.x} x2={hover!.x} y1={0} y2={size.height} />
           )}
         </svg>
-        {!compiled.curves.length && !series.length && (
+        {!curves.length && !compiled.points.length && !series.length && (
           <div className="plot-empty">
             <span>ƒ</span>
             <strong>
@@ -365,6 +433,14 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
                 : 'Try y = sin(x), or load your LaPlace example.'}
             </p>
           </div>
+        )}
+        {labelEntry && !readOnly && onEntryChange && (
+          <LabelManager
+            key={labelEntry.id}
+            entry={labelEntry}
+            onSave={onEntryChange}
+            onClose={closeLabel}
+          />
         )}
         <div className="plot-controls" role="group" aria-label="Graph view controls">
           <button
@@ -454,6 +530,7 @@ export default function GraphPlot({ graph, compiled, onView, readOnly, series = 
         </span>
         <span data-testid="curve-count">
           {rendered} {rendered === 1 ? 'curve' : 'curves'} in view
+          {compiled.points.length > 0 && ` · ${compiled.points.length} points`}
           {series.length > 0 &&
             ` · ${series.flatMap((s) => s.points).filter(Boolean).length} linked points`}
         </span>

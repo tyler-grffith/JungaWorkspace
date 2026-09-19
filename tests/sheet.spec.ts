@@ -159,7 +159,7 @@ test('spreadsheet and graph coexist, duplicate independently, and survive trash 
   await enter(page, 'A1', 'Original')
   await page.getByRole('button', { name: 'Project overview' }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()
-  await page.getByLabel('Expression 1', { exact: true }).fill('y=x^2')
+  await page.getByLabel('Formula 1', { exact: true }).fill('y=x^2')
   await page.getByRole('button', { name: 'Project overview' }).click()
   await page.getByLabel('Actions for Sheet model', { exact: true }).click()
   await page.getByRole('button', { name: 'Duplicate', exact: true }).click()

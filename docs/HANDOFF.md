@@ -4,11 +4,13 @@
 
 Current priorities and follow-ups live in the shared [task list](../sharedProjectManagement/taskList.md).
 
-Current increment: **linked spreadsheet + graph workspace**, on top of backup recovery and the three MVP components. Local branch: `codex/linked-workspace`, based on `codex/backup-recovery`.
+Current increment: **calculator interactions and new plot types**, on top of the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/graph-interactions`, based on `codex/linked-workspace`.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 
 ### Try this
+
+Open **LaPlace Intuition (restored)** or any graph project. The add bar now offers **Formulas**, **Points**, **Implicit equation**, **Parameter**, and **Note**. Try `(a, sin(a))` with a parameter a, and `x^2+y^2=9`. Reorder any row by its grip (mouse/touch) or Alt+↑/↓. Play a parameter, open its animation settings, and try reverse or stop mode; 1× traverses the range in five seconds. Curve appearance previews every palette color. Drag a curve label along its line; double-click it or press Enter for text, size, parallel orientation, and 15° rotation controls. Changes support graph undo, persistence, and backups. Review the speed choices, popup layout, and label placement in particular.
 
 Open the new **Octahedron Sections** project, then **Open side by side**. Its first local instance is http://127.0.0.1:5173/#/project/614d3eb1-2bcf-43b1-8bd5-814ff1c9b091/workspace. Move t (0–1), edit s in B2, or inspect the h formula in B3. Six rows in B7:C12 plot as connected labeled points, closing the outline exactly as in the referenced Desmos example. **Link settings** configures names, sliders, and ranges for any two-tool project. **Formatting** expands the combined spreadsheet toolbar; the full editors remain available through the view links. **Create octahedron example** in the library creates another independent instance.
 
@@ -26,10 +28,11 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 
 ### Boundaries
 
-- The graphing calculator handles explicit functions of one variable, arithmetic, common real math functions, named functions/constants, and trailing domain restrictions. Angles use radians; `log` and `ln` both mean natural logarithm; use `log10` for base 10. The sample is recreated natively, not imported.
+- The graphing calculator handles explicit functions, ordered pairs, implicit equations in x/y, arithmetic, common real math functions, named functions/constants, and trailing domain restrictions. Points use graph parameters/functions, not spreadsheet names. Angles use radians; `log` and `ln` both mean natural logarithm; use `log10` for base 10. The sample is recreated natively, not imported.
 - The spreadsheet starts at 50 × 12 cells and grows to 200 × 26. It supports one worksheet, explicit A1 formulas, ranges, common aggregate/logical/engineering functions, relative/fixed references, and basic formatting. LN is natural log; LOG defaults to base 10. It is a small native editor, not a full Excel/Sheets implementation.
 - Multiple sheets, cross-sheet references, custom functions, row/column insertion/deletion, dates, wrapping, sorting/filtering, and external imports remain future work. The engine bounds formula length, nesting, dependencies, and calculation work. Named cells and spreadsheet-to-graph point series are now supported.
-- Graph formatted math input, implicit equations, shaded inequalities, calculus, tables/points, animation, and presentation modes remain future work. Numeric plotting has sampling limits; narrow/high-frequency features and crowded labels need future refinement.
+- Graph formatted math input, shaded inequalities, calculus, general graph tables, and presentation modes remain future work. Numeric plotting has sampling limits: very small/high-frequency features, implicit repeated roots and isolated points may be missed. Implicit evaluation is bounded by grid, evaluation-count, and total-operation budgets. Automatic label collision avoidance remains future work.
+- Graph parameters animate with persistent speed/mode preferences and temporary playback, capped at ten saved updates/second. Pause resumes from the current value and direction; edits, hidden tabs, save failures, and leaving the editor stop playback. Spreadsheet cell sliders are not animated yet. Formula/implicit labels support persisted anchors, size, tangent alignment, and fixed rotation; linked spreadsheet point labels retain their existing behavior.
 - Projects live in local storage in the current browser at the exact site address. No authentication, backend, synchronization, or deployment.
 - Native Junga JSON backup downloads/restoration are available, including older downloads. File selection accepts up to 10 MB; all data is validated before one storage write. A changed storage snapshot blocks restoration until the preview is refreshed. Restore works with complete libraries, not selected projects. External spreadsheet/Desmos import remains deferred. Trash is recoverable; replacing the library can remove projects and requires explicit acknowledgment.
 - Failed note, graph, or spreadsheet saves retain a draft, offer backup download, and warn before navigation. A cell still being edited also guards browser navigation and can be rescued if storage becomes unreadable. Backups use the last readable page snapshot if the stored library cannot be read. Unreadable saved data is left untouched until explicit replacement. Both editors' undo/redo histories are limited to the current session.
@@ -50,6 +53,6 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 
 ### Next increment
 
-Next: review the integrated example and all three components, record concrete refinements in the task list, and complete the remote PR/CI cycle. Choose further integration and spreadsheet capabilities from actual examples.
+Next: review the six calculator refinements and the integrated example, record feedback in the task list, and complete the remote PR/CI cycle. Choose further integration and spreadsheet capabilities from actual examples.
 
 Verification results are recorded in WORK_LOG.md. The GitHub workflow is configured but has not been run remotely. Merging and deploying await the product owner's decision.

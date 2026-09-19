@@ -6,6 +6,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 ## Next up
 
+- [ ] **Review the six calculator refinements.** Try ordered pairs and implicit equations, drag row grips (or Alt+↑/↓), animate a slider at different speeds in loop/reverse/stop mode, inspect color swatches, and drag/double-click a curve label. Review label size, parallel alignment, 15° rotation, and popup layout. Implemented on `codex/graph-interactions`.
 - [ ] **Review the linked Octahedron Sections project.** Open the new project side by side, move t, change s in B2, inspect h in B3, and edit a coordinate formula in B7:C12. Review the pane sizes, named-cell controls, connected-point labels, and Link settings. The six vertex equations match the Desmos reference.
 - [ ] **Review the spreadsheet together.** Open Motion model, change the yellow inputs, enter formulas, paste a small table, and reopen the project. Review selection, editing, formatting, keyboard behavior, and the first worksheet size limits. Turn feedback into concrete changes here.
 - [ ] **Review backup recovery.** Download a library backup, inspect its restore preview, and try restoring copies. Review the replacement confirmation and unsaved-work download messages. Use a separate browser profile for replacement experiments.
@@ -23,8 +24,8 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [ ] **Inspect the larger engineering workbook in depth.** Initial read-only inventory found 22 worksheets, extensive arithmetic/trigonometry, and named function calls such as TRAT. Trace representative models with the owner to prioritize multiple sheets, cross-sheet references, custom functions, and larger grids. The current prototype is not compatible with the whole workbook.
 - [ ] **Refine spreadsheet interaction from actual use.** Prioritize pointing at cells while entering a formula, a drag fill handle, row/column insertion and deletion with reference updates, wrapping and dates, richer number formatting, sorting/filtering, and larger virtualized grids. The first editor supports a single worksheet up to 200 rows × 26 columns, growth at the end, resize/autofit, and explicit fill down/right.
 - [ ] **Revisit the advanced aircraft graph.** Track constants separately from adjustable sliders, distinguish author parameters from end-user controls, and explore labels attached to plot lines.
-- [ ] **Refine calculator interaction from actual use.** Review formatted math entry versus the current plain-text fields; expression reordering; slider animation; keyboard workflows; graph/controls layout on smaller screens; and avoiding overlapping curve labels. Constants, sliders, and attached labels already have basic implementations.
-- [ ] **Choose the next mathematical capabilities from examples.** The current engine handles explicit functions of one variable. Implicit curves, shaded inequalities, tables/points, piecewise branches, calculus, complex numbers, and author/presentation modes need separate prioritization. Numeric sampling can miss very narrow or high-frequency features; refine plotting against selected examples.
+- [ ] **Refine calculator interaction from actual use.** Row reordering, graph-parameter animation, color swatches, and draggable/editable curve labels are implemented. Next review formatted math entry, playback smoothness on larger graphs, automatic label collision avoidance, and controls on smaller screens.
+- [ ] **Choose the next mathematical capabilities from examples.** The engine now handles explicit functions, ordered pairs, and implicit equations. Shaded inequalities, general graph tables, piecewise branches, calculus, complex numbers, and author/presentation modes need separate prioritization. Numeric sampling can miss narrow/high-frequency features and implicit repeated/isolated roots; refine plotting against selected examples.
 - [ ] **Review the whole prototype before October 15.** Exercise organizing projects, creating work in both tools, saving, closing, and reopening. Include error handling, accessibility, and narrow-screen use.
 
 ## Later milestones
@@ -76,5 +77,12 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Editable named cells, cell sliders, and point-series ranges with visibility, color, connection, and closure settings. Cells are the source of truth; formula errors remove the affected point and break the outline. Plotted geometry uses equal axis scale.
 - [x] Links and both tool documents survive reload, duplication, archive/trash, backup/restore, failed-save draft rescue, and sequential tab updates. Existing single-tool workflows remain available.
 - [x] 54 unit tests and 45 browser tests pass across the full run and targeted reruns; production build, desktop/mobile accessibility, and visual review pass. Local branch `codex/linked-workspace`; no merge or deployment.
+
+## Calculator refinements — September 18, 2026
+
+- [x] Formulas naming, ordered-pair points, implicit equations, shared graph dependencies, row-specific errors, and equal scaling for geometry.
+- [x] Mouse/touch/keyboard reordering for every entry; parameter play/pause with five-second base traversal, speed multipliers, and loop/reverse/stop modes; named color swatches.
+- [x] Curve-label dragging and keyboard positioning, with a double-click/Enter manager for text, size, tangent alignment, and 15° rotation. New state participates in undo, reload, duplication, and backup validation/restoration.
+- [x] 64 unit tests and 53 browser tests pass across full and targeted runs, including pause/resume, touch reorder, storage failure, numerical contours, and desktop/mobile accessibility. Production build passes; existing calculator visually reviewed. Local branch `codex/graph-interactions`; no merge or deployment.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

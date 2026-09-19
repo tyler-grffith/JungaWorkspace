@@ -1,5 +1,12 @@
-import { normalize, parseDefinition, type Definition, type Node } from './parser'
-import type { ExpressionEntry, GraphDocument } from './model'
+import {
+  normalize,
+  parseDefinition,
+  parsePoint,
+  parseImplicit,
+  type Definition,
+  type Node,
+} from './parser'
+import type { ExpressionEntry, GraphDocument, ImplicitEntry, PointEntry } from './model'
 
 const builtins = new Map<string, { count: number; fn: (...args: number[]) => number }>([
   ...[
@@ -42,8 +49,16 @@ const constants = new Map([
 const reserved = (name: string) =>
   builtins.has(name) || constants.has(name) || name === 'x' || name === 'y'
 export type Curve = { entry: ExpressionEntry; label: string; evaluate: (x: number) => number }
+export type ImplicitCurve = {
+  entry: ImplicitEntry
+  label: string
+  evaluate: (x: number, y: number, budget?: { remaining: number }) => number
+}
+export type GraphPoint = { entry: PointEntry; label: string; x: number; y: number }
 export type CompiledGraph = {
   curves: Curve[]
+  implicitCurves: ImplicitCurve[]
+  points: GraphPoint[]
   errors: Record<string, string>
   values: Record<string, number>
 }
@@ -56,6 +71,7 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
     values: Record<string, number> = {}
   const definitions = new Map<string, Named>(),
     rows = new Map<string, Definition>()
+  const pairs = new Map<string, [Definition, Definition]>()
   const variables = new Set(
     graph.entries.flatMap((entry) =>
       entry.kind === 'parameter'
@@ -95,6 +111,10 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
         const definition = parseDefinition(entry.formula, variables)
         if (definition.name) register(definition.name, definition, entry.id)
         rows.set(entry.id, definition)
+      } else if (entry.kind === 'implicit' && entry.formula.trim()) {
+        rows.set(entry.id, parseImplicit(entry.formula, variables))
+      } else if (entry.kind === 'point' && entry.formula.trim()) {
+        pairs.set(entry.id, parsePoint(entry.formula, variables))
       }
     } catch (error) {
       errors[entry.id] = message(error)
@@ -106,7 +126,8 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
     if (validated.has(definition)) return
     const local = definition.parameter ?? (definition.plotted ? 'x' : undefined)
     function dependency(name: string, call: boolean, count = 0) {
-      if (!call && (name === local || constants.has(name))) return
+      if (!call && (name === local || (definition.spatial && name === 'y') || constants.has(name)))
+        return
       if (call && builtins.has(name)) {
         if (builtins.get(name)!.count !== count)
           throw new Error(`${name} expects ${builtins.get(name)!.count} argument(s).`)
@@ -147,28 +168,38 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
   }
 
   function evaluator(definition: Definition) {
-    return (x: number) => {
+    return (x: number, y = 0, budget?: { remaining: number }) => {
       let operations = 0
-      function evaluate(node: Node, localName?: string, localValue?: number): number {
+      function evaluate(
+        node: Node,
+        localName?: string,
+        localValue?: number,
+        spatial = false,
+      ): number {
         if (++operations > 4000)
           throw new Error(
             'This calculation is too complex to plot interactively. Simplify its dependencies.',
           )
+        if (budget && --budget.remaining < 0)
+          throw new Error(
+            'This implicit calculation is too complex to plot interactively. Simplify its dependencies.',
+          )
         if (node.kind === 'number') return node.value
         if (node.kind === 'symbol') {
           if (node.name === localName) return localValue!
+          if (spatial && node.name === 'y') return y
           if (constants.has(node.name)) return constants.get(node.name)!
           return run(definitions.get(node.name)!.definition)
         }
         if (node.kind === 'unary')
-          return (node.sign === '-' ? -1 : 1) * evaluate(node.value, localName, localValue)
+          return (node.sign === '-' ? -1 : 1) * evaluate(node.value, localName, localValue, spatial)
         if (node.kind === 'call') {
-          const args = node.args.map((arg) => evaluate(arg, localName, localValue))
+          const args = node.args.map((arg) => evaluate(arg, localName, localValue, spatial))
           if (builtins.has(node.name)) return builtins.get(node.name)!.fn(...args)
           return run(definitions.get(node.name)!.definition, args[0])
         }
-        const left = evaluate(node.left, localName, localValue),
-          right = evaluate(node.right, localName, localValue)
+        const left = evaluate(node.left, localName, localValue, spatial),
+          right = evaluate(node.right, localName, localValue, spatial)
         switch (node.op) {
           case '+':
             return left + right
@@ -185,7 +216,7 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
       function run(def: Definition, value?: number): number {
         const local = def.parameter ?? (def.plotted ? 'x' : undefined)
         for (let i = 0; i < def.domains.length; i++) {
-          const numbers = def.domains[i].map((node) => evaluate(node, local, value))
+          const numbers = def.domains[i].map((node) => evaluate(node, local, value, def.spatial))
           for (let j = 0; j < def.comparisons[i].length; j++) {
             const a = numbers[j],
               b = numbers[j + 1]
@@ -209,20 +240,41 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
             if (!matches) return NaN
           }
         }
-        return evaluate(def.body, local, value)
+        return evaluate(def.body, local, value, def.spatial)
       }
       return run(definition, x)
     }
   }
   const curves: Curve[] = []
+  const implicitCurves: ImplicitCurve[] = []
+  const points: GraphPoint[] = []
   for (const entry of graph.entries) {
-    if (entry.kind !== 'expression' || !rows.has(entry.id) || errors[entry.id]) continue
+    if (errors[entry.id]) continue
+    if (entry.kind === 'point' && pairs.has(entry.id)) {
+      try {
+        const pair = pairs.get(entry.id)!
+        pair.forEach((d) => checkDefinition(d, new Set()))
+        const [x, y] = pair.map((d) => evaluator(d)(0))
+        if (![x, y].every((v) => Number.isFinite(v) && Math.abs(v) <= 1e9))
+          throw new Error(
+            'Both coordinates must be finite numbers between −1 billion and 1 billion.',
+          )
+        if (entry.visible) points.push({ entry, x, y, label: entry.label.trim() || entry.formula })
+      } catch (error) {
+        errors[entry.id] = message(error)
+      }
+      continue
+    }
+    if ((entry.kind !== 'expression' && entry.kind !== 'implicit') || !rows.has(entry.id)) continue
     const definition = rows.get(entry.id)!
     try {
       checkDefinition(definition, new Set(definition.name ? [definition.name] : []))
       const evaluate = evaluator(definition)
       const probe = evaluate(0.731)
-      if (definition.plotted) {
+      if (entry.kind === 'implicit') {
+        if (entry.visible)
+          implicitCurves.push({ entry, label: entry.label.trim() || entry.formula, evaluate })
+      } else if (definition.plotted) {
         if (entry.visible)
           curves.push({
             entry,
@@ -241,5 +293,5 @@ export function compileGraph(graph: Pick<GraphDocument, 'entries'>): CompiledGra
       errors[entry.id] = message(error)
     }
   }
-  return { curves, errors, values }
+  return { curves, implicitCurves, points, errors, values }
 }

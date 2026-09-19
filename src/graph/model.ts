@@ -11,6 +11,15 @@ export type SheetPlot = {
   closed: boolean
 }
 export type Viewport = { xMin: number; xMax: number; yMin: number; yMax: number }
+export type LabelStyle = {
+  anchor?: { x: number; y: number }
+  size: number
+  orientation: 'fixed' | 'parallel'
+  angle: number
+}
+export type AnimationSettings = { speed: number; mode: 'loop' | 'reverse' | 'once' }
+export const DEFAULT_ANIMATION: AnimationSettings = { speed: 1, mode: 'loop' }
+export const DEFAULT_LABEL: LabelStyle = { size: 13, orientation: 'fixed', angle: 0 }
 export type ExpressionEntry = {
   id: string
   kind: 'expression'
@@ -18,7 +27,21 @@ export type ExpressionEntry = {
   label: string
   color: string
   visible: boolean
+  labelStyle?: LabelStyle
 }
+export type PointEntry = Omit<ExpressionEntry, 'kind'> & { kind: 'point' }
+export type ImplicitEntry = Omit<ExpressionEntry, 'kind'> & { kind: 'implicit' }
+export type PlotEntry = ExpressionEntry | PointEntry | ImplicitEntry
+export const isPlotEntry = (entry: GraphEntry): entry is PlotEntry =>
+  entry.kind === 'expression' || entry.kind === 'point' || entry.kind === 'implicit'
+export const entryName = (entry: GraphEntry) =>
+  ({
+    expression: 'Formula',
+    point: 'Point',
+    implicit: 'Implicit equation',
+    parameter: 'Parameter',
+    note: 'Note',
+  })[entry.kind]
 export type ParameterEntry = {
   id: string
   kind: 'parameter'
@@ -28,9 +51,10 @@ export type ParameterEntry = {
   max: number
   step: number
   mode: 'slider' | 'constant'
+  animation?: AnimationSettings
 }
 export type NoteEntry = { id: string; kind: 'note'; text: string }
-export type GraphEntry = ExpressionEntry | ParameterEntry | NoteEntry
+export type GraphEntry = PlotEntry | ParameterEntry | NoteEntry
 export type GraphDocument = {
   version: 1
   entries: GraphEntry[]
@@ -137,7 +161,7 @@ export function validGraph(value: unknown): value is GraphDocument {
       return false
     ids.add(entry.id)
     if (entry.kind === 'note') return typeof entry.text === 'string' && entry.text.length <= 4000
-    if (entry.kind === 'expression')
+    if (['expression', 'point', 'implicit'].includes(entry.kind as string))
       return (
         typeof entry.formula === 'string' &&
         entry.formula.length <= 500 &&
@@ -145,7 +169,8 @@ export function validGraph(value: unknown): value is GraphDocument {
         entry.label.length <= 60 &&
         typeof entry.color === 'string' &&
         /^#[0-9a-f]{6}$/i.test(entry.color) &&
-        typeof entry.visible === 'boolean'
+        typeof entry.visible === 'boolean' &&
+        (entry.labelStyle === undefined || validLabelStyle(entry.labelStyle))
       )
     if (entry.kind === 'parameter')
       return (
@@ -158,10 +183,39 @@ export function validGraph(value: unknown): value is GraphDocument {
         entry.min <= entry.max &&
         entry.step > 0 &&
         ['slider', 'constant'].includes(entry.mode as string) &&
+        (entry.animation === undefined || validAnimation(entry.animation)) &&
         (entry.mode === 'constant' || (entry.value >= entry.min && entry.value <= entry.max))
       )
     return false
   })
+}
+function validAnimation(v: unknown): v is AnimationSettings {
+  return (
+    record(v) &&
+    finite(v.speed) &&
+    v.speed >= 0.125 &&
+    v.speed <= 16 &&
+    ['loop', 'reverse', 'once'].includes(v.mode as string)
+  )
+}
+function validLabelStyle(v: unknown): v is LabelStyle {
+  return (
+    record(v) &&
+    finite(v.size) &&
+    v.size >= 8 &&
+    v.size <= 36 &&
+    ['fixed', 'parallel'].includes(v.orientation as string) &&
+    finite(v.angle) &&
+    v.angle >= -180 &&
+    v.angle <= 180 &&
+    v.angle % 15 === 0 &&
+    (v.anchor === undefined ||
+      (record(v.anchor) &&
+        finite(v.anchor.x) &&
+        finite(v.anchor.y) &&
+        Math.abs(v.anchor.x) <= 1e9 &&
+        Math.abs(v.anchor.y) <= 1e9))
+  )
 }
 export function validSheetPlot(v: unknown): v is SheetPlot {
   if (

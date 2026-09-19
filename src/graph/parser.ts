@@ -12,6 +12,46 @@ export type Definition = {
   domains: Node[][]
   comparisons: string[][]
   plotted: boolean
+  spatial?: boolean
+}
+
+export function parsePoint(source: string, variables: Set<string>): [Definition, Definition] {
+  const text = normalize(source).trim()
+  if (!text.startsWith('(') || !text.endsWith(')'))
+    throw new Error('Enter an ordered pair, such as (2, 3) or (a, sin(a)).')
+  const body = text.slice(1, -1)
+  let depth = 0
+  const commas: number[] = []
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === '(') depth++
+    if (body[i] === ')') depth--
+    if (body[i] === ',' && depth === 0) commas.push(i)
+  }
+  if (commas.length !== 1) throw new Error('An ordered pair needs exactly two coordinates: (x, y).')
+  const coordinate = (source: string): Definition => ({
+    body: parseMath(source, new Set([...variables, 'e', 'pi', 'tau'])),
+    domains: [],
+    comparisons: [],
+    plotted: false,
+  })
+  return [coordinate(body.slice(0, commas[0])), coordinate(body.slice(commas[0] + 1))]
+}
+
+export function parseImplicit(source: string, variables: Set<string>): Definition {
+  const text = normalize(source).trim()
+  const restrictionStart = text.indexOf('{')
+  const equation = restrictionStart < 0 ? text : text.slice(0, restrictionStart)
+  const restrictions = restrictionStart < 0 ? '' : text.slice(restrictionStart)
+  const sides = equation.split('=')
+  if (sides.length !== 2 || sides.some((s) => !s.trim()) || /[<>!]/.test(equation))
+    throw new Error('Enter an equation in x and y, such as x^2 + y^2 = 9.')
+  return {
+    ...parseDefinition(
+      `(${sides[0]}) - (${sides[1]}) ${restrictions}`,
+      new Set([...variables, 'y']),
+    ),
+    spatial: true,
+  }
 }
 const SUBS: Record<string, string> = {
   '₀': '0',

@@ -44,7 +44,7 @@ test('LaPlace curves react to sliders and preserve expressions, notes, labels, a
   const a = page.getByRole('spinbutton', { name: 'Value of a', exact: true })
   await a.fill('0.4')
   await a.press('Enter')
-  await page.getByLabel('Expression 5', { exact: true }).fill('f_p(t) = cos(p t)')
+  await page.getByLabel('Formula 5', { exact: true }).fill('f_p(t) = cos(p t)')
   await page.getByLabel('Graph note 8').fill('A damped response to revisit.')
   const row = page.locator('.expression-row').nth(2)
   await row.getByText('Curve appearance', { exact: true }).click()
@@ -55,7 +55,7 @@ test('LaPlace curves react to sliders and preserve expressions, notes, labels, a
   await page.reload()
   await expect(page.getByRole('spinbutton', { name: 'Value of p', exact: true })).toHaveValue('3.9')
   await expect(page.getByRole('spinbutton', { name: 'Value of a', exact: true })).toHaveValue('0.4')
-  await expect(page.getByLabel('Expression 5', { exact: true })).toHaveValue('f_p(t) = cos(p t)')
+  await expect(page.getByLabel('Formula 5', { exact: true })).toHaveValue('f_p(t) = cos(p t)')
   await expect(page.getByLabel('Graph note 8')).toHaveValue('A damped response to revisit.')
   await expect(page.locator('.curve-label').filter({ hasText: 'Damped sine' })).toBeVisible()
   await expect(page.getByRole('checkbox', { name: 'Grid', exact: true })).not.toBeChecked()
@@ -67,46 +67,46 @@ test('new expressions report errors, resolve forward dependencies, hide, remove,
   page,
 }) => {
   await blank(page)
-  await page.getByLabel('Expression 1', { exact: true }).fill('y = f(x) + a')
-  await expect(page.getByLabel('Expression 1', { exact: true })).toHaveAttribute(
+  await page.getByLabel('Formula 1', { exact: true }).fill('y = f(x) + a')
+  await expect(page.getByLabel('Formula 1', { exact: true })).toHaveAttribute(
     'aria-invalid',
     'true',
   )
   await page.getByRole('button', { name: 'Parameter', exact: true }).click()
-  await page.getByRole('button', { name: 'Expression', exact: true }).click()
-  await page.getByLabel('Expression 3', { exact: true }).fill('f(t) = sin(t) {t>0}')
+  await page.getByRole('button', { name: 'Formulas', exact: true }).click()
+  await page.getByLabel('Formula 3', { exact: true }).fill('f(t) = sin(t) {t>0}')
   await expect(page.getByTestId('curve')).toHaveCount(2)
-  await expect(page.getByLabel('Expression 1', { exact: true })).toHaveAttribute(
+  await expect(page.getByLabel('Formula 1', { exact: true })).toHaveAttribute(
     'aria-invalid',
     'false',
   )
-  await page.getByRole('button', { name: 'Hide expression 3', exact: true }).click()
+  await page.getByRole('button', { name: 'Hide formula 3', exact: true }).click()
   await expect(page.getByTestId('curve')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Remove expression 3', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove formula 3', exact: true }).click()
   await expect(page.getByTestId('curve')).toHaveCount(0)
   await page.getByRole('button', { name: 'Undo graph change' }).click()
   await expect(page.getByTestId('curve')).toHaveCount(1)
   await page.getByRole('button', { name: 'Redo graph change' }).click()
   await expect(page.getByTestId('curve')).toHaveCount(0)
   await page.getByRole('button', { name: 'Undo graph change' }).click()
-  await page.getByLabel('Expression 1', { exact: true }).fill('y = window.alert(1)')
-  await expect(page.getByLabel('Expression 1', { exact: true })).toHaveAttribute(
+  await page.getByLabel('Formula 1', { exact: true }).fill('y = window.alert(1)')
+  await expect(page.getByLabel('Formula 1', { exact: true })).toHaveAttribute(
     'aria-invalid',
     'true',
   )
-  await page.getByLabel('Expression 1', { exact: true }).fill('k = 1e10')
+  await page.getByLabel('Formula 1', { exact: true }).fill('k = 1e10')
   await expect(page.locator('.constant-result')).toContainText('1.00e+10')
   await page.getByRole('button', { name: 'Load LaPlace example' }).click()
   await expect(page.getByText('Replace this graph with the LaPlace example?')).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await expect(page.getByLabel('Expression 1', { exact: true })).toHaveValue('k = 1e10')
+  await expect(page.getByLabel('Formula 1', { exact: true })).toHaveValue('k = 1e10')
 })
 
 test('parameter constants, range validation, bounds, and keyboard or pointer navigation work', async ({
   page,
 }) => {
   await blank(page)
-  await page.getByLabel('Expression 1', { exact: true }).fill('y = a*x')
+  await page.getByLabel('Formula 1', { exact: true }).fill('y = a*x')
   await page.getByRole('button', { name: 'Parameter', exact: true }).click()
   await page.getByText('Parameter settings', { exact: true }).click()
   await page.getByLabel('Minimum of a').fill('2')
@@ -128,7 +128,7 @@ test('parameter constants, range validation, bounds, and keyboard or pointer nav
   await page.getByLabel('x minimum', { exact: true }).fill('-2')
   await page.getByLabel('x maximum', { exact: true }).fill('2')
   await page.getByRole('button', { name: 'Apply bounds' }).click()
-  const svg = page.getByRole('img', { name: /^Function graph/ })
+  const svg = page.getByRole('group', { name: /^Function graph/ })
   await svg.press('ArrowRight')
   expect((await graph(page)).viewport.xMin).toBeCloseTo(-1.6)
   const rect = await svg.boundingBox()
@@ -157,7 +157,7 @@ test('duplication and trash preserve independent graphs', async ({ page }) => {
   await page.getByRole('button', { name: 'Back to library' }).click()
   await page.getByRole('link', { name: 'LaPlace Intuition (copy)', exact: true }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()
-  await page.getByLabel('Expression 3', { exact: true }).fill('f(t) = t^2')
+  await page.getByLabel('Formula 3', { exact: true }).fill('f(t) = t^2')
   expect((await saved(page)).projects.find((p) => p.title === 'LaPlace Intuition')!.graph).toEqual(
     original,
   )
@@ -165,13 +165,13 @@ test('duplication and trash preserve independent graphs', async ({ page }) => {
   await page.getByLabel('Actions for LaPlace Intuition (copy)', { exact: true }).click()
   await page.getByRole('button', { name: 'Move to trash', exact: true }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()
-  await expect(page.getByLabel('Expression 3', { exact: true })).toBeDisabled()
-  await expect(page.getByLabel('Expression 3', { exact: true })).toHaveValue('f(t) = t^2')
+  await expect(page.getByLabel('Formula 3', { exact: true })).toBeDisabled()
+  await expect(page.getByLabel('Formula 3', { exact: true })).toHaveValue('f(t) = t^2')
   await page.getByRole('button', { name: 'Project overview' }).click()
   await page.getByRole('button', { name: 'Restore project', exact: true }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()
-  await expect(page.getByLabel('Expression 3', { exact: true })).toBeEnabled()
-  await expect(page.getByLabel('Expression 3', { exact: true })).toHaveValue('f(t) = t^2')
+  await expect(page.getByLabel('Formula 3', { exact: true })).toBeEnabled()
+  await expect(page.getByLabel('Formula 3', { exact: true })).toHaveValue('f(t) = t^2')
 })
 
 test('failed saves retain the graph draft and guard navigation until retry succeeds', async ({
@@ -186,24 +186,24 @@ test('failed saves retain the graph draft and guard navigation until retry succe
       original.call(this, key, value)
     }
   })
-  await page.getByLabel('Expression 1', { exact: true }).fill('y = sin(x)')
+  await page.getByLabel('Formula 1', { exact: true }).fill('y = sin(x)')
   await expect(page.getByRole('button', { name: 'Changes not saved' })).toBeVisible()
   await expect(page.getByTestId('curve')).toHaveCount(1)
   page.once('dialog', (dialog) => dialog.dismiss())
   await page.getByRole('button', { name: 'Project overview' }).click()
-  await expect(page.getByLabel('Expression 1', { exact: true })).toHaveValue('y = sin(x)')
+  await expect(page.getByLabel('Formula 1', { exact: true })).toHaveValue('y = sin(x)')
   await page.evaluate(() => sessionStorage.setItem('allow-writes', 'true'))
   await page.getByRole('button', { name: 'Retry saving graph' }).click()
   await page.reload()
-  await expect(page.getByLabel('Expression 1', { exact: true })).toHaveValue('y = sin(x)')
+  await expect(page.getByLabel('Formula 1', { exact: true })).toHaveValue('y = sin(x)')
 })
 
 test('graph changes appear in another tab', async ({ page, context }) => {
   await sample(page)
   const other = await context.newPage()
   await other.goto(page.url())
-  await page.getByLabel('Expression 5', { exact: true }).fill('f_p(t) = cos(p t)')
-  await expect(other.getByLabel('Expression 5', { exact: true })).toHaveValue('f_p(t) = cos(p t)')
+  await page.getByLabel('Formula 5', { exact: true }).fill('f_p(t) = cos(p t)')
+  await expect(other.getByLabel('Formula 5', { exact: true })).toHaveValue('f_p(t) = cos(p t)')
   await expect(other.getByTestId('curve')).toHaveCount(5)
 })
 

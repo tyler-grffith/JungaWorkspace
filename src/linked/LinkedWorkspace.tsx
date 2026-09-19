@@ -200,6 +200,12 @@ export default function LinkedWorkspace({
             compiled={compiled}
             series={series}
             readOnly={readOnly}
+            onEntryChange={(entry) =>
+              onGraphChange({
+                ...graph,
+                entries: graph.entries.map((e) => (e.id === entry.id ? entry : e)),
+              })
+            }
             onView={(viewport) => onGraphChange({ ...graph, viewport })}
           />
           <div className="linked-legend">

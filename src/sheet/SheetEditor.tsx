@@ -57,6 +57,7 @@ type Props = {
   onBack: () => void
   readOnly: boolean
   unsaved: boolean
+  embedded?: boolean
 }
 type Edit = { ref: string; value: string; original: string; origin: 'cell' | 'bar' }
 type History = { past: SheetDocument[]; future: SheetDocument[] }
@@ -69,12 +70,14 @@ export default function SheetEditor({
   onBack,
   readOnly,
   unsaved,
+  embedded = false,
 }: Props) {
   const [selection, setSelection] = useState<Selection>(first),
     [edit, setEditState] = useState<Edit | null>(null)
   const [history, setHistory] = useState<History>({ past: [], future: [] }),
     [help, setHelp] = useState(false),
     [showFormulas, setShowFormulas] = useState(false)
+  const [formattingOpen, setFormattingOpen] = useState(!embedded)
   const [notice, setNotice] = useState(''),
     [confirmExample, setConfirmExample] = useState(false),
     [rangeInput, setRangeInput] = useState('A1')
@@ -87,7 +90,10 @@ export default function SheetEditor({
   const drag = useRef(false),
     focusRequested = useRef(false),
     resize = useRef<{ col: number; x: number; start: number; width: number } | null>(null)
-  const compiled = useMemo(() => calculateSheet(sheet), [sheet.cells, sheet.rows, sheet.columns])
+  const compiled = useMemo(
+    () => calculateSheet(sheet),
+    [sheet.cells, sheet.rows, sheet.columns, sheet.names],
+  )
   const active = address(selection.anchor),
     activeCell = sheet.cells[active],
     b = bounds(selection)
@@ -298,20 +304,37 @@ export default function SheetEditor({
     <div className="sheet-editor">
       <div className="sheet-heading">
         <div>
-          <button
-            className="back-link"
-            onClick={() => {
-              finishEdit()
-              onBack()
-            }}
-          >
-            <ArrowLeft size={14} />
-            Project overview
-          </button>
-          <div className="eyebrow">SPREADSHEET</div>
-          <h1>{title}</h1>
+          {!embedded && (
+            <button
+              className="back-link"
+              onClick={() => {
+                finishEdit()
+                onBack()
+              }}
+            >
+              <ArrowLeft size={14} />
+              Project overview
+            </button>
+          )}
+          {embedded ? (
+            <h2>Spreadsheet</h2>
+          ) : (
+            <>
+              <div className="eyebrow">SPREADSHEET</div>
+              <h1>{title}</h1>
+            </>
+          )}
         </div>
         <div className="sheet-heading-actions">
+          {embedded && (
+            <button
+              className="button secondary"
+              aria-expanded={formattingOpen}
+              onClick={() => setFormattingOpen(!formattingOpen)}
+            >
+              Formatting
+            </button>
+          )}
           <button
             className="icon-button"
             aria-label="Undo spreadsheet change"
@@ -396,102 +419,104 @@ export default function SheetEditor({
         </section>
       )}
       <div className="sheet-workbench">
-        <div className="sheet-toolbar" role="toolbar" aria-label="Cell formatting and tools">
-          <div className="sheet-tool-group">
-            <button
-              aria-label="Bold cells"
-              title="Bold"
-              aria-pressed={!!activeFormat?.bold}
-              disabled={readOnly}
-              onClick={() => format({ bold: !activeFormat?.bold })}
-            >
-              <Bold size={16} />
-            </button>
-            {(
-              [
-                ['left', AlignLeft],
-                ['center', AlignCenter],
-                ['right', AlignRight],
-              ] as const
-            ).map(([align, Icon]) => (
+        {formattingOpen && (
+          <div className="sheet-toolbar" role="toolbar" aria-label="Cell formatting and tools">
+            <div className="sheet-tool-group">
               <button
-                key={align}
-                aria-label={`Align cells ${align}`}
-                title={`Align ${align}`}
-                aria-pressed={activeFormat?.align === align}
+                aria-label="Bold cells"
+                title="Bold"
+                aria-pressed={!!activeFormat?.bold}
                 disabled={readOnly}
-                onClick={() => format({ align })}
+                onClick={() => format({ bold: !activeFormat?.bold })}
               >
-                <Icon size={16} />
+                <Bold size={16} />
               </button>
-            ))}
-          </div>
-          <div className="sheet-tool-group">
-            <label className="sheet-select-label">
-              <span className="sr-only">Number format</span>
-              <select
-                aria-label="Number format"
-                value={activeFormat?.number ?? 'general'}
-                disabled={readOnly}
-                onChange={(e) => format({ number: e.target.value as CellFormat['number'] })}
-              >
-                <option value="general">Automatic</option>
-                <option value="number">Number · 2 decimals</option>
-                <option value="percent">Percent</option>
-                <option value="currency">Currency · USD</option>
-              </select>
-            </label>
-            <select
-              aria-label="Cell fill"
-              value={activeFormat?.fill ?? 'none'}
-              disabled={readOnly}
-              onChange={(e) => format({ fill: e.target.value })}
-            >
-              {FILLS.map((color, i) => (
-                <option key={color} value={color}>
-                  {['No fill', 'Sage fill', 'Sand fill', 'Blue fill', 'Rose fill'][i]}
-                </option>
+              {(
+                [
+                  ['left', AlignLeft],
+                  ['center', AlignCenter],
+                  ['right', AlignRight],
+                ] as const
+              ).map(([align, Icon]) => (
+                <button
+                  key={align}
+                  aria-label={`Align cells ${align}`}
+                  title={`Align ${align}`}
+                  aria-pressed={activeFormat?.align === align}
+                  disabled={readOnly}
+                  onClick={() => format({ align })}
+                >
+                  <Icon size={16} />
+                </button>
               ))}
-            </select>
+            </div>
+            <div className="sheet-tool-group">
+              <label className="sheet-select-label">
+                <span className="sr-only">Number format</span>
+                <select
+                  aria-label="Number format"
+                  value={activeFormat?.number ?? 'general'}
+                  disabled={readOnly}
+                  onChange={(e) => format({ number: e.target.value as CellFormat['number'] })}
+                >
+                  <option value="general">Automatic</option>
+                  <option value="number">Number · 2 decimals</option>
+                  <option value="percent">Percent</option>
+                  <option value="currency">Currency · USD</option>
+                </select>
+              </label>
+              <select
+                aria-label="Cell fill"
+                value={activeFormat?.fill ?? 'none'}
+                disabled={readOnly}
+                onChange={(e) => format({ fill: e.target.value })}
+              >
+                {FILLS.map((color, i) => (
+                  <option key={color} value={color}>
+                    {['No fill', 'Sage fill', 'Sand fill', 'Blue fill', 'Rose fill'][i]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sheet-tool-group">
+              <button
+                aria-label="Fill down"
+                title="Fill down · Ctrl/Cmd+D"
+                disabled={readOnly || b.top === b.bottom}
+                onClick={() => fill('down')}
+              >
+                <ArrowDown size={15} />
+                <span>Fill down</span>
+              </button>
+              <button
+                aria-label="Fill right"
+                title="Fill right · Ctrl/Cmd+R"
+                disabled={readOnly || b.left === b.right}
+                onClick={() => fill('right')}
+              >
+                <ArrowRight size={15} />
+                <span>Fill right</span>
+              </button>
+              <button
+                aria-label="Clear selected cells"
+                title="Clear contents; keep formatting"
+                disabled={readOnly}
+                onClick={clear}
+              >
+                <Eraser size={15} />
+                <span>Clear</span>
+              </button>
+            </div>
+            <label className="sheet-show-formulas">
+              <input
+                type="checkbox"
+                checked={showFormulas}
+                onChange={(e) => setShowFormulas(e.target.checked)}
+              />
+              Formulas
+            </label>
           </div>
-          <div className="sheet-tool-group">
-            <button
-              aria-label="Fill down"
-              title="Fill down · Ctrl/Cmd+D"
-              disabled={readOnly || b.top === b.bottom}
-              onClick={() => fill('down')}
-            >
-              <ArrowDown size={15} />
-              <span>Fill down</span>
-            </button>
-            <button
-              aria-label="Fill right"
-              title="Fill right · Ctrl/Cmd+R"
-              disabled={readOnly || b.left === b.right}
-              onClick={() => fill('right')}
-            >
-              <ArrowRight size={15} />
-              <span>Fill right</span>
-            </button>
-            <button
-              aria-label="Clear selected cells"
-              title="Clear contents; keep formatting"
-              disabled={readOnly}
-              onClick={clear}
-            >
-              <Eraser size={15} />
-              <span>Clear</span>
-            </button>
-          </div>
-          <label className="sheet-show-formulas">
-            <input
-              type="checkbox"
-              checked={showFormulas}
-              onChange={(e) => setShowFormulas(e.target.checked)}
-            />
-            Formulas
-          </label>
-        </div>
+        )}
         <div className="formula-bar">
           <form
             onSubmit={(e) => {

@@ -9,12 +9,22 @@ export type CellFormat = {
   fill?: string
 }
 export type Cell = { input: string; format?: CellFormat }
+export type CellSlider = {
+  id: string
+  label: string
+  cell: string
+  min: number
+  max: number
+  step: number
+}
 export type SheetDocument = {
   version: 1
   rows: number
   columns: number
   cells: Record<string, Cell>
   widths: Record<string, number>
+  names?: Record<string, string>
+  sliders?: CellSlider[]
 }
 export type Position = { row: number; col: number }
 export type Selection = { anchor: Position; focus: Position }
@@ -48,6 +58,32 @@ export function bounds(selection: Selection) {
     right: Math.max(selection.anchor.col, selection.focus.col),
   }
 }
+export function cellRange(value: string): string[] {
+  const parts = value.trim().toUpperCase().split(':')
+  const from = position(parts[0]),
+    to = position(parts[1] ?? parts[0])
+  if (
+    parts.length > 2 ||
+    !from ||
+    !to ||
+    from.row > to.row ||
+    from.col > to.col ||
+    to.row >= MAX_ROWS ||
+    to.col >= MAX_COLUMNS ||
+    (from.row !== to.row && from.col !== to.col)
+  )
+    throw new Error('Use one row or column, such as B7:B12, within A1:Z200.')
+  return Array.from({ length: Math.max(to.row - from.row, to.col - from.col) + 1 }, (_, i) =>
+    address({
+      row: from.row + (from.row === to.row ? 0 : i),
+      col: from.col + (from.col === to.col ? 0 : i),
+    }),
+  )
+}
+export const validCellName = (name: string) =>
+  /^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name) &&
+  !position(name) &&
+  !['TRUE', 'FALSE'].includes(name.toUpperCase())
 export function selectedAddresses(selection: Selection): string[] {
   const b = bounds(selection),
     cells: string[] = []
@@ -88,6 +124,40 @@ export function validSheet(v: unknown): v is SheetDocument {
     return false
   const rows = v.rows as number,
     cols = v.columns as number
+  const inside = (ref: unknown) => {
+    const p = typeof ref === 'string' ? position(ref) : null
+    return !!p && address(p) === ref && p.row < rows && p.col < cols
+  }
+  if (
+    v.names !== undefined &&
+    (!record(v.names) ||
+      Object.keys(v.names).length > 40 ||
+      new Set(Object.keys(v.names).map((n) => n.toUpperCase())).size !==
+        Object.keys(v.names).length ||
+      !Object.entries(v.names).every(([name, ref]) => validCellName(name) && inside(ref)))
+  )
+    return false
+  if (
+    v.sliders !== undefined &&
+    (!Array.isArray(v.sliders) ||
+      v.sliders.length > 12 ||
+      !v.sliders.every(
+        (s) =>
+          record(s) &&
+          typeof s.id === 'string' &&
+          s.id.length > 0 &&
+          typeof s.label === 'string' &&
+          s.label.trim().length > 0 &&
+          s.label.length <= 40 &&
+          inside(s.cell) &&
+          [s.min, s.max, s.step].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+          (s.min as number) < (s.max as number) &&
+          (s.step as number) > 0,
+      ) ||
+      new Set(v.sliders.map((s) => s.id)).size !== v.sliders.length ||
+      new Set(v.sliders.map((s) => s.cell)).size !== v.sliders.length)
+  )
+    return false
   return (
     rows > 0 &&
     rows <= MAX_ROWS &&

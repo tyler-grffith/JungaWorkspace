@@ -27,6 +27,8 @@ import {
 } from './model'
 import GraphPlot from './GraphPlot'
 import './graph.css'
+import type { SheetDocument } from '../sheet/model'
+import { resolveSheetPlots } from '../linked/model'
 
 function ParameterControl({
   entry,
@@ -203,6 +205,7 @@ type Props = {
   onBack: () => void
   readOnly: boolean
   unsaved: boolean
+  sheet?: SheetDocument
 }
 export default function GraphCalculator({
   title,
@@ -211,8 +214,10 @@ export default function GraphCalculator({
   onBack,
   readOnly,
   unsaved,
+  sheet,
 }: Props) {
   const compiled = useMemo(() => compileGraph({ entries: graph.entries }), [graph.entries])
+  const series = useMemo(() => resolveSheetPlots(graph, sheet), [graph.sheetPlots, sheet])
   const [help, setHelp] = useState(false),
     [confirmExample, setConfirmExample] = useState(false)
   const [history, setHistory] = useState<{ past: GraphDocument[]; future: GraphDocument[] }>({
@@ -602,6 +607,7 @@ export default function GraphCalculator({
           <GraphPlot
             graph={graph}
             compiled={compiled}
+            series={series}
             readOnly={readOnly}
             onView={(viewport) => change({ ...graph, viewport }, 'viewport')}
           />

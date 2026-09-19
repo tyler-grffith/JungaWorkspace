@@ -187,6 +187,14 @@ export function initializeSheet(library: Library, id: string): Library {
   if (!project) throw new Error('This project is no longer available.')
   return project.sheet ? library : saveSheet(library, id, emptySheet())
 }
+export function saveWorkspace(
+  library: Library,
+  id: string,
+  sheet: SheetDocument,
+  graph: GraphDocument,
+): Library {
+  return saveGraph(saveSheet(library, id, sheet), id, graph)
+}
 
 export function saveCollection(library: Library, value: string, id?: string): Library {
   const clean = name(value, 'Collection name', 60)

@@ -21,7 +21,9 @@ Open any graphing project's calculator to edit functions, add sliders/constants 
 
 Open a spreadsheet project to edit cells and formulas, select ranges, copy/paste tables, fill relative references, format cells, and resize columns. Use **Load motion example** for editable inputs and a calculated velocity/distance table. Arithmetic, A1 ranges, absolute/mixed references, and common aggregate/logical/engineering functions are supported; **Using the spreadsheet** lists the syntax. The first version has one worksheet per project, starting at 50 rows × 12 columns and growing to 200 × 26.
 
-Graph and spreadsheet data are separate, save with the project, and are included in library backups. Undo/redo is session-local. Spreadsheet cells commit on Enter, Tab, or blur; Escape cancels. Save failures keep a draft and guard navigation. Multiple worksheets, cross-sheet/custom functions, imports, and links between the tools are future work. Graph formatted math, implicit equations, shaded inequalities, and calculus are also deferred. Numeric plotting is approximate and can miss very narrow or rapidly oscillating features.
+Projects containing both tools offer **Open side by side**. **Create octahedron example** in the library builds the first integrated example: six coordinate pairs driven by s = 5, h = SQRT(3)*s/2, and a t slider from 0 to 1. Change B2 or move t to update the spreadsheet and connected shape together. **Link settings** configures named cells, numeric cell sliders, and x/y ranges for point series. Formula errors remove affected points and break lines. The graph uses equal axis scale for linked geometry; **Fit points** adjusts its bounds.
+
+Graph and spreadsheet documents save with the project and are included in library backups. Point-series links reference the same project's sheet; graph expressions cannot yet use sheet names. Undo/redo is session-local; slider/settings changes currently reset spreadsheet undo history. Spreadsheet cells commit on Enter, Tab, or blur; Escape cancels. Save failures keep a draft and guard navigation. Multiple worksheets, cross-sheet/custom functions, external imports, graph formatted math, implicit equations, shaded inequalities, and calculus remain deferred. Numeric curve plotting is approximate and can miss very narrow or rapidly oscillating features.
 
 Data stays in this browser's local storage for this exact site address. There is no account, server storage, or synchronization. Clearing site data removes this copy. **Download library backup** saves a native JSON snapshot; **Restore library backup** validates and previews a file (up to 10 MB), then adds independent copies by default. Whole-library replacement requires explicit acknowledgment and offers a download of existing data first. A preview becomes stale if another tab changes the stored library; refresh it before restoring.
 
@@ -33,6 +35,7 @@ Backups include saved content and unsaved notes, graph changes, and spreadsheet 
 - `src/backup.ts` and `src/BackupRestore.tsx`: native backup validation, draft snapshots, restoration, and preview/confirmation UI.
 - `src/graph/`: graph document, numeric parser/evaluator, sampling, editor, and plot.
 - `src/sheet/`: spreadsheet document, bounded formula engine, clipboard/fill operations, and editor.
+- `src/linked/`: combined workspace, cell/point link settings, and the native octahedron example.
 - `tests/`: browser acceptance tests.
 - `docs/`: decisions, work log, and current handoff.
 - `sharedProjectManagement/taskList.md`: shared priorities and follow-ups.

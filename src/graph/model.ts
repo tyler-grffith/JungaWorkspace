@@ -1,4 +1,15 @@
+import { cellRange } from '../sheet/model'
 export const COLORS = ['#27664c', '#a84832', '#3e68ae', '#8653a1', '#9a701e', '#2c7b82'] as const
+export type SheetPlot = {
+  id: string
+  label: string
+  xRange: string
+  yRange: string
+  color: string
+  visible: boolean
+  connect: boolean
+  closed: boolean
+}
 export type Viewport = { xMin: number; xMax: number; yMin: number; yMax: number }
 export type ExpressionEntry = {
   id: string
@@ -26,6 +37,7 @@ export type GraphDocument = {
   viewport: Viewport
   showGrid: boolean
   showLabels: boolean
+  sheetPlots?: SheetPlot[]
 }
 export const DEFAULT_VIEW: Viewport = { xMin: -10, xMax: 10, yMin: -6, yMax: 6 }
 export const LAPLACE_URL = 'https://www.desmos.com/calculator/2awcmk9fzy'
@@ -111,6 +123,14 @@ export function validGraph(value: unknown): value is GraphDocument {
     value.entries.length > MAX_ENTRIES
   )
     return false
+  if (
+    value.sheetPlots !== undefined &&
+    (!Array.isArray(value.sheetPlots) ||
+      value.sheetPlots.length > 8 ||
+      !value.sheetPlots.every(validSheetPlot) ||
+      new Set(value.sheetPlots.map((p) => p.id)).size !== value.sheetPlots.length)
+  )
+    return false
   const ids = new Set<string>()
   return value.entries.every((entry) => {
     if (!record(entry) || typeof entry.id !== 'string' || !entry.id || ids.has(entry.id))
@@ -142,4 +162,24 @@ export function validGraph(value: unknown): value is GraphDocument {
       )
     return false
   })
+}
+export function validSheetPlot(v: unknown): v is SheetPlot {
+  if (
+    !record(v) ||
+    typeof v.id !== 'string' ||
+    !v.id ||
+    typeof v.label !== 'string' ||
+    v.label.length > 60 ||
+    typeof v.xRange !== 'string' ||
+    typeof v.yRange !== 'string' ||
+    typeof v.color !== 'string' ||
+    !/^#[0-9a-f]{6}$/i.test(v.color) ||
+    ![v.visible, v.connect, v.closed].every((b) => typeof b === 'boolean')
+  )
+    return false
+  try {
+    return cellRange(v.xRange).length === cellRange(v.yRange).length
+  } catch {
+    return false
+  }
 }

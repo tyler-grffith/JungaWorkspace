@@ -23,7 +23,7 @@ type Node =
   | { kind: 'call'; name: string; args: Node[] }
 type Token = { type: 'number' | 'string' | 'name' | 'op' | 'error' | 'end'; text: string }
 
-function parse(source: string): Node {
+function parse(source: string, names: Map<string, string>): Node {
   if (source.length > 500) return fail('#LIMIT!', 'Keep formulas under 500 characters.')
   const tokens: Token[] = []
   let rest = source,
@@ -92,7 +92,8 @@ function parse(source: string): Node {
           if (!position(end)) return fail('#REF!', 'Use a range such as A1:B5.')
           left = { kind: 'range', from: name, to: end }
         }
-      } else return fail('#NAME?', `“${token.text}” is not a cell reference or supported name.`)
+      } else if (names.has(name)) left = { kind: 'ref', ref: names.get(name)! }
+      else return fail('#NAME?', `“${token.text}” is not a cell reference or supported name.`)
     } else return fail('#ERROR!', 'Enter a value, cell reference, or function here.')
     while (true) {
       const op = peek().text
@@ -173,6 +174,9 @@ const unaryFunctions: Record<string, (x: number) => number> = {
 }
 
 export function calculateSheet(sheet: SheetDocument): Record<string, CellResult> {
+  const names = new Map(
+    Object.entries(sheet.names ?? {}).map(([name, ref]) => [name.toUpperCase(), ref]),
+  )
   const cache: Record<string, CellResult> = {},
     visiting = new Set<string>(),
     asts = new Map<string, Node>()
@@ -205,7 +209,7 @@ export function calculateSheet(sheet: SheetDocument): Record<string, CellResult>
           const formula = input.trimStart().slice(1)
           let ast = asts.get(formula)
           if (!ast) {
-            ast = parse(formula)
+            ast = parse(formula, names)
             asts.set(formula, ast)
           }
           value = scalar(evaluate(ast)) ?? 0

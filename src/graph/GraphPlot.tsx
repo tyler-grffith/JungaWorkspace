@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Crosshair, Minus, Plus, Move, Settings2 } from 'lucide-react'
 import { DEFAULT_VIEW, validViewport, type GraphDocument, type Viewport } from './model'
 import type { CompiledGraph } from './engine'
+import type { PointSeries } from '../linked/model'
 import {
   numberLabel,
   panView,
@@ -11,6 +12,8 @@ import {
   toWorld,
   zoomView,
   type Point,
+  equalScaleView,
+  pointPath,
 } from './plot'
 
 type Props = {
@@ -18,8 +21,9 @@ type Props = {
   compiled: CompiledGraph
   onView: (view: Viewport) => void
   readOnly: boolean
+  series?: PointSeries[]
 }
-export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) {
+export default function GraphPlot({ graph, compiled, onView, readOnly, series = [] }: Props) {
   const stage = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null)
   const [size, setSize] = useState({ width: 700, height: 530 })
@@ -32,7 +36,13 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
     null,
   )
   const clipId = useId().replace(/:/g, '')
-  const view = dragView ?? graph.viewport
+  const view = useMemo(
+    () =>
+      series.length
+        ? equalScaleView(dragView ?? graph.viewport, size.width, size.height)
+        : (dragView ?? graph.viewport),
+    [dragView, graph.viewport, size.width, size.height, series.length],
+  )
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0].contentRect
@@ -59,19 +69,17 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
           x: ((event.clientX - rect.left) * size.width) / rect.width,
           y: ((event.clientY - rect.top) * size.height) / rect.height,
         },
-        graph.viewport,
+        view,
         size.width,
         size.height,
       )
       const delta =
         event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? size.height : 1)
-      onView(
-        zoomView(graph.viewport, Math.exp(Math.max(-0.4, Math.min(0.4, delta * 0.002))), point),
-      )
+      onView(zoomView(view, Math.exp(Math.max(-0.4, Math.min(0.4, delta * 0.002))), point))
     }
     element.addEventListener('wheel', wheel, { passive: false })
     return () => element.removeEventListener('wheel', wheel)
-  }, [graph.viewport, onView, readOnly, size])
+  }, [view, onView, readOnly, size])
   const curves = useMemo(
     () =>
       compiled.curves.map((curve) => ({
@@ -93,7 +101,7 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
           <span className="status-dot" />
           CARTESIAN PLANE
         </span>
-        <span>Angles in radians</span>
+        <span>{series.length ? 'Equal x / y scale' : 'Angles in radians'}</span>
       </div>
       <div className={`plot-stage ${dragView ? 'is-panning' : ''}`} ref={stage}>
         <svg
@@ -110,8 +118,8 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
             drag.current = {
               pointer: event.pointerId,
               start: position(event.clientX, event.clientY),
-              view: graph.viewport,
-              next: graph.viewport,
+              view,
+              next: view,
             }
             setHover(null)
           }}
@@ -178,10 +186,19 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
             }
           }}
         >
-          <title>Graph of the visible expressions</title>
+          <title>Graph of the visible expressions and linked points</title>
           <desc>
-            {compiled.curves.map((c) => c.entry.formula).join('; ') ||
-              'Add an expression to begin.'}
+            {[
+              ...compiled.curves.map((c) => c.entry.formula),
+              ...series.flatMap((s) =>
+                s.points
+                  .filter((p) => !!p)
+                  .map(
+                    (p) =>
+                      `${s.plot.label} ${p!.label}: (${numberLabel(p!.x)}, ${numberLabel(p!.y)})`,
+                  ),
+              ),
+            ].join('; ') || 'Add an expression or linked points to begin.'}
           </desc>
           <defs>
             <clipPath id={clipId}>
@@ -251,6 +268,53 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
               ))}
           </g>
           <g clipPath={`url(#${clipId})`}>
+            {series.map(({ plot, points }) => (
+              <g key={plot.id}>
+                {plot.connect && (
+                  <path
+                    data-testid="linked-outline"
+                    d={pointPath(points, view, size.width, size.height, plot.closed)}
+                    stroke={plot.color}
+                    strokeWidth={2.2}
+                    fill="none"
+                    strokeLinejoin="round"
+                  />
+                )}
+                {points.map(
+                  (point, i) =>
+                    point && (
+                      <g key={i}>
+                        <circle
+                          data-testid="linked-point"
+                          data-x={point.x}
+                          data-y={point.y}
+                          cx={toPixel(point, view, size.width, size.height).x}
+                          cy={toPixel(point, view, size.width, size.height).y}
+                          r={4.5}
+                          fill={plot.color}
+                          stroke="white"
+                          strokeWidth={1.2}
+                        >
+                          <title>
+                            {plot.label} · {point.label} ({numberLabel(point.x)},{' '}
+                            {numberLabel(point.y)}) · {point.source}
+                          </title>
+                        </circle>
+                        {graph.showLabels && (
+                          <text
+                            className="curve-label"
+                            x={toPixel(point, view, size.width, size.height).x + 9}
+                            y={toPixel(point, view, size.width, size.height).y - 9}
+                            fill={plot.color}
+                          >
+                            {point.label}
+                          </text>
+                        )}
+                      </g>
+                    ),
+                )}
+              </g>
+            ))}
             {curves.map(({ curve, path, label }) => (
               <g key={curve.entry.id}>
                 <path
@@ -287,7 +351,7 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
             <line className="trace-line" x1={hover!.x} x2={hover!.x} y1={0} y2={size.height} />
           )}
         </svg>
-        {!compiled.curves.length && (
+        {!compiled.curves.length && !series.length && (
           <div className="plot-empty">
             <span>ƒ</span>
             <strong>
@@ -390,6 +454,8 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
         </span>
         <span data-testid="curve-count">
           {rendered} {rendered === 1 ? 'curve' : 'curves'} in view
+          {series.length > 0 &&
+            ` · ${series.flatMap((s) => s.points).filter(Boolean).length} linked points`}
         </span>
       </div>
       <div className="trace-readout" aria-label="Graph trace values">
@@ -423,6 +489,23 @@ export default function GraphPlot({ graph, compiled, onView, readOnly }: Props) 
               <p key={c.curve.entry.id}>
                 {c.curve.label}: {c.error}
               </p>
+            ))}
+        </div>
+      )}
+      {series.some((s) => s.errors.length) && (
+        <div className="plot-warnings" role="status">
+          {series
+            .filter((s) => s.errors.length)
+            .map((s) => (
+              <div key={s.plot.id}>
+                <strong>{s.plot.label}: check the spreadsheet coordinates.</strong>
+                {s.errors.slice(0, 6).map((e, i) => (
+                  <p key={i}>{e}</p>
+                ))}
+                {s.errors.length > 6 && (
+                  <p>{s.errors.length - 6} more rows need valid coordinates.</p>
+                )}
+              </div>
             ))}
         </div>
       )}

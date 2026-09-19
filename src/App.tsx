@@ -45,6 +45,7 @@ import {
   initializeGraph,
   saveSheet,
   initializeSheet,
+  saveWorkspace,
   selectProjects,
   starterInput,
   starterNotes,
@@ -66,6 +67,8 @@ import SheetEditor from './sheet/SheetEditor'
 import { emptySheet, writeCells, type SheetDocument } from './sheet/model'
 import BackupRestore from './BackupRestore'
 import { downloadData, libraryWithDrafts, serializeBackup } from './backup'
+import LinkedWorkspace from './linked/LinkedWorkspace'
+import { octahedronExample, OCTAHEDRON_URL } from './linked/model'
 
 type ModalState =
   | { kind: 'project'; project?: Project }
@@ -262,7 +265,8 @@ function ProjectForm({
           ))}
         </div>
         <p className="field-hint">
-          Choose graphing, spreadsheet, or both. Each tool keeps its own working data.
+          Choose graphing, spreadsheet, or both. Open both side by side to connect spreadsheet cells
+          to plotted points.
         </p>
       </fieldset>
       <label>
@@ -575,6 +579,7 @@ export default function App() {
   if (library && currentProject) draftBase.current = library
   const graphOpen = !!currentProject?.tools.includes('graph') && route.endsWith('/graph')
   const sheetOpen = !!currentProject?.tools.includes('sheet') && route.endsWith('/sheet')
+  const linkedOpen = currentProject?.tools.length === 2 && route.endsWith('/workspace')
   const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
   const fallbackGraph = useMemo(
     () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
@@ -582,7 +587,7 @@ export default function App() {
   )
   useEffect(() => {
     // Keep an unfinished cell if a storage error removes the editor from the page.
-    if (!sheetEditing || !projectId || (!error && sheetOpen)) return
+    if (!sheetEditing || !projectId || (!error && (sheetOpen || linkedOpen))) return
     const base =
       sheetDraft?.value ??
       draftBase.current?.projects.find((p) => p.id === projectId)?.sheet ??
@@ -594,7 +599,7 @@ export default function App() {
       }),
     })
     setSheetEditing(null)
-  }, [error, sheetOpen, sheetEditing, projectId, sheetDraft, fallbackSheet])
+  }, [error, sheetOpen, linkedOpen, sheetEditing, projectId, sheetDraft, fallbackSheet])
   const currentCollection = library?.collections.find((c) => `collection:${c.id}` === view)
   const title =
     view === 'favorites'
@@ -655,6 +660,38 @@ export default function App() {
   function openSheet(project: Project) {
     if (project.status === 'trashed' || commit((current) => initializeSheet(current, project.id)))
       window.location.hash = `${projectRoute(project.id)}/sheet`
+  }
+  function openLinked(project: Project) {
+    if (
+      project.status === 'trashed' ||
+      commit((current) => initializeSheet(initializeGraph(current, project.id), project.id))
+    )
+      window.location.hash = `${projectRoute(project.id)}/workspace`
+  }
+  function addOctahedron() {
+    let id = ''
+    if (
+      commit((current) => {
+        const example = octahedronExample()
+        const result = addProject(
+          current,
+          {
+            title: 'Octahedron Sections',
+            description:
+              'Six spreadsheet-driven vertices with s, derived h, and a t slider from 0 to 1.',
+            tools: ['sheet', 'graph'],
+            collectionId: currentCollection?.id ?? null,
+            referenceUrl: OCTAHEDRON_URL,
+          },
+          'Recreated from Octahedron Sections (Parameterized Vertex Based).\ns = 5; h = SQRT(3)*s/2; t starts at 0.323 and ranges from 0 to 1.\nThe six rows pair (a,b), (c,d), (f,g), (i,j), (k,l), (m,n). The graph closes the outline from the last point to the first.\nEdit B2 or a coordinate formula, or move the t slider. Named cells and plotted ranges are editable in Link settings.',
+          example.graph,
+          example.sheet,
+        )
+        id = result.project.id
+        return result.library
+      })
+    )
+      window.location.hash = `${projectRoute(id)}/workspace`
   }
   function duplicate(project: Project) {
     if (commit((current) => duplicateProject(current, project.id).library))
@@ -970,15 +1007,17 @@ export default function App() {
             <a href="#/all">Workspace</a>
             <ChevronRight size={14} />
             <span>
-              {graphOpen
-                ? 'Graphing'
-                : sheetOpen
-                  ? 'Spreadsheet'
-                  : projectId
-                    ? 'Project'
-                    : currentCollection
-                      ? 'Collection'
-                      : 'Library'}
+              {linkedOpen
+                ? 'Spreadsheet + Graph'
+                : graphOpen
+                  ? 'Graphing'
+                  : sheetOpen
+                    ? 'Spreadsheet'
+                    : projectId
+                      ? 'Project'
+                      : currentCollection
+                        ? 'Collection'
+                        : 'Library'}
             </span>
           </div>
           <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
@@ -993,7 +1032,7 @@ export default function App() {
         </header>
         <main
           id="main-content"
-          className={`main-content ${graphOpen ? 'calculator-main' : sheetOpen ? 'spreadsheet-main' : ''}`}
+          className={`main-content ${linkedOpen ? 'linked-main' : graphOpen ? 'calculator-main' : sheetOpen ? 'spreadsheet-main' : ''}`}
           tabIndex={-1}
         >
           {saveError && (
@@ -1011,9 +1050,77 @@ export default function App() {
               )}
             </div>
           )}
+          {currentProject?.tools.length === 2 && (sheetOpen || graphOpen || linkedOpen) && (
+            <nav className="project-tool-views" aria-label="Project tool views">
+              <a
+                href={`${projectRoute(currentProject.id)}/workspace`}
+                aria-current={linkedOpen ? 'page' : undefined}
+              >
+                Side by side
+              </a>
+              <a
+                href={`${projectRoute(currentProject.id)}/sheet`}
+                aria-current={sheetOpen ? 'page' : undefined}
+              >
+                Spreadsheet only
+              </a>
+              <a
+                href={`${projectRoute(currentProject.id)}/graph`}
+                aria-current={graphOpen ? 'page' : undefined}
+              >
+                Graph only
+              </a>
+            </nav>
+          )}
           {projectId ? (
             currentProject ? (
-              sheetOpen ? (
+              linkedOpen ? (
+                <LinkedWorkspace
+                  key={currentProject.id}
+                  title={currentProject.title}
+                  sheet={
+                    sheetDraft?.id === currentProject.id
+                      ? sheetDraft.value
+                      : (currentProject.sheet ?? fallbackSheet)
+                  }
+                  graph={
+                    graphDraft?.id === currentProject.id
+                      ? graphDraft.value
+                      : (currentProject.graph ?? fallbackGraph)
+                  }
+                  readOnly={currentProject.status === 'trashed'}
+                  sheetUnsaved={sheetDraft?.id === currentProject.id}
+                  graphUnsaved={graphDraft?.id === currentProject.id}
+                  onEditingChange={setSheetEditing}
+                  onBack={() => {
+                    window.location.hash = projectRoute(currentProject.id)
+                  }}
+                  onSheetChange={(sheet) => {
+                    setSheetDraft({ id: currentProject.id, value: sheet })
+                    const saved = commit((current) => saveSheet(current, currentProject.id, sheet))
+                    if (saved) setSheetDraft(null)
+                    return saved
+                  }}
+                  onGraphChange={(graph) => {
+                    setGraphDraft({ id: currentProject.id, value: graph })
+                    const saved = commit((current) => saveGraph(current, currentProject.id, graph))
+                    if (saved) setGraphDraft(null)
+                    return saved
+                  }}
+                  onConfigure={(sheet, graph) => {
+                    setSheetDraft({ id: currentProject.id, value: sheet })
+                    setGraphDraft({ id: currentProject.id, value: graph })
+                    const saved = commit((current) =>
+                      saveWorkspace(current, currentProject.id, sheet, graph),
+                    )
+                    if (saved) {
+                      setSheetDraft(null)
+                      setGraphDraft(null)
+                    }
+                    return saved
+                  }}
+                />
+              ) : sheetOpen ? (
                 <SheetEditor
                   key={currentProject.id}
                   title={currentProject.title}
@@ -1039,6 +1146,7 @@ export default function App() {
                 <GraphCalculator
                   key={currentProject.id}
                   title={currentProject.title}
+                  sheet={currentProject.sheet}
                   graph={
                     graphDraft?.id === currentProject.id
                       ? graphDraft.value
@@ -1165,6 +1273,16 @@ export default function App() {
                           {currentProject.tools.length === 1 ? 'tool' : 'tools'}
                         </span>
                       </div>
+                      {currentProject.tools.length === 2 && (
+                        <button
+                          className="button primary open-linked-workspace"
+                          onClick={() => openLinked(currentProject)}
+                        >
+                          <Layers3 size={17} />
+                          Open side by side
+                          <ArrowRight size={15} />
+                        </button>
+                      )}
                       <div className="tool-panels">
                         {currentProject.tools.map((t) => (
                           <div className={`tool-panel ${t}`} key={t}>
@@ -1329,6 +1447,11 @@ export default function App() {
                   </p>
                 </div>
                 <div className="heading-actions">
+                  {view === 'all' && (
+                    <button className="button secondary" onClick={addOctahedron}>
+                      Create octahedron example
+                    </button>
+                  )}
                   {currentCollection && (
                     <button
                       className="icon-button"

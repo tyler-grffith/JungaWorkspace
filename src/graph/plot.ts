@@ -1,6 +1,40 @@
 import { validViewport, type Viewport } from './model'
 import type { Curve } from './engine'
 export type Point = { x: number; y: number }
+export function equalScaleView(view: Viewport, width: number, height: number): Viewport {
+  const scale = Math.max((view.xMax - view.xMin) / width, (view.yMax - view.yMin) / height)
+  const x = (view.xMin + view.xMax) / 2,
+    y = (view.yMin + view.yMax) / 2
+  const next = {
+    xMin: x - (scale * width) / 2,
+    xMax: x + (scale * width) / 2,
+    yMin: y - (scale * height) / 2,
+    yMax: y + (scale * height) / 2,
+  }
+  return validViewport(next) ? next : view
+}
+export function pointPath(
+  points: (Point | null)[],
+  view: Viewport,
+  width: number,
+  height: number,
+  closed: boolean,
+): string {
+  let move = true
+  const path = points
+    .map((point) => {
+      if (!point) {
+        move = true
+        return ''
+      }
+      const p = toPixel(point, view, width, height)
+      const part = `${move ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`
+      move = false
+      return part
+    })
+    .join(' ')
+  return path + (closed && points.length > 2 && points.every(Boolean) ? ' Z' : '')
+}
 export const toPixel = (point: Point, view: Viewport, width: number, height: number): Point => ({
   x: ((point.x - view.xMin) / (view.xMax - view.xMin)) * width,
   y: ((view.yMax - point.y) / (view.yMax - view.yMin)) * height,

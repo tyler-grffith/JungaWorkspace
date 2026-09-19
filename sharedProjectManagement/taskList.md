@@ -2,16 +2,17 @@
 
 Shared next steps and items to revisit. Maintained by the implementation agent with the product owner. Check off completed work and update priorities as decisions change.
 
-**Target:** a functional browser prototype by **October 15, 2026**, with library organization, a spreadsheet, and a graphing calculator. Keep spreadsheet and graphing data separate initially. The second half of the semester is for UX refinement and launching to other users.
+**Target:** a functional browser prototype by **October 15, 2026**, with library organization, a spreadsheet, and a graphing calculator. The owner has now requested the first spreadsheet/graph integration using Octahedron Sections. The second half of the semester is for UX refinement and launching to other users.
 
 ## Next up
 
+- [ ] **Review the linked Octahedron Sections project.** Open the new project side by side, move t, change s in B2, inspect h in B3, and edit a coordinate formula in B7:C12. Review the pane sizes, named-cell controls, connected-point labels, and Link settings. The six vertex equations match the Desmos reference.
 - [ ] **Review the spreadsheet together.** Open Motion model, change the yellow inputs, enter formulas, paste a small table, and reopen the project. Review selection, editing, formatting, keyboard behavior, and the first worksheet size limits. Turn feedback into concrete changes here.
 - [ ] **Review backup recovery.** Download a library backup, inspect its restore preview, and try restoring copies. Review the replacement confirmation and unsaved-work download messages. Use a separate browser profile for replacement experiments.
 - [ ] **Review the graphing calculator together.** Try the LaPlace example, change p and a, edit a function, and reopen the project. Discuss expression entry, slider controls, curve labels, and the amount of space given to the graph. The first working calculator is ready locally.
 - [ ] **Review the library together.** Gather feedback on collections, project lifecycle, navigation, and visual direction. Revisit the unreviewed choices in [the decision log](../docs/DECISIONS.md); record what is accepted or needs changing.
 - [ ] **Apply the library feedback.** Capture concrete changes here after the discussion and verify the affected workflows.
-- [ ] **Complete the first GitHub PR/CI cycle.** Push the implementation branches, open reviewable pull requests, run the configured checks, and address failures. Backup recovery builds on the spreadsheet branch, which builds on graphing and the library. Bring the result to the product owner for the merge decision.
+- [ ] **Complete the first GitHub PR/CI cycle.** Push the implementation branches, open reviewable pull requests, run the configured checks, and address failures. Linked workspace builds on backup recovery, spreadsheet, graphing, and the library. Bring the result to the product owner for the merge decision.
 
 The owner requested graphing, then the spreadsheet and backup recovery, on September 18. All three MVP components now have working first versions, with a complete manual backup/restore workflow. Next priorities are hands-on product review and the first remote PR/CI cycle. Merges and deployments still require the product owner's decision.
 
@@ -28,7 +29,7 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 
 ## Later milestones
 
-- [ ] **Connect spreadsheets and graphs.** Discuss concrete examples after both tools have working prototypes, then decide how they should share data.
+- [ ] **Extend spreadsheet/graph integration from feedback.** The first connection plots coordinate ranges from a sheet and drives numeric cells with sliders. Revisit graph expressions referencing named spreadsheet cells, drag-to-select ranges, linked point selection, adjustable pane widths, slider animation, and unified undo across cell and slider changes.
 - [ ] **Import existing projects.** Revisit spreadsheet and Desmos import formats and compatibility after native creation works.
 - [ ] **Prepare for other users.** Decide accounts, server storage, recovery, and synchronization needs before launch; plan hosting and deployment with the product owner.
 - [ ] **Refine the user experience.** Use hands-on feedback in the second half of the semester to improve the tools and their shared workspace.
@@ -67,5 +68,13 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Backup downloads include unsaved notes, graph changes, and spreadsheet edits retained on the page. Recovery preserves an unfinished cell even if another tab makes storage unreadable. Failed writes retain both the existing library and the restore preview.
 - [x] 48 unit tests and 38 browser tests pass across the full run and targeted reruns, including end-to-end download/restore in a fresh browser, storage failures, invalid files, stale previews, draft rescue, keyboard accessibility, and mobile layout. TypeScript/production build pass.
 - [x] Local implementation on `codex/backup-recovery`, based on `codex/spreadsheet`. ProductManagement and the user's live library are unchanged by recovery testing; no merge or deployment.
+
+## Linked workspace increment — September 18, 2026
+
+- [x] Open both tools side by side in any project with a spreadsheet and graph, with links back to either full editor. Narrow screens stack the panes; formatting expands on demand in the combined view.
+- [x] Recreated Octahedron Sections from the referenced Desmos project: six exact coordinate pairs, s = 5, h = SQRT(3)*s/2, t = 0.323 with limits 0–1, and a closed connected outline. Created the first instance in the owner's local library while preserving existing projects.
+- [x] Editable named cells, cell sliders, and point-series ranges with visibility, color, connection, and closure settings. Cells are the source of truth; formula errors remove the affected point and break the outline. Plotted geometry uses equal axis scale.
+- [x] Links and both tool documents survive reload, duplication, archive/trash, backup/restore, failed-save draft rescue, and sequential tab updates. Existing single-tool workflows remain available.
+- [x] 54 unit tests and 45 browser tests pass across the full run and targeted reruns; production build, desktop/mobile accessibility, and visual review pass. Local branch `codex/linked-workspace`; no merge or deployment.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

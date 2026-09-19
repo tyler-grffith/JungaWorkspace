@@ -4,6 +4,8 @@
 
 Current priorities and follow-ups live in the shared [task list](../sharedProjectManagement/taskList.md).
 
+Feature completion convention: create one concise markdown record per requested feature in `sharedProjectManagement/features/`, following the owner's [implicit equations example](<../sharedProjectManagement/features/implicit equations.md>). Record the context, request, agent decisions, and details Tyler can fine-tune. Update the same record when extending a feature. The latest calculator batch now has individual records.
+
 Current increment: **calculator interactions and new plot types**, on top of the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/graph-interactions`, based on `codex/linked-workspace`.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.

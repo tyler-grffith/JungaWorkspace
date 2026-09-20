@@ -6,13 +6,15 @@ Current priorities and follow-ups live in the shared [task list](../sharedProjec
 
 Feature completion convention: create one concise markdown record per requested feature in `sharedProjectManagement/features/`, following the owner's [implicit equations example](<../sharedProjectManagement/features/implicit equations.md>). Record the context, request, agent decisions, and details Tyler can fine-tune. Update the same record when extending a feature. The latest calculator batch now has individual records.
 
-Current increment: **calculator interactions and new plot types**, on top of the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/graph-interactions`, based on `codex/linked-workspace`.
+Current increment: **designer access and lightweight refinements**, on top of calculator interactions, the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/designer-mode`, based on `codex/graph-interactions`.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 
 ### Try this
 
-Open **LaPlace Intuition (restored)** or any graph project. The add bar now offers **Formulas**, **Points**, **Implicit equation**, **Parameter**, and **Note**. Try `(a, sin(a))` with a parameter a, and `x^2+y^2=9`. Reorder any row by its grip (mouse/touch) or Alt+↑/↓. Play a parameter, open its animation settings, and try reverse or stop mode; 1× traverses the range in five seconds. Curve appearance previews every palette color. Drag a curve label along its line; double-click it or press Enter for text, size, parallel orientation, and 15° rotation controls. Changes support graph undo, persistence, and backups. Review the speed choices, popup layout, and label placement in particular.
+Click **User mode** in the top bar to enter designer mode. Choose Label manager and open its sample preview; compare typed input with a dropdown, adjust the rotation step and popup dimensions, then switch to user mode to inspect the app. **Save design** writes accepted settings to `Design/settings.json`; it does not commit or deploy. A short note can be copied into an agent task for changes beyond the panel. [Refinement workflow](REFINEMENTS.md). Designer access is available through `npm run dev`; production builds use the saved design without editing controls.
+
+Open **LaPlace Intuition (restored)** or any graph project. The add bar now offers **Formulas**, **Points**, **Implicit equation**, **Parameter**, and **Note**. Try `(a, sin(a))` with a parameter a, and `x^2+y^2=9`. Reorder any row by its grip (mouse/touch) or Alt+↑/↓. Play a parameter, open its animation settings, and try reverse or stop mode; 1× traverses the range in five seconds. Curve appearance previews every palette color. Drag a curve label along its line; double-click it or press Enter for text, size, parallel orientation, and typed angles with rotation buttons. Changes support graph undo, persistence, and backups. Review the speed choices, popup layout, and label placement in particular.
 
 Open the new **Octahedron Sections** project, then **Open side by side**. Its first local instance is http://127.0.0.1:5173/#/project/614d3eb1-2bcf-43b1-8bd5-814ff1c9b091/workspace. Move t (0–1), edit s in B2, or inspect the h formula in B3. Six rows in B7:C12 plot as connected labeled points, closing the outline exactly as in the referenced Desmos example. **Link settings** configures names, sliders, and ranges for any two-tool project. **Formatting** expands the combined spreadsheet toolbar; the full editors remain available through the view links. **Create octahedron example** in the library creates another independent instance.
 
@@ -55,6 +57,6 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 
 ### Next increment
 
-Next: review the six calculator refinements and the integrated example, record feedback in the task list, and complete the remote PR/CI cycle. Choose further integration and spreadsheet capabilities from actual examples.
+Next: review designer access, try a small refinement request, review the calculator and integrated example, and complete the remote PR/CI cycle. Choose further integration and spreadsheet capabilities from actual examples. Latest checks: 67 unit tests and 58 browser tests pass across the full run and targeted reruns, with TypeScript/build and desktop/mobile accessibility passing.
 
 Verification results are recorded in WORK_LOG.md. The GitHub workflow is configured but has not been run remotely. Merging and deploying await the product owner's decision.

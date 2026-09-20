@@ -8,6 +8,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 ## Next up
 
+- [ ] **Review designer access.** Switch User mode → Designer mode in the top bar. Try the label preview, typed/dropdown angle controls, layout settings, and Save/Revert. Try copying a one-sentence refinement request. Implemented on `codex/designer-mode`; [workflow](../docs/REFINEMENTS.md).
 - [ ] **Review the six calculator refinements.** Try ordered pairs and implicit equations, drag row grips (or Alt+↑/↓), animate a slider at different speeds in loop/reverse/stop mode, inspect color swatches, and drag/double-click a curve label. Review label size, parallel alignment, 15° rotation, and popup layout. Implemented on `codex/graph-interactions`.
 - [ ] **Review the linked Octahedron Sections project.** Open the new project side by side, move t, change s in B2, inspect h in B3, and edit a coordinate formula in B7:C12. Review the pane sizes, named-cell controls, connected-point labels, and Link settings. The six vertex equations match the Desmos reference.
 - [ ] **Review the spreadsheet together.** Open Motion model, change the yellow inputs, enter formulas, paste a small table, and reopen the project. Review selection, editing, formatting, keyboard behavior, and the first worksheet size limits. Turn feedback into concrete changes here.
@@ -21,6 +22,7 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 
 ## Come back to
 
+- [ ] **Extend designer controls from actual use.** Gather the next frequently adjusted properties before adding more controls. Consider preset comparisons, more component coverage, and a hosted designer role when accounts/hosting exist.
 - [ ] **Revisit recovery as storage evolves.** Manual full-library backups and restoration are implemented. Selective project recovery, scheduled backups, persistent version history, and coordinated simultaneous editing remain future decisions alongside server storage.
 - [ ] **Review new examples as they arrive.** Keep the first example as the early target. Turn newly identified needs into specific tasks without silently expanding the prototype scope.
 - [ ] **Inspect the larger engineering workbook in depth.** Initial read-only inventory found 22 worksheets, extensive arithmetic/trigonometry, and named function calls such as TRAT. Trace representative models with the owner to prioritize multiple sheets, cross-sheet references, custom functions, and larger grids. The current prototype is not compatible with the whole workbook.
@@ -86,5 +88,11 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Mouse/touch/keyboard reordering for every entry; parameter play/pause with five-second base traversal, speed multipliers, and loop/reverse/stop modes; named color swatches.
 - [x] Curve-label dragging and keyboard positioning, with a double-click/Enter manager for text, size, tangent alignment, and 15° rotation. New state participates in undo, reload, duplication, and backup validation/restoration.
 - [x] 64 unit tests and 53 browser tests pass across full and targeted runs, including pause/resume, touch reorder, storage failure, numerical contours, and desktop/mobile accessibility. Production build passes; existing calculator visually reviewed. Local branch `codex/graph-interactions`; no merge or deployment.
+
+## Designer access — September 19, 2026
+
+- [x] Designer/user mode switch, live label-control and visual settings, sample preview, Save/Revert/download, and tab-local preview recovery. Accepted settings live in `Design/settings.json`; production omits editing controls.
+- [x] Typed decimal label angles with persistence, designer-selected rotation steps and control variants, plus area-aware **Copy request for agent** and a concise refinement protocol.
+- [x] 67 unit and 58 browser tests pass across full and targeted runs, including isolated saves, stale revisions, production exclusion, clipboard handoff, and desktop/mobile accessibility. Real local repository save and visual review completed. Local branch `codex/designer-mode`; no merge or deployment.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

@@ -39,6 +39,13 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 
 - Adopted the owner's feature-record format in `sharedProjectManagement/features/`. Completed the implicit-equations example and added six concise records for the latest calculator changes; documented the ongoing convention in the task list and handoff. Checked section consistency and links; documentation only, so no application tests rerun.
 
+## Daily — September 19, 2026
+
+- Built designer/user mode switching on `codex/designer-mode`. The development panel previews label control variants, popup geometry, graph layout, and shared appearance; accepted settings save to `Design/settings.json`. Typed decimal angles now survive graph saves/backups. The sample uses the real label controls without modifying a project.
+- Added a short refinement-note handoff and a focused agent protocol, plus feature records and review follow-ups. Recommend a reusable lightweight task for batches; no subagent or new task was started.
+- Verification: 67 unit tests, TypeScript/build, and all 58 browser tests pass across the full run and targeted reruns. Browser coverage includes preview/revert/reload, independent-session saves, stale revisions, rejected requests, decimal label persistence, clipboard handoff, production exclusion, desktop/mobile layout, and accessibility. Fixed test selector assumptions and the sample SVG's accessibility role.
+- Visually reviewed the live panel and sample. Saved a temporary width change through the real local endpoint, verified the repository file, and restored the initial width. Project content and ProductManagement were not modified. Usage check during work: 72% weekly used / 28% remaining, account-wide. No merge or deployment.
+
 ## Weekly — week of September 14, 2026
 
-- Delivered working first versions of all three MVP components, manual backup recovery, spreadsheet/graph integration through Octahedron Sections, and the owner's first calculator interaction refinements. Current verification covers 64 unit and 53 browser tests. Shared priorities focus on hands-on review, the first remote PR/CI cycle, and example-driven refinements before October 15. External import and broader integration remain deferred. No merge or deployment performed.
+- Delivered working first versions of all three MVP components, manual backup recovery, spreadsheet/graph integration through Octahedron Sections, calculator interactions, and direct designer refinement controls. Current verification covers 67 unit and 58 browser tests. Shared priorities focus on hands-on review, the first remote PR/CI cycle, and example-driven refinements before October 15. External import and broader integration remain deferred. No merge or deployment performed.

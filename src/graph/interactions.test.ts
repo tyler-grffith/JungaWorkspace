@@ -164,7 +164,7 @@ describe('parameter playback and labels', () => {
             anchor: { x: 2, y: 0 },
             size: 18,
             orientation: 'parallel',
-            angle: 45,
+            angle: 22.5,
           },
         },
       ],
@@ -179,7 +179,7 @@ describe('parameter playback and labels', () => {
     for (const invalid of [
       { ...parameter, animation: { mode: 'other', speed: 1 } },
       { ...parameter, animation: { mode: 'loop', speed: Infinity } },
-      { ...newExpression('y=x'), labelStyle: { ...DEFAULT_LABEL, angle: 17 } },
+      { ...newExpression('y=x'), labelStyle: { ...DEFAULT_LABEL, angle: 181 } },
       { ...newExpression('y=x'), labelStyle: { ...DEFAULT_LABEL, anchor: { x: NaN, y: 0 } } },
     ])
       expect(validGraph({ ...graph, entries: [invalid] })).toBe(false)

@@ -198,6 +198,12 @@ test('curve labels drag independently of the viewport and expose text, size, and
   await expect(label).toHaveAttribute('transform', /^rotate\(15 /)
   await expect(label).toHaveCSS('font-size', '14px')
   await label.press('Enter')
+  await manager.getByLabel('Label angle', { exact: true }).fill('-22.5')
+  await manager.getByRole('button', { name: 'Apply label', exact: true }).click()
+  await expect(label).toHaveAttribute('transform', /^rotate\(-22.5 /)
+  await page.reload()
+  await expect(label).toHaveAttribute('transform', /^rotate\(-22.5 /)
+  await label.press('Enter')
   await manager.getByLabel('Label orientation', { exact: true }).selectOption('parallel')
   await manager.getByRole('button', { name: 'Apply label', exact: true }).click()
   await expect(label).not.toHaveAttribute('transform', /^rotate\(15 /)
@@ -205,6 +211,16 @@ test('curve labels drag independently of the viewport and expose text, size, and
   await page.reload()
   expect(await graph(page)).toEqual(expected)
   await expect(label).toContainText('Slope model')
+})
+
+test('production exposes the saved design without designer editing access', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: 'Enter designer mode' })).toHaveCount(0)
+  const response = await request.post('/__designer/settings', { data: {} })
+  expect(response.status()).toBe(404)
 })
 
 test('expanded new controls and the label manager are accessible on desktop and mobile', async ({

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { DEFAULT_LABEL, type PlotEntry, type Viewport } from './model'
 import { toPixel, type Point } from './plot'
+import { useDesign } from '../design/context'
 
 export function projectLabel(
   points: (Point | null)[],
@@ -63,7 +64,8 @@ export default function CurveLabel({
   onChange?: (entry: PlotEntry) => void
   onEdit: (id: string) => void
 }) {
-  const style = entry.labelStyle ?? DEFAULT_LABEL
+  const design = useDesign().labels
+  const style = entry.labelStyle ?? { ...DEFAULT_LABEL, size: design.defaultSize }
   const [preview, setPreview] = useState<Point | null>(null)
   const drag = useRef<{ id: number; origin: Point; anchor: Point | null } | null>(null)
   const anchor = preview ?? style.anchor ?? fallback
@@ -71,8 +73,8 @@ export default function CurveLabel({
   const projection = projectLabel(points, toPixel(anchor, view, width, height), view, width, height)
   if (!projection) return null
   const pixel = toPixel(projection.point, view, width, height)
-  const x = Math.max(12, Math.min(width - 25, pixel.x + 9))
-  const y = Math.max(style.size + 4, Math.min(height - 12, pixel.y - 10))
+  const x = Math.max(12, Math.min(width - 25, pixel.x + design.offsetX))
+  const y = Math.max(style.size + 4, Math.min(height - 12, pixel.y - design.offsetY))
   const angle = style.orientation === 'parallel' ? projection.angle : style.angle
   const editable = !readOnly && !!onChange
   return (

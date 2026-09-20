@@ -7,6 +7,8 @@ A browser workspace for a project library, graphing calculator, and spreadsheet.
 Use Node.js 24 LTS and npm. Run `npm ci`, then `npm run dev`.
 Open http://127.0.0.1:5173. The server listens only on this computer.
 
+Click **User mode** in the top bar to enter designer mode. Preview label controls, graph layout, and shared appearance, switch back to user mode to try the result, and **Save design** to keep accepted settings in `Design/settings.json`. The panel also prepares short requests for an agent. See [Small refinements](docs/REFINEMENTS.md). Production builds apply the saved design without designer editing access.
+
 ## Checks
 
 Run `npm run check` for unit tests, TypeScript, and a production build.
@@ -19,7 +21,7 @@ Create, edit, organize, favorite, duplicate, archive, trash, and restore project
 
 Open any graphing project's calculator to edit functions, add sliders/constants and notes, change curve labels/colors, and pan or zoom the graph. Expressions support arithmetic, named functions/dependencies, common real math functions, and domain restrictions such as `f(t) = e^(-t) sin(t) {t > 0}`. Use **How to write expressions** for notation details. The optional LaPlace Intuition project recreates the first Desmos example with five curves and two sliders.
 
-Use **Formulas**, **Points** (for example `(a, sin(a))`), or **Implicit equation** (`x^2 + y^2 = 9`, `x = 2`). All rows have a drag grip; mouse, touch, and Alt+↑/↓ reordering are supported. Curve appearance includes named color swatches. Parameter play/pause animates one full slider traversal in five seconds at 1×; settings offer 0.125×–16× speed and loop, reverse, or stop modes. Playback pauses on graph edits, hidden tabs, or failed saves. Drag labels along their curves and double-click (or press Enter) to edit text, size, tangent alignment, or fixed rotation in 15° increments. Label arrows reposition them without panning the graph. Settings, label positions, and row order persist in projects and backups; playback itself is temporary.
+Use **Formulas**, **Points** (for example `(a, sin(a))`), or **Implicit equation** (`x^2 + y^2 = 9`, `x = 2`). All rows have a drag grip; mouse, touch, and Alt+↑/↓ reordering are supported. Curve appearance includes named color swatches. Parameter play/pause animates one full slider traversal in five seconds at 1×; settings offer 0.125×–16× speed and loop, reverse, or stop modes. Playback pauses on graph edits, hidden tabs, or failed saves. Drag labels along their curves and double-click (or press Enter) to edit text, size, tangent alignment, or a typed fixed angle and rotation buttons (15° by default). Label arrows reposition them without panning the graph. Settings, label positions, and row order persist in projects and backups; playback itself is temporary.
 
 Open a spreadsheet project to edit cells and formulas, select ranges, copy/paste tables, fill relative references, format cells, and resize columns. Use **Load motion example** for editable inputs and a calculated velocity/distance table. Arithmetic, A1 ranges, absolute/mixed references, and common aggregate/logical/engineering functions are supported; **Using the spreadsheet** lists the syntax. The first version has one worksheet per project, starting at 50 rows × 12 columns and growing to 200 × 26.
 

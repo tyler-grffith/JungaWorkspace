@@ -208,7 +208,6 @@ function validLabelStyle(v: unknown): v is LabelStyle {
     finite(v.angle) &&
     v.angle >= -180 &&
     v.angle <= 180 &&
-    v.angle % 15 === 0 &&
     (v.anchor === undefined ||
       (record(v.anchor) &&
         finite(v.anchor.x) &&

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "theme": {
+    "accent": "#285f4b",
+    "sidebar": "#f2f4ef",
+    "buttonRadius": 6
+  },
+  "graph": {
+    "panelWidth": 310,
+    "formulaSize": 17
+  },
+  "labels": {
+    "title": "Label manager",
+    "angleControl": "number",
+    "angleStep": 15,
+    "sizeControl": "slider",
+    "defaultSize": 13,
+    "width": 285,
+    "padding": 14,
+    "offsetX": 9,
+    "offsetY": 10
+  }
+}

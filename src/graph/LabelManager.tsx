@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, RotateCcw, RotateCw } from 'lucide-react'
 import { DEFAULT_LABEL, type PlotEntry } from './model'
+import { useDesign } from '../design/context'
 export default function LabelManager({
   entry,
   onSave,
@@ -10,18 +11,31 @@ export default function LabelManager({
   onSave: (entry: PlotEntry) => void
   onClose: () => void
 }) {
+  const design = useDesign().labels
   const [text, setText] = useState(entry.label)
-  const [style, setStyle] = useState(entry.labelStyle ?? DEFAULT_LABEL)
+  const [style, setStyle] = useState(
+    entry.labelStyle ?? { ...DEFAULT_LABEL, size: design.defaultSize },
+  )
+  const [angleText, setAngleText] = useState(String(style.angle))
+  const [sizeText, setSizeText] = useState(String(style.size))
+  useEffect(() => {
+    if (!entry.labelStyle) {
+      setStyle((previous) => ({ ...previous, size: design.defaultSize }))
+      setSizeText(String(design.defaultSize))
+    }
+  }, [design.defaultSize, entry.labelStyle])
   const form = useRef<HTMLFormElement>(null)
   useEffect(() => {
     form.current?.querySelector('input')?.focus()
   }, [])
   function rotate(step: number) {
     const angle = style.angle + step
+    const next = angle > 180 ? angle - 360 : angle < -180 ? angle + 360 : angle
+    setAngleText(String(next))
     setStyle({
       ...style,
       orientation: 'fixed',
-      angle: angle > 180 ? -165 : angle < -180 ? 165 : angle,
+      angle: next,
     })
   }
   return (
@@ -42,7 +56,7 @@ export default function LabelManager({
         }}
       >
         <header>
-          <h3>Label manager</h3>
+          <h3>{design.title}</h3>
           <button
             type="button"
             className="icon-button"
@@ -66,12 +80,17 @@ export default function LabelManager({
           Size <span>{style.size} px</span>
           <input
             aria-label="Label size"
-            type="range"
+            type={design.sizeControl === 'slider' ? 'range' : 'number'}
             min={8}
             max={36}
-            step={1}
-            value={style.size}
-            onChange={(e) => setStyle({ ...style, size: Number(e.target.value) })}
+            step={design.sizeControl === 'slider' ? 1 : 'any'}
+            required
+            value={design.sizeControl === 'slider' ? style.size : sizeText}
+            onChange={(e) => {
+              setSizeText(e.target.value)
+              const size = e.target.valueAsNumber
+              if (Number.isFinite(size) && size >= 8 && size <= 36) setStyle({ ...style, size })
+            }}
           />
         </label>
         <label>
@@ -93,29 +112,60 @@ export default function LabelManager({
               type="button"
               className="icon-button"
               aria-label="Rotate label counterclockwise"
-              onClick={() => rotate(-15)}
+              onClick={() => rotate(-design.angleStep)}
             >
               <RotateCcw size={16} />
             </button>
             <label>
               Angle
-              <select
-                aria-label="Label angle"
-                value={style.angle}
-                onChange={(e) => setStyle({ ...style, angle: Number(e.target.value) })}
-              >
-                {Array.from({ length: 25 }, (_, i) => i * 15 - 180).map((angle) => (
-                  <option key={angle} value={angle}>
-                    {angle}°
-                  </option>
-                ))}
-              </select>
+              {design.angleControl === 'number' ? (
+                <input
+                  aria-label="Label angle"
+                  type="number"
+                  min={-180}
+                  max={180}
+                  step="any"
+                  required
+                  value={angleText}
+                  onChange={(e) => {
+                    setAngleText(e.target.value)
+                    const angle = e.target.valueAsNumber
+                    if (Number.isFinite(angle) && angle >= -180 && angle <= 180)
+                      setStyle({ ...style, angle })
+                  }}
+                />
+              ) : (
+                <select
+                  aria-label="Label angle"
+                  value={style.angle}
+                  onChange={(e) => {
+                    setStyle({ ...style, angle: Number(e.target.value) })
+                    setAngleText(e.target.value)
+                  }}
+                >
+                  {[
+                    ...new Set([
+                      ...Array.from(
+                        { length: 360 / design.angleStep + 1 },
+                        (_, i) => i * design.angleStep - 180,
+                      ),
+                      style.angle,
+                    ]),
+                  ]
+                    .sort((a, b) => a - b)
+                    .map((angle) => (
+                      <option key={angle} value={angle}>
+                        {angle}°
+                      </option>
+                    ))}
+                </select>
+              )}
             </label>
             <button
               type="button"
               className="icon-button"
               aria-label="Rotate label clockwise"
-              onClick={() => rotate(15)}
+              onClick={() => rotate(design.angleStep)}
             >
               <RotateCw size={16} />
             </button>

@@ -68,6 +68,7 @@ import { emptySheet, writeCells, type SheetDocument } from './sheet/model'
 import BackupRestore from './BackupRestore'
 import { downloadData, libraryWithDrafts, serializeBackup } from './backup'
 import LinkedWorkspace from './linked/LinkedWorkspace'
+import { DesignerSwitch } from './design/DesignerPanel'
 import { octahedronExample, OCTAHEDRON_URL } from './linked/model'
 
 type ModalState =
@@ -1020,15 +1021,18 @@ export default function App() {
                         : 'Library'}
             </span>
           </div>
-          <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
-            <span className="status-dot" />
-            {saveError || notesDraft || graphDraft || sheetDraft
-              ? 'Changes not saved'
-              : sheetEditing
-                ? 'Editing cell'
-                : 'Saved on this device'}
-            <ChevronDown size={12} />
-          </button>
+          <div className="topbar-actions">
+            <DesignerSwitch />
+            <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
+              <span className="status-dot" />
+              {saveError || notesDraft || graphDraft || sheetDraft
+                ? 'Changes not saved'
+                : sheetEditing
+                  ? 'Editing cell'
+                  : 'Saved on this device'}
+              <ChevronDown size={12} />
+            </button>
+          </div>
         </header>
         <main
           id="main-content"

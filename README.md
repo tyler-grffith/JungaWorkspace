@@ -7,7 +7,7 @@ A browser workspace for a project library, graphing calculator, and spreadsheet.
 Use Node.js 24 LTS and npm. Run `npm ci`, then `npm run dev`.
 Open http://127.0.0.1:5173. The server listens only on this computer.
 
-Click **User mode** in the top bar to enter designer mode. Preview label controls, graph layout, and shared appearance, switch back to user mode to try the result, and **Save design** to keep accepted settings in `Design/settings.json`. The panel also prepares short requests for an agent. See [Small refinements](docs/REFINEMENTS.md). Production builds apply the saved design without designer editing access.
+Click **User mode** in the top bar to enter designer mode. Preview label controls, graph and spreadsheet layout, shared appearance, the workspace shell, and library copy; switch back to user mode to try the result, and **Save design** to keep accepted settings in `Design/settings.json`. Every control is one entry in `src/design/registry.ts`. The panel also prepares short requests for an agent. See [Small refinements](docs/REFINEMENTS.md). Production builds apply the saved design without designer editing access.
 
 ## Checks
 
@@ -39,7 +39,9 @@ Backups include saved content and unsaved notes, graph changes, and spreadsheet 
 
 ## Repository
 
-- `src/`: application, project model, persistence, and styles.
+- `src/`: application, project model, persistence, and styles. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the layers and how to add a module, a design setting, or an example.
+- `src/modules/`: tool ids, the module registry (names, icons, routes, combined views), and built-in examples.
+- `src/design/`: the design settings registry, designer panel, and local save endpoint.
 - `src/backup.ts` and `src/BackupRestore.tsx`: native backup validation, draft snapshots, restoration, and preview/confirmation UI.
 - `src/graph/`: graph document, numeric parser/evaluator, sampling, editor, and plot.
 - `src/sheet/`: spreadsheet document, bounded formula engine, clipboard/fill operations, and editor.

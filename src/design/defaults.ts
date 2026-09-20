@@ -1,6 +1,7 @@
 import initialSettings from '../../Design/settings.json' with { type: 'json' }
-import { validDesign, type DesignSettings } from './model'
+import { completeDesign, type DesignSettings } from './registry'
 
-if (!validDesign(initialSettings))
-  throw new Error('Design/settings.json contains invalid design settings.')
-export const savedDesign: DesignSettings = initialSettings
+// The saved file may lag behind newly registered fields; those take their defaults.
+const complete = completeDesign(initialSettings)
+if (!complete) throw new Error('Design/settings.json contains invalid design settings.')
+export const savedDesign: DesignSettings = complete

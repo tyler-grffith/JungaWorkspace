@@ -275,3 +275,12 @@
     font-size: 9px;
   }
 }
+.designer-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.designer-toggle input {
+  width: auto;
+  accent-color: var(--green);
+}

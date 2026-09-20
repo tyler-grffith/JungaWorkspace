@@ -42,13 +42,10 @@ import {
   saveCollection,
   saveNotes,
   saveGraph,
-  initializeGraph,
   saveSheet,
-  initializeSheet,
+  initializeTools,
   saveWorkspace,
   selectProjects,
-  starterInput,
-  starterNotes,
   STORAGE_KEY,
   parseLibrary,
   type Collection,
@@ -69,7 +66,15 @@ import BackupRestore from './BackupRestore'
 import { downloadData, libraryWithDrafts, serializeBackup } from './backup'
 import LinkedWorkspace from './linked/LinkedWorkspace'
 import { DesignerSwitch } from './design/DesignerPanel'
-import { octahedronExample, OCTAHEDRON_URL } from './linked/model'
+import { useDesign } from './design/context'
+import {
+  availableViews,
+  combinedViewForRoute,
+  moduleById,
+  moduleForRoute,
+  modules,
+} from './modules/registry'
+import { examples, type ExampleProject } from './modules/examples'
 
 type ModalState =
   | { kind: 'project'; project?: Project }
@@ -78,7 +83,6 @@ type ModalState =
   | { kind: 'storage' }
   | { kind: 'backup' }
   | null
-const toolNames: Record<Tool, string> = { graph: 'Graphing', sheet: 'Spreadsheet' }
 const formatDate = (date: string) =>
   new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(date))
 const projectRoute = (id: string) => `#/project/${id}`
@@ -87,7 +91,8 @@ const viewRoute = (view: View) =>
 const readRoute = () => window.location.hash || '#/all'
 
 function ToolIcon({ tool, size = 18 }: { tool: Tool; size?: number }) {
-  return tool === 'graph' ? <SquareFunction size={size} /> : <Table2 size={size} />
+  const Icon = moduleById[tool].icon
+  return <Icon size={size} />
 }
 function ToolLabels({ tools }: { tools: Tool[] }) {
   return (
@@ -95,7 +100,7 @@ function ToolLabels({ tools }: { tools: Tool[] }) {
       {tools.map((tool) => (
         <span key={tool}>
           <ToolIcon tool={tool} size={13} />
-          {toolNames[tool]}
+          {moduleById[tool].name}
         </span>
       ))}
     </span>
@@ -250,7 +255,7 @@ function ProjectForm({
       <fieldset>
         <legend>Tools in this project</legend>
         <div className="tool-choices">
-          {(['graph', 'sheet'] as Tool[]).map((tool) => (
+          {modules.map(({ id: tool, name }) => (
             <label className={`tool-choice ${tools.includes(tool) ? 'selected' : ''}`} key={tool}>
               <input
                 type="checkbox"
@@ -260,14 +265,14 @@ function ProjectForm({
                 }
               />
               <ToolIcon tool={tool} size={23} />
-              <span>{toolNames[tool]}</span>
+              <span>{name}</span>
               <span className="check-box">{tools.includes(tool) && <Check size={13} />}</span>
             </label>
           ))}
         </div>
         <p className="field-hint">
-          Choose graphing, spreadsheet, or both. Open both side by side to connect spreadsheet cells
-          to plotted points.
+          Choose one tool or several. Open a spreadsheet and graph side by side to connect
+          spreadsheet cells to plotted points.
         </p>
       </fieldset>
       <label>
@@ -502,11 +507,12 @@ function ProjectCard({
 
 export default function App() {
   const { library, error, saveError, commit, restore, reload } = useLibrary()
+  const design = useDesign()
   const [route, setRoute] = useState(readRoute)
   const [query, setQuery] = useState('')
   const [tool, setTool] = useState<Tool | 'all'>('all')
-  const [sort, setSort] = useState<Sort>('updated')
-  const [layout, setLayout] = useState<'grid' | 'list'>('grid')
+  const [sort, setSort] = useState<Sort>(design.library.defaultSort)
+  const [layout, setLayout] = useState<'grid' | 'list'>(design.library.defaultLayout)
   const [modal, setModal] = useState<ModalState>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null)
@@ -578,9 +584,13 @@ export default function App() {
   const projectId = route.startsWith('#/project/') ? route.slice(10).split('/')[0] : null
   const currentProject = library?.projects.find((p) => p.id === projectId)
   if (library && currentProject) draftBase.current = library
-  const graphOpen = !!currentProject?.tools.includes('graph') && route.endsWith('/graph')
-  const sheetOpen = !!currentProject?.tools.includes('sheet') && route.endsWith('/sheet')
-  const linkedOpen = currentProject?.tools.length === 2 && route.endsWith('/workspace')
+  const projectTools = currentProject?.tools ?? []
+  const openModule = currentProject ? moduleForRoute(route, projectTools) : null
+  const openView = currentProject ? combinedViewForRoute(route, projectTools) : null
+  const graphOpen = openModule?.id === 'graph'
+  const sheetOpen = openModule?.id === 'sheet'
+  const linkedOpen = openView?.id === 'workspace'
+  const projectViews = availableViews(projectTools)
   const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
   const fallbackGraph = useMemo(
     () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
@@ -611,7 +621,7 @@ export default function App() {
           ? 'Trash'
           : view.startsWith('collection:')
             ? (currentCollection?.name ?? 'Collection not found')
-            : 'Your library'
+            : design.library.title
   useEffect(() => {
     document.title = `${currentProject?.title ?? title} · Junga`
   }, [title, currentProject?.title])
@@ -653,68 +663,39 @@ export default function App() {
       })
     }
   }
-  function openGraph(project: Project) {
-    if (project.status === 'trashed' || commit((current) => initializeGraph(current, project.id))) {
-      window.location.hash = `${projectRoute(project.id)}/graph`
-    }
-  }
-  function openSheet(project: Project) {
-    if (project.status === 'trashed' || commit((current) => initializeSheet(current, project.id)))
-      window.location.hash = `${projectRoute(project.id)}/sheet`
-  }
-  function openLinked(project: Project) {
+  /** Open one module's editor or a combined view, creating missing documents first. */
+  function openEditor(project: Project, tools: readonly Tool[], segment: string) {
     if (
       project.status === 'trashed' ||
-      commit((current) => initializeSheet(initializeGraph(current, project.id), project.id))
+      commit((current) => initializeTools(current, project.id, tools))
     )
-      window.location.hash = `${projectRoute(project.id)}/workspace`
+      window.location.hash = `${projectRoute(project.id)}/${segment}`
   }
-  function addOctahedron() {
+  function createExample(example: ExampleProject) {
     let id = ''
     if (
       commit((current) => {
-        const example = octahedronExample()
+        const documents = example.documents()
         const result = addProject(
           current,
-          {
-            title: 'Octahedron Sections',
-            description:
-              'Six spreadsheet-driven vertices with s, derived h, and a t slider from 0 to 1.',
-            tools: ['sheet', 'graph'],
-            collectionId: currentCollection?.id ?? null,
-            referenceUrl: OCTAHEDRON_URL,
-          },
-          'Recreated from Octahedron Sections (Parameterized Vertex Based).\ns = 5; h = SQRT(3)*s/2; t starts at 0.323 and ranges from 0 to 1.\nThe six rows pair (a,b), (c,d), (f,g), (i,j), (k,l), (m,n). The graph closes the outline from the last point to the first.\nEdit B2 or a coordinate formula, or move the t slider. Named cells and plotted ranges are editable in Link settings.',
-          example.graph,
-          example.sheet,
-        )
-        id = result.project.id
-        return result.library
-      })
-    )
-      window.location.hash = `${projectRoute(id)}/workspace`
-  }
-  function duplicate(project: Project) {
-    if (commit((current) => duplicateProject(current, project.id).library))
-      setToast({ text: 'A copy was added to your library.' })
-  }
-  function addStarter() {
-    let id = ''
-    if (
-      commit((current) => {
-        const result = addProject(
-          current,
-          { ...starterInput, collectionId: currentCollection?.id ?? null },
-          starterNotes,
-          laplaceGraph(),
+          { ...example.input, collectionId: currentCollection?.id ?? null },
+          example.notes,
+          documents.graph,
+          documents.sheet,
         )
         id = result.project.id
         return result.library
       })
     ) {
-      window.location.hash = projectRoute(id)
-      setToast({ text: 'LaPlace example project created.' })
+      window.location.hash = example.openRoute
+        ? `${projectRoute(id)}/${example.openRoute}`
+        : projectRoute(id)
+      if (example.toast) setToast({ text: example.toast })
     }
+  }
+  function duplicate(project: Project) {
+    if (commit((current) => duplicateProject(current, project.id).library))
+      setToast({ text: 'A copy was added to your library.' })
   }
   function exportBackup() {
     try {
@@ -891,14 +872,14 @@ export default function App() {
         <a href="#/all" className="brand" aria-label="Junga home">
           <img src="/favicon.svg" alt="" width="35" height="35" />
           <span>
-            junga<span className="brand-subtitle">YOUR WORKSPACE</span>
+            junga<span className="brand-subtitle">{design.shell.brandSubtitle}</span>
           </span>
         </a>
         <div className="workspace-switch">
           <span className="workspace-avatar">J</span>
           <div>
-            <strong>Personal workspace</strong>
-            <span>A place for your work</span>
+            <strong>{design.shell.workspaceName}</strong>
+            <span>{design.shell.workspaceTagline}</span>
           </div>
         </div>
         <div className="nav-label">WORKSPACE</div>
@@ -1008,17 +989,9 @@ export default function App() {
             <a href="#/all">Workspace</a>
             <ChevronRight size={14} />
             <span>
-              {linkedOpen
-                ? 'Spreadsheet + Graph'
-                : graphOpen
-                  ? 'Graphing'
-                  : sheetOpen
-                    ? 'Spreadsheet'
-                    : projectId
-                      ? 'Project'
-                      : currentCollection
-                        ? 'Collection'
-                        : 'Library'}
+              {openView?.name ??
+                openModule?.name ??
+                (projectId ? 'Project' : currentCollection ? 'Collection' : 'Library')}
             </span>
           </div>
           <div className="topbar-actions">
@@ -1054,26 +1027,28 @@ export default function App() {
               )}
             </div>
           )}
-          {currentProject?.tools.length === 2 && (sheetOpen || graphOpen || linkedOpen) && (
+          {currentProject && projectViews.length > 0 && (openModule || openView) && (
             <nav className="project-tool-views" aria-label="Project tool views">
-              <a
-                href={`${projectRoute(currentProject.id)}/workspace`}
-                aria-current={linkedOpen ? 'page' : undefined}
-              >
-                Side by side
-              </a>
-              <a
-                href={`${projectRoute(currentProject.id)}/sheet`}
-                aria-current={sheetOpen ? 'page' : undefined}
-              >
-                Spreadsheet only
-              </a>
-              <a
-                href={`${projectRoute(currentProject.id)}/graph`}
-                aria-current={graphOpen ? 'page' : undefined}
-              >
-                Graph only
-              </a>
+              {projectViews.map((v) => (
+                <a
+                  key={v.id}
+                  href={`${projectRoute(currentProject.id)}/${v.route}`}
+                  aria-current={openView?.id === v.id ? 'page' : undefined}
+                >
+                  Side by side
+                </a>
+              ))}
+              {modules
+                .filter((m) => currentProject.tools.includes(m.id))
+                .map((m) => (
+                  <a
+                    key={m.id}
+                    href={`${projectRoute(currentProject.id)}/${m.route}`}
+                    aria-current={openModule?.id === m.id ? 'page' : undefined}
+                  >
+                    {m.id === 'graph' ? 'Graph only' : `${m.name} only`}
+                  </a>
+                ))}
             </nav>
           )}
           {projectId ? (
@@ -1192,7 +1167,7 @@ export default function App() {
                   </button>
                   <div className="project-detail-heading">
                     <div className="detail-icon">
-                      {currentProject.tools.length === 2 ? (
+                      {currentProject.tools.length > 1 ? (
                         <Layers3 size={27} />
                       ) : (
                         <ToolIcon tool={currentProject.tools[0]} size={27} />
@@ -1277,49 +1252,37 @@ export default function App() {
                           {currentProject.tools.length === 1 ? 'tool' : 'tools'}
                         </span>
                       </div>
-                      {currentProject.tools.length === 2 && (
+                      {projectViews.map((v) => (
                         <button
+                          key={v.id}
                           className="button primary open-linked-workspace"
-                          onClick={() => openLinked(currentProject)}
+                          onClick={() => openEditor(currentProject, v.requires, v.route)}
                         >
-                          <Layers3 size={17} />
-                          Open side by side
+                          <v.icon size={17} />
+                          {v.openLabel}
                           <ArrowRight size={15} />
                         </button>
-                      )}
+                      ))}
                       <div className="tool-panels">
-                        {currentProject.tools.map((t) => (
-                          <div className={`tool-panel ${t}`} key={t}>
-                            <div className="tool-panel-icon">
-                              <ToolIcon tool={t} size={25} />
+                        {currentProject.tools.map((t) => {
+                          const m = moduleById[t]
+                          return (
+                            <div className={`tool-panel ${m.cssClass}`} key={t}>
+                              <div className="tool-panel-icon">
+                                <ToolIcon tool={t} size={25} />
+                              </div>
+                              <h3>{m.longName}</h3>
+                              <p>{m.description}</p>
+                              <button
+                                className="button primary open-calculator"
+                                onClick={() => openEditor(currentProject, [t], m.route)}
+                              >
+                                {m.openLabel}
+                                <ArrowRight size={15} />
+                              </button>
                             </div>
-                            <h3>
-                              {toolNames[t] === 'Graphing' ? 'Graphing calculator' : 'Spreadsheet'}
-                            </h3>
-                            <p>
-                              {t === 'graph'
-                                ? 'A space to explore functions, parameters, and the shapes they make.'
-                                : 'A space to organize values, build formulas, and work through ideas.'}
-                            </p>
-                            {t === 'graph' ? (
-                              <button
-                                className="button primary open-calculator"
-                                onClick={() => openGraph(currentProject)}
-                              >
-                                Open calculator
-                                <ArrowRight size={15} />
-                              </button>
-                            ) : (
-                              <button
-                                className="button primary open-calculator"
-                                onClick={() => openSheet(currentProject)}
-                              >
-                                Open spreadsheet
-                                <ArrowRight size={15} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                       <div className="section-heading notes-heading">
                         <h2>
@@ -1436,7 +1399,7 @@ export default function App() {
             <>
               <div className="page-heading">
                 <div>
-                  <div className="eyebrow">YOUR WORK, TOGETHER</div>
+                  <div className="eyebrow">{design.library.eyebrow}</div>
                   <h1>{title}</h1>
                   <p>
                     {view === 'archive'
@@ -1447,15 +1410,23 @@ export default function App() {
                           ? 'The projects you want to keep close.'
                           : currentCollection
                             ? 'A shared home for related projects.'
-                            : 'A home for your ideas, models, and working projects.'}
+                            : design.library.tagline}
                   </p>
                 </div>
                 <div className="heading-actions">
-                  {view === 'all' && (
-                    <button className="button secondary" onClick={addOctahedron}>
-                      Create octahedron example
-                    </button>
-                  )}
+                  {view === 'all' &&
+                    design.library.showExamples &&
+                    examples
+                      .filter((example) => example.placement === 'toolbar')
+                      .map((example) => (
+                        <button
+                          key={example.id}
+                          className="button secondary"
+                          onClick={() => createExample(example)}
+                        >
+                          {example.buttonLabel}
+                        </button>
+                      ))}
                   {currentCollection && (
                     <button
                       className="icon-button"
@@ -1501,8 +1472,11 @@ export default function App() {
                       onChange={(e) => setTool(e.target.value as Tool | 'all')}
                     >
                       <option value="all">All tools</option>
-                      <option value="graph">Graphing</option>
-                      <option value="sheet">Spreadsheet</option>
+                      {modules.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <select
@@ -1627,20 +1601,28 @@ export default function App() {
                       </div>
                     </div>
                   </section>
-                  <section className="starter-strip">
-                    <div className="starter-icon">
-                      <SquareFunction size={24} />
-                    </div>
-                    <div>
-                      <span className="eyebrow">FROM YOUR EXAMPLES</span>
-                      <h3>LaPlace Intuition</h3>
-                      <p>Explore the recreated graph with editable functions and sliders.</p>
-                    </div>
-                    <button className="button secondary" onClick={addStarter}>
-                      Use this example
-                      <ArrowRight size={15} />
-                    </button>
-                  </section>
+                  {design.library.showExamples &&
+                    examples
+                      .filter((example) => example.placement === 'welcome')
+                      .map((example) => (
+                        <section className="starter-strip" key={example.id}>
+                          <div className="starter-icon">
+                            <ToolIcon tool={example.tools[0]} size={24} />
+                          </div>
+                          <div>
+                            <span className="eyebrow">FROM YOUR EXAMPLES</span>
+                            <h3>{example.title}</h3>
+                            <p>{example.description}</p>
+                          </div>
+                          <button
+                            className="button secondary"
+                            onClick={() => createExample(example)}
+                          >
+                            {example.buttonLabel}
+                            <ArrowRight size={15} />
+                          </button>
+                        </section>
+                      ))}
                   <div className="workflow-strip">
                     <div>
                       <span>01</span>
@@ -1709,7 +1691,8 @@ export default function App() {
               )}
               <footer className="library-footer">
                 <span>
-                  <Grid2X2 size={13} />A little more organized. A little more possible.
+                  <Grid2X2 size={13} />
+                  {design.library.footerLine}
                 </span>
                 <span>JUNGA / LIBRARY</span>
               </footer>

@@ -56,6 +56,11 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 - With Tyler's explicit approval, committed the existing ProductManagement documents and examples, including the owner-provided ODT deletion, without editing their contents. This was a local commit only; no application code changed and tests were not rerun.
 - Tyler subsequently requested publication of that commit to GitHub. Updated the handoff for `codex/github-collaboration` and PR #1; this update contains documentation and owner-provided examples only, with no merge or deployment.
 
+- Assessed the repository state for Tyler and asked about developer mode scope, production access, PR #1, module order, portfolio/blog shape, and roles. Tyler: same tool as designer mode, agent decides scope and access for now, merge PR #1, modules chosen one at a time, portfolio/blog both in-app and exported with generic hosting, agents are peer developers who document their philosophy in markdown.
+- Attempted the PR #1 merge as instructed; the session's permission mode blocked the admin merge, so it remains Tyler's one-line command. Started `codex/extensible-baseline` from the PR branch.
+- Added module/example registries (`src/modules/`) and rebuilt design settings as a declarative registry with six groups and thirty-eight fields; the panel, validation, CSS variables, and saved-file shape derive from it. Older `Design/settings.json` files complete with defaults. Wrote `docs/ARCHITECTURE.md`, made workflow docs tool-neutral, and updated feature records.
+- Verification: 73 unit tests, TypeScript, and the production build pass. Browser suite result is recorded in the PR.
+
 ## Weekly — week of September 14, 2026
 
 - Published the shared GitHub baseline in PR #1, enabled main-branch protection, and invited `bobjunga`. Agents and people use separate branches and PRs, with owner-controlled merges and deployment decisions. The public bootstrap branch is ready to clone before the initial merge.

@@ -4,14 +4,15 @@ These instructions apply throughout the repository.
 
 ## Start here
 
-- Read `README.md`, `CONTRIBUTING.md`, `docs/HANDOFF.md`, and the relevant items in `sharedProjectManagement/taskList.md`. Read only the feature records/source needed for the assignment.
-- Tyler is the product manager, UI designer, and final authority. Follow the assigned role; if present, read the owner's team instructions in `ProductManagement/` for additional context.
+- Read `README.md`, `CONTRIBUTING.md`, `docs/ARCHITECTURE.md`, `docs/HANDOFF.md`, and the relevant items in `sharedProjectManagement/taskList.md`. Read only the feature records/source needed for the assignment.
+- Tyler is the product manager, UI designer, and final authority. Agents are developers on equal footing, whichever tool runs them; there is no designated lead. Follow any assigned role; if present, read the owner's team instructions in `ProductManagement/` for additional context.
+- Build complete baselines Tyler can adjust afterwards. Put list-like things in registries and adjustable values in the design registry rather than asking for approval on ordinary build choices. `docs/ARCHITECTURE.md` explains the pattern.
 - `ProductManagement/` is read-only for agents. Do not edit, delete, move, or stage its files, including pre-existing owner changes.
 
 ## Work independently and coordinate
 
-- Check `git status`, fetch the remote, and work on a focused `codex/<topic>` branch. Use a separate clone or worktree for concurrently active agents; do not switch another agent's working directory underneath it.
-- Start from `main` after the initial application PR is merged. Before that, follow the bootstrap instructions in `CONTRIBUTING.md`; remote `main` may contain only the initial documents.
+- Check `git status`, fetch the remote, and work on a focused topic branch such as `codex/<topic>` (the prefix is a convention, not a tool requirement). Use a separate clone or worktree for concurrently active agents; do not switch another agent's working directory underneath it.
+- Start from `main`. If the initial application PR is not yet merged, follow the bootstrap instructions in `CONTRIBUTING.md`.
 - Record the task, branch, scope, and relevant GitHub issue/PR in the shared task list. Avoid taking over work another collaborator has claimed. Raise conflicting product decisions with Tyler.
 - Fill ordinary implementation gaps and keep moving without waiting for Tyler to read routine updates. Ask when missing information materially changes the outcome.
 - Preserve other contributors' edits. Stage only your work; avoid unrelated refactoring, history rewriting, or force pushes.

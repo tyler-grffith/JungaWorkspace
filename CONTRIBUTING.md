@@ -6,7 +6,7 @@ Repository: https://github.com/tyler-grffith/JungaWorkspace
 
 Install Git and Node.js 24 LTS. Contributors with direct repository access should authenticate their own GitHub account (for example, `gh auth login` and `gh auth setup-git`). Do not copy tokens between computers or put them in the repository.
 
-**Before the initial application PR is merged**, the runnable prototype is on `codex/github-collaboration`:
+**Before [the initial application PR (#1)](https://github.com/tyler-grffith/JungaWorkspace/pull/1) is merged**, the runnable prototype is on `codex/github-collaboration`:
 
 ```sh
 git clone --branch codex/github-collaboration https://github.com/tyler-grffith/JungaWorkspace.git
@@ -67,9 +67,9 @@ The CI workflow checks dependencies, unit tests, TypeScript/build, and Chromium 
 
 Tyler retains product, merge, and deployment decisions. `CODEOWNERS` requests his review for repository changes once that file reaches the PR's base branch. Required reviews cannot be supplied by the PR author; owner-authored bootstrap work needs another authorized reviewer or an explicit owner decision using GitHub's administrator override. Agents must not use that override on their own.
 
-Branch protections, when enabled on the repository's plan, require a current passing `Application checks` result, a review, code-owner review, resolved conversations, and no force push or deletion of `main`. The owner retains administrator control. Agents authenticating as the owner inherit that account's rights; GitHub cannot distinguish the agent from Tyler. Use separate accounts or a narrowly scoped GitHub App if independent permission boundaries become necessary.
+Main-branch protection is enabled: it requires a current passing `Application checks` result, a review, code-owner review, resolved conversations, and no force push or deletion of `main`. The owner retains administrator control. Agents authenticating as the owner inherit that account's rights; GitHub cannot distinguish the agent from Tyler. Use separate accounts or a narrowly scoped GitHub App if independent permission boundaries become necessary.
 
-The proposed settings are recorded in `.github/main-protection.json`. That file documents the policy; changing it does not apply settings automatically. Check GitHub's branch settings and the latest handoff for what is actually enabled. Required review of `CODEOWNERS` changes takes effect after the file reaches `main`.
+The applied settings are recorded in `.github/main-protection.json`. That file documents the policy; changing it does not apply settings automatically. Check GitHub's branch settings and the latest handoff for subsequent changes. Required review of `CODEOWNERS` changes takes effect after the file reaches `main`.
 
 `ProductManagement/` belongs to Tyler. Agents must not modify or stage its contents. New owner documents and examples only reach collaborators when Tyler commits them; local uncommitted files are not included in a push of this implementation branch. Feature records and shared agent updates belong in `sharedProjectManagement/` and `docs/`.
 

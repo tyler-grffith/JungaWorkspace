@@ -8,7 +8,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 ## Next up
 
-- [ ] **Complete GitHub collaboration setup.** Local contribution/agent guidance, review templates, Node/text-file conventions, and PR CI are prepared on `codex/github-collaboration`. Confirm visibility, publish the branch/PR, verify the first remote run, apply supported main-branch protection, and invite any collaborators Tyler names. Initial merge stays with Tyler and the designated supervisor.
+- [x] **Publish the GitHub collaboration baseline.** Public repository and `codex/github-collaboration` branch are live in [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1), with contribution/agent guidance, templates, PR CI, and main-branch protection. `bobjunga` has a pending write invitation. See PR checks for remote validation; initial merge stays with Tyler and the designated supervisor.
 - [ ] **Review designer access.** Switch User mode → Designer mode in the top bar. Try the label preview, typed/dropdown angle controls, layout settings, and Save/Revert. Try copying a one-sentence refinement request. Implemented on `codex/designer-mode`; [workflow](../docs/REFINEMENTS.md).
 - [ ] **Review the six calculator refinements.** Try ordered pairs and implicit equations, drag row grips (or Alt+↑/↓), animate a slider at different speeds in loop/reverse/stop mode, inspect color swatches, and drag/double-click a curve label. Review label size, parallel alignment, 15° rotation, and popup layout. Implemented on `codex/graph-interactions`.
 - [ ] **Review the linked Octahedron Sections project.** Open the new project side by side, move t, change s in B2, inspect h in B3, and edit a coordinate formula in B7:C12. Review the pane sizes, named-cell controls, connected-point labels, and Link settings. The six vertex equations match the Desmos reference.
@@ -17,7 +17,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 - [ ] **Review the graphing calculator together.** Try the LaPlace example, change p and a, edit a function, and reopen the project. Discuss expression entry, slider controls, curve labels, and the amount of space given to the graph. The first working calculator is ready locally.
 - [ ] **Review the library together.** Gather feedback on collections, project lifecycle, navigation, and visual direction. Revisit the unreviewed choices in [the decision log](../docs/DECISIONS.md); record what is accepted or needs changing.
 - [ ] **Apply the library feedback.** Capture concrete changes here after the discussion and verify the affected workflows.
-- [ ] **Review and merge the initial GitHub application PR.** Use the collaboration setup above as the shared application baseline, then move new work to branches from `main`. Bring the result to the product owner and merge supervisor for the merge decision.
+- [ ] **Review and merge [the initial GitHub application PR (#1)](https://github.com/tyler-grffith/JungaWorkspace/pull/1).** After the required checks and owner decision, move new work to branches from `main`. Until then, clone the published bootstrap branch. `bobjunga` must accept the invitation before pushing or supplying a collaborator review.
 
 The owner requested graphing, then the spreadsheet and backup recovery, on September 18. All three MVP components now have working first versions, with a complete manual backup/restore workflow. Next priorities are hands-on product review and the first remote PR/CI cycle. Merges and deployments still require the product owner's decision.
 

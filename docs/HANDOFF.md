@@ -10,7 +10,7 @@ Current increment: **GitHub collaboration setup**, on top of designer access, ca
 
 The repository remains public at [tyler-grffith/JungaWorkspace](https://github.com/tyler-grffith/JungaWorkspace). The full prototype and collaboration setup are published on `codex/github-collaboration` in [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1). Clone that branch until Tyler approves the initial merge; `main` still contains only the initial documents. `bobjunga` has been invited with write access and must accept the invitation. Main-branch protection is active: current passing Application checks, one approving review, code-owner review (after CODEOWNERS reaches the base branch), and resolved conversations; force pushes and branch deletion are blocked. Tyler retains administrator override, which agents may not use independently.
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for checkout instructions and the PR's Checks tab for the current remote validation result. Newer ProductManagement files are uncommitted owner material and remain outside this PR. No merge or deployment has been performed.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for checkout instructions and the PR's Checks tab for the current remote validation result. With Tyler's explicit approval, the newer ProductManagement documents/examples and existing ODT deletion are now committed locally without content edits; they remain outside the published PR until pushed. No merge or deployment has been performed.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 

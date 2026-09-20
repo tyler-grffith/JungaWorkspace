@@ -53,6 +53,8 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 - Local validation: 67 unit tests, TypeScript, production build, and diff checks pass. Tyler confirmed public visibility and named `bobjunga`; published the full prototype on `codex/github-collaboration`, opened [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1), and sent the write-access invitation (acceptance pending).
 - Applied and verified main-branch protection with required current checks, one review/code-owner review, resolved conversations, and blocked force pushes/deletion; owner administrator override remains available. The [first clean Linux run](https://github.com/tyler-grffith/JungaWorkspace/actions/runs/35526016977) passed the full dependency installation, unit/TypeScript/build, and browser suite. Current commit results are available through the PR's Checks tab. No merge or deployment was performed.
 
+- With Tyler's explicit approval, committed the existing ProductManagement documents and examples, including the owner-provided ODT deletion, without editing their contents. This was a local commit only; no application code changed and tests were not rerun.
+
 ## Weekly — week of September 14, 2026
 
 - Published the shared GitHub baseline in PR #1, enabled main-branch protection, and invited `bobjunga`. Agents and people use separate branches and PRs, with owner-controlled merges and deployment decisions. The public bootstrap branch is ready to clone before the initial merge.

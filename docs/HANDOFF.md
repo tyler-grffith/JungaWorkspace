@@ -6,7 +6,9 @@ Current priorities and follow-ups live in the shared [task list](../sharedProjec
 
 Feature completion convention: create one concise markdown record per requested feature in `sharedProjectManagement/features/`, following the owner's [implicit equations example](<../sharedProjectManagement/features/implicit equations.md>). Record the context, request, agent decisions, and details Tyler can fine-tune. Update the same record when extending a feature. The latest calculator batch now has individual records.
 
-Current increment: **designer access and lightweight refinements**, on top of calculator interactions, the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/designer-mode`, based on `codex/graph-interactions`.
+Current increment: **GitHub collaboration setup**, on top of designer access, calculator interactions, the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/github-collaboration`, based on `codex/designer-mode`.
+
+GitHub currently has only the initial documents on `main`. Contribution/agent guidance, review templates, and CI changes are prepared locally; publishing awaits Tyler's choice to keep the existing repository public or make it private first. No collaborator usernames have been supplied. See [CONTRIBUTING.md](../CONTRIBUTING.md) for checkout and bootstrap instructions. Newer ProductManagement files are uncommitted owner material and remain outside the implementation branch.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 

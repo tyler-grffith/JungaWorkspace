@@ -1,0 +1,7 @@
+# Tyler owns product and review decisions. This applies after reaching the PR base branch.
+* @tyler-grffith
+
+# Explicitly preserve ownership of product direction and repository controls.
+/ProductManagement/ @tyler-grffith
+/.github/ @tyler-grffith
+/AGENTS.md @tyler-grffith

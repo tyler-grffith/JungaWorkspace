@@ -46,6 +46,14 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 - Verification: 67 unit tests, TypeScript/build, and all 58 browser tests pass across the full run and targeted reruns. Browser coverage includes preview/revert/reload, independent-session saves, stale revisions, rejected requests, decimal label persistence, clipboard handoff, production exclusion, desktop/mobile layout, and accessibility. Fixed test selector assumptions and the sample SVG's accessibility role.
 - Visually reviewed the live panel and sample. Saved a temporary width change through the real local endpoint, verified the repository file, and restored the initial width. Project content and ProductManagement were not modified. Usage check during work: 72% weekly used / 28% remaining, account-wide. No merge or deployment.
 
+## Daily — September 20, 2026
+
+- Began GitHub collaboration setup on `codex/github-collaboration`. Verified the existing public `tyler-grffith/JungaWorkspace` repository, working GitHub CLI access, initial-only remote main, no open PRs/branch protection, and read-only Actions token defaults. Asked Tyler about visibility before publishing the working app, and which collaborators to invite.
+- Added portable agent/contributor guidance, ownership and PR/issue templates, Node 24/text-file conventions, and a reviewable main-protection policy. PR CI now covers all contributors, cancels obsolete runs, and has no persistent checkout credentials or deployment step. Owner material remains untouched.
+- Local validation: 67 unit tests, TypeScript, production build, and diff checks pass. Remote publication, the first GitHub check run, branch protection, and invitations are pending the visibility/access decisions.
+
 ## Weekly — week of September 14, 2026
+
+- Prepared the first shared GitHub baseline and collaborator onboarding; publishing is pending the owner's visibility choice. Agents and people will use separate working branches and PRs, with owner-controlled merges and deployment decisions.
 
 - Delivered working first versions of all three MVP components, manual backup recovery, spreadsheet/graph integration through Octahedron Sections, calculator interactions, and direct designer refinement controls. Current verification covers 67 unit and 58 browser tests. Shared priorities focus on hands-on review, the first remote PR/CI cycle, and example-driven refinements before October 15. External import and broader integration remain deferred. No merge or deployment performed.

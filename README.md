@@ -15,6 +15,10 @@ Run `npm run check` for unit tests, TypeScript, and a production build.
 Run `npx playwright install chromium` once, then `npm run test:e2e` for browser acceptance tests.
 CI runs both on pull requests; it does not deploy.
 
+## Collaborate from another computer
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the initial checkout branch, setup, branch/PR workflow, and review responsibilities. Agents start with [AGENTS.md](AGENTS.md). Git shares the code and design settings; projects in the app require an explicit library backup/restore to move between browsers.
+
 ## Working prototype
 
 Create, edit, organize, favorite, duplicate, archive, trash, and restore projects. Search and filter the library, switch grid/list views, and save project notes.

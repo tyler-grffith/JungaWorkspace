@@ -1,0 +1,324 @@
+.main-content.linked-main {
+  max-width: none;
+  padding: 18px 24px;
+}
+.linked-heading,
+.linked-settings-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.linked-heading .back-link {
+  margin-bottom: 6px;
+}
+.linked-heading .eyebrow {
+  display: none;
+}
+.linked-heading h1 {
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+.linked-heading .button {
+  flex-shrink: 0;
+}
+.linked-controls {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  border: 1px solid #d7e1d3;
+  background: #f5f8ef;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.linked-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+.linked-values > div {
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+}
+.linked-values strong {
+  font-size: 17px;
+}
+.linked-controls small {
+  color: #526447;
+  font-size: 11px;
+}
+.linked-slider {
+  flex: 1;
+  min-width: 180px;
+  max-width: 420px;
+}
+.linked-slider > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.linked-slider label {
+  font-weight: 650;
+  font-size: 15px;
+}
+.linked-slider output {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  font-size: 20px;
+}
+.linked-slider input {
+  width: 100%;
+  accent-color: #356449;
+  margin: 8px 0 2px;
+}
+.linked-slider-limits,
+.linked-slider p,
+.linked-controls > p {
+  font-size: 12px;
+  color: #526447;
+}
+.linked-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.linked-sheet,
+.linked-graph {
+  min-width: 0;
+}
+.linked-sheet .sheet-heading {
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  min-height: 35px;
+}
+.linked-panes h2 {
+  font-size: 16px;
+}
+.linked-sheet .sheet-heading-actions .button {
+  font-size: 11px;
+  margin-left: 2px;
+  padding: 0 8px;
+}
+.linked-sheet .sheet-heading-actions {
+  gap: 0;
+}
+.linked-sheet .sheet-grid-scroll {
+  height: 500px;
+  max-height: 65vh;
+}
+.linked-sheet .sheet-grid td,
+.linked-sheet .sheet-grid th {
+  height: 26px;
+}
+.linked-sheet .sheet-grid td > span {
+  height: 25px;
+  padding: 4px 9px;
+}
+.linked-sheet .sheet-grid th > button {
+  height: 25px;
+}
+.linked-sheet .sheet-toolbar {
+  gap: 5px;
+  padding: 8px;
+}
+.linked-sheet .sheet-toolbar select {
+  max-width: 110px;
+}
+.linked-sheet .sheet-tool-group {
+  padding-right: 4px;
+}
+.linked-sheet .sheet-tool-group button {
+  min-width: 26px;
+  padding: 0 4px;
+}
+.linked-sheet .sheet-example {
+  display: none;
+}
+.linked-graph {
+  border: 1px solid #d7e1d3;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+}
+.linked-graph-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e1e7db;
+}
+.linked-graph-heading .button {
+  height: 31px;
+  font-size: 12px;
+}
+.linked-graph .plot-stage {
+  height: clamp(320px, calc(100vh - 400px), 460px);
+  min-height: 320px;
+}
+.linked-graph .graph-display-options {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.linked-legend {
+  padding: 12px 16px;
+  font-size: 11px;
+  border-top: 1px solid #e1e7db;
+  color: #506447;
+}
+.linked-legend > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.linked-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.linked-settings {
+  padding: 20px;
+  background: white;
+  border: 1px solid #d7e1d3;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.linked-settings h2 {
+  font-size: 17px;
+}
+.linked-settings h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.linked-settings-columns {
+  display: grid;
+  grid-template-columns: 0.8fr 1fr 1.2fr;
+  gap: 24px;
+}
+.linked-settings section {
+  min-width: 0;
+}
+.linked-settings label {
+  display: block;
+  font-size: 12px;
+  color: #425b36;
+}
+.linked-settings p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #526447;
+  margin: 8px 0 12px;
+}
+.linked-settings input:not([type='checkbox']),
+.linked-settings textarea,
+.linked-settings select {
+  display: block;
+  width: 100%;
+  border: 1px solid #cbd8c4;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 5px 0 10px;
+  font-size: 12px;
+  background: white;
+  color: #253e2b;
+}
+.linked-settings textarea {
+  resize: vertical;
+}
+.linked-settings fieldset {
+  border: 1px solid #d7e1d3;
+  border-radius: 5px;
+  padding: 10px;
+  margin: 10px 0;
+  min-width: 0;
+}
+.linked-settings legend {
+  font-size: 12px;
+  padding: 0 4px;
+}
+.link-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+}
+.link-checks {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.linked-settings > .button {
+  margin-top: 16px;
+}
+.linked-settings input[type='checkbox'] {
+  accent-color: #356449;
+}
+.project-tool-views {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+}
+.project-tool-views a {
+  font-size: 12px;
+  padding: 8px 12px;
+  border: 1px solid #d7e1d3;
+  border-radius: 5px;
+  background: white;
+}
+.project-tool-views a[aria-current='page'] {
+  background: #e7f0e5;
+  color: #254c36;
+  border-color: #a5b999;
+  font-weight: 650;
+}
+.open-linked-workspace {
+  margin-bottom: 16px;
+}
+@media (max-width: 1100px) {
+  .linked-main {
+    padding: 18px;
+  }
+  .linked-panes {
+    gap: 12px;
+  }
+  .linked-settings-columns {
+    grid-template-columns: 1fr;
+  }
+  .linked-sheet .sheet-heading-actions .button {
+    font-size: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .linked-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .linked-heading {
+    flex-wrap: wrap;
+  }
+  .linked-heading h1 {
+    font-size: 23px;
+  }
+  .linked-controls {
+    gap: 16px;
+    padding: 14px;
+  }
+  .linked-slider {
+    max-width: none;
+  }
+  .linked-sheet .sheet-grid-scroll {
+    max-height: 400px;
+  }
+  .linked-graph .plot-stage {
+    height: 390px;
+  }
+  .linked-settings {
+    padding: 14px;
+  }
+}

@@ -1,0 +1,104 @@
+.backup-restore {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.backup-restore p {
+  margin: 10px 0;
+}
+.backup-preview {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f1f5ec;
+  border: 1px solid #dce5d4;
+  border-radius: 8px;
+}
+.backup-preview h3 {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.backup-preview p {
+  font-size: 12px;
+  margin: 4px 0;
+}
+.backup-preview ul {
+  padding-left: 20px;
+}
+.backup-projects {
+  max-height: 124px;
+  overflow: auto;
+  list-style: none;
+  padding: 0 !important;
+  margin: 10px 0;
+}
+.backup-projects li {
+  padding: 8px 0;
+  border-top: 1px solid #dce5d4;
+  overflow-wrap: anywhere;
+}
+.backup-projects strong,
+.backup-projects span {
+  display: block;
+}
+.backup-projects span {
+  font-size: 11px;
+  color: #506447;
+}
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.backup-current {
+  margin-bottom: 20px;
+}
+.modal .restore-options legend {
+  color: var(--ink);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.modal .restore-options label,
+.modal .restore-confirm {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--ink);
+  font-size: 12px;
+  margin: 12px 0;
+}
+.modal .restore-options input[type='radio'],
+.modal .restore-confirm input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  flex: 0 0 16px;
+  margin: 3px 0 0;
+  accent-color: #42652e;
+}
+.restore-options small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 4px;
+  color: #506447;
+}
+.restore-confirm {
+  padding: 12px;
+  border: 1px solid #dfcaa1;
+  border-radius: 6px;
+  background: #fff8e9;
+}
+.backup-drafts {
+  padding: 12px;
+  border: 1px solid #dfcaa1;
+  border-radius: 6px;
+}
+.backup-restore .modal-footer,
+.storage-info + .modal-footer {
+  flex-wrap: wrap;
+}
+.backup-preview details {
+  max-height: 180px;
+  overflow: auto;
+}

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "title": "Cosmic Clock",
+      "projectType": "code",
+      "description": "Source, assets, and scene defaults for a three-dimensional Earth clock.",
+      "tools": [],
+      "collectionId": null,
+      "referenceUrl": "https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup",
+      "id": "34032a77-d44d-4700-a682-7cb0f534df7e",
+      "outputs": [
+        {
+          "id": "e997754d-4d36-453b-9d5d-4c285e402c7c",
+          "type": "interactive-scene",
+          "title": "Earth Clock",
+          "description": "Explore a living Earth, its sunlit edge, and the local time in every time zone.",
+          "status": "ready",
+          "source": {
+            "sceneKind": "cosmic-clock",
+            "version": 1,
+            "defaultState": {
+              "camera": {
+                "latitude": 20,
+                "sunLongitudeOffset": 57,
+                "distance": 3.6
+              },
+              "time": {
+                "mode": "live",
+                "date": "2026-09-20T23:37:26.139Z",
+                "speed": 1,
+                "paused": false
+              },
+              "showTimeZones": true
+            }
+          },
+          "metadata": {
+            "attribution": "NASA Blue Marble and Black Marble imagery. Timezone Boundary Builder 2026d, © OpenStreetMap contributors, ODbL 1.0. p5.js (LGPL-2.1), Astronomy Engine (MIT), DM fonts and Instrument Serif (OFL).",
+            "sourceUrl": "https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup"
+          }
+        }
+      ],
+      "notes": "",
+      "favorite": false,
+      "status": "active",
+      "trashedFrom": null,
+      "createdAt": "2026-09-20T23:37:26.139Z",
+      "updatedAt": "2026-09-20T23:37:26.139Z",
+      "openedAt": null,
+      "sourceManifest": {
+        "kind": "cosmic-clock",
+        "version": 1
+      }
+    }
+  ],
+  "collections": [],
+  "exportedAt": "2026-09-21T01:59:02.519Z"
+}

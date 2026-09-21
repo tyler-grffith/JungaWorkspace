@@ -1,0 +1,6 @@
+---
+description: Shared Junga Workspace collaboration and ownership rules
+alwaysApply: true
+---
+
+Read and follow the repository-root `AGENTS.md`. It is the shared source of agent instructions, including the read-only ProductManagement boundary, focused branches, checks, feature documentation, and Tyler's merge/deployment authority.

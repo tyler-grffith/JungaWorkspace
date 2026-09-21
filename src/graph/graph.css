@@ -1,0 +1,1215 @@
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.expression-row.drop-target {
+  box-shadow: inset 0 3px #27664c;
+}
+.expression-row.is-dragging {
+  opacity: 0.5;
+}
+.entry-drag-handle {
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+}
+.entry-drag-handle:active {
+  cursor: grabbing;
+}
+.slider-playback {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.slider-playback > .icon-button {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+.slider-playback .parameter-range {
+  flex: 1;
+  min-width: 0;
+}
+.parameter-extents.playback-extents {
+  padding-left: 64px;
+}
+.animation-settings {
+  padding: 12px;
+  margin: 8px 0;
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 7px;
+  box-shadow: 0 3px 12px #213d2310;
+  font-size: 11px;
+  color: #425839;
+}
+.animation-speed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.animation-speed > span {
+  margin-right: auto;
+}
+.animation-speed output {
+  min-width: 34px;
+  text-align: center;
+}
+.animation-settings p {
+  margin: 5px 0 10px;
+}
+.animation-settings label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+.animation-settings select {
+  padding: 6px;
+  max-width: 100%;
+  border: 1px solid #dce4d7;
+  border-radius: 4px;
+  font: inherit;
+  color: inherit;
+  background: white;
+}
+.expression-options .color-picker {
+  border: 0;
+  padding: 0;
+  margin: 12px 0 0;
+  min-width: 0;
+}
+.color-picker legend {
+  font-size: 11px;
+  color: #425839;
+  padding: 0;
+}
+.color-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 7px;
+}
+.expression-options .color-picker label {
+  position: relative;
+  margin: 0;
+  padding: 6px 4px;
+  gap: 4px;
+  justify-content: flex-start;
+  border: 1px solid #dde5d9;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #425839;
+}
+.color-picker label:has(:checked) {
+  background: #eef4e8;
+  outline: 2px solid #53764b;
+  outline-offset: -2px;
+}
+.color-picker label:has(:focus-visible) {
+  outline: 3px solid #31598c;
+  outline-offset: 1px;
+}
+.expression-options .color-picker input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+}
+.color-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.curve-label.interactive-label {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.curve-label.interactive-label:active {
+  cursor: grabbing;
+}
+.curve-label.interactive-label:focus-visible {
+  outline: 2px solid #31598c;
+}
+.label-manager {
+  position: absolute;
+  z-index: 5;
+  top: 14px;
+  left: 14px;
+  width: min(285px, calc(100% - 70px));
+  max-height: calc(100% - 28px);
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #bccdb3;
+  border-radius: 9px;
+  padding: 14px;
+  box-shadow: 0 7px 28px #243b2529;
+  font-size: 12px;
+  color: #395335;
+}
+.label-manager header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.label-manager h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.label-manager label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.label-manager label > span {
+  margin-left: auto;
+}
+.label-manager input:not([type='range']),
+.label-manager select {
+  width: 100%;
+  padding: 7px;
+  border: 1px solid #d5dfcf;
+  border-radius: 4px;
+  font: inherit;
+  background: white;
+  color: inherit;
+}
+.label-manager input[type='range'] {
+  width: 100%;
+  accent-color: #36664d;
+}
+.label-rotation {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.label-rotation label {
+  flex: 1;
+}
+.label-manager p {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.label-manager footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.label-manager .button {
+  font-size: 11px;
+  padding: 8px 12px;
+  height: auto;
+}
+.calculator-main {
+  max-width: none;
+  padding: 28px 28px 24px;
+}
+.calculator-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.calculator-heading .back-link {
+  margin-bottom: 19px;
+}
+.calculator-heading .eyebrow {
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.calculator-heading h1 {
+  font-size: 27px;
+  overflow-wrap: anywhere;
+}
+.calculator-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.calculator-actions .button {
+  font-size: 11px;
+  height: 35px;
+}
+.history-buttons {
+  display: flex;
+  gap: 4px;
+  border-right: 1px solid var(--border);
+  padding-right: 13px;
+}
+.graph-workbench {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  border: 1px solid #dce4d7;
+  border-radius: 9px;
+  overflow: hidden;
+  background: white;
+}
+.expression-panel {
+  border-right: 1px solid #dce4d7;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fcfdfb;
+}
+.expression-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 18px 14px;
+}
+.expression-panel-heading h2 {
+  font-size: 14px;
+  font-weight: 650;
+  color: #365240;
+}
+.expression-panel-heading > span {
+  font-size: 11px;
+  color: #64765c;
+}
+.graph-add-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 12px 15px;
+  border-bottom: 1px solid #e1e7dc;
+}
+.graph-add-bar > button {
+  font-size: 11px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 5px;
+  height: 31px;
+  flex: 1 1 auto;
+  padding: 0 5px;
+  color: #527043;
+}
+.graph-add-bar > button:hover {
+  background: #eef4e8;
+}
+.expression-list {
+  max-height: 565px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #bfcbb6 transparent;
+}
+.expression-row {
+  padding: 14px 17px 15px;
+  border-bottom: 1px solid #e5eadf;
+  position: relative;
+  background: #fff;
+}
+.expression-row:last-child {
+  border-bottom: 0;
+}
+.expression-row.parameter {
+  background: #f7f9f3;
+}
+.expression-row.note {
+  background: #fcfbf5;
+}
+.expression-row.has-error {
+  background: #fff8f5;
+}
+.expression-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  min-height: 23px;
+}
+.expression-number {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: #596b50;
+}
+.entry-kind {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  font-weight: 600;
+  color: #596e4d;
+}
+.expression-row-top .icon-button {
+  width: 25px;
+  height: 23px;
+  color: #6a7a60;
+}
+.expression-row-top .curve-visibility {
+  margin-left: auto;
+}
+.expression-row-top .delete-entry {
+  margin-left: auto;
+}
+.expression-row-top .curve-visibility + .delete-entry {
+  margin-left: 0;
+}
+.expression-row-top .delete-entry:hover {
+  color: #a34537;
+  background: #faeee8;
+}
+.formula-input {
+  width: 100%;
+  min-width: 0;
+  font-family: 'Cambria Math', 'Consolas', monospace;
+  font-size: 17px;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+  padding: 7px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #263f32;
+}
+.formula-input:hover {
+  border-color: #dce5d3;
+  background: #fbfcf8;
+}
+.formula-input:focus {
+  border-color: #80a469;
+  background: white;
+  outline: 0;
+  box-shadow: 0 0 0 2px #dce9d1;
+}
+.formula-input::placeholder {
+  color: #738368;
+}
+.formula-input[aria-invalid='true'] {
+  border-color: #dcb1a4;
+}
+.expression-error {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #963e2c;
+  margin: 9px 0 0;
+  overflow-wrap: anywhere;
+}
+.expression-options {
+  margin-top: 9px;
+}
+.expression-options > summary,
+.parameter-settings > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #586f4b;
+  cursor: pointer;
+  width: fit-content;
+}
+.expression-options > summary::-webkit-details-marker,
+.parameter-settings > summary::-webkit-details-marker {
+  display: none;
+}
+.expression-options[open] > summary {
+  margin-bottom: 11px;
+}
+.expression-options label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #607653;
+  gap: 10px;
+  margin-top: 8px;
+}
+.expression-options input,
+.expression-options select {
+  width: 180px;
+  max-width: 75%;
+  font-size: 11px;
+  border: 1px solid #dbe4d1;
+  border-radius: 4px;
+  background: white;
+  padding: 7px;
+  color: #4f6d42;
+}
+.constant-result {
+  font-size: 12px;
+  font-family: Consolas, monospace;
+  margin-top: 12px;
+  color: #537244;
+}
+.parameter-definition {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 12px;
+  font-family: 'Cambria Math', Georgia, serif;
+  font-size: 19px;
+  color: #3a5432;
+}
+.parameter-definition input {
+  min-width: 0;
+  border: 1px solid #dce4d2;
+  border-radius: 4px;
+  padding: 5px 7px;
+  background: white;
+  width: 85px;
+  font-family: inherit;
+  font-size: 17px;
+}
+.parameter-definition .parameter-name {
+  width: 60px;
+  font-style: italic;
+  text-align: center;
+  background: transparent;
+  border-color: transparent;
+}
+.parameter-definition .parameter-name:hover,
+.parameter-definition .parameter-name:focus {
+  border-color: #9caf8c;
+  background: white;
+}
+.parameter-kind {
+  margin-left: auto;
+  font-family: 'DM Sans Variable', sans-serif;
+  font-size: 11px;
+  color: #637358;
+}
+.parameter-range {
+  width: 100%;
+  height: 18px;
+  accent-color: #36664d;
+  cursor: pointer;
+  margin: 1px 0;
+}
+.parameter-extents {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #627451;
+  padding: 0 2px;
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.parameter-settings[open] > summary {
+  margin-bottom: 14px;
+}
+.parameter-limits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.parameter-limits label {
+  display: block;
+  font-size: 11px;
+  color: #607352;
+}
+.parameter-limits input {
+  width: 100%;
+  border: 1px solid #d6e0ce;
+  border-radius: 4px;
+  background: white;
+  padding: 7px 5px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #365329;
+}
+.constant-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: #58704a;
+  margin: 13px 0;
+}
+.constant-option input {
+  accent-color: #36664d;
+}
+.parameter-settings .button {
+  font-size: 11px;
+  height: 29px;
+  width: 100%;
+}
+.expression-row.note textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 76px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 6px;
+  font-size: 12px;
+  color: #6b603f;
+  line-height: 1.7;
+  border-radius: 4px;
+}
+.expression-row.note textarea:focus {
+  background: #fffefb;
+  border-color: #c4b98f;
+  outline: 0;
+}
+.expression-row.note textarea::placeholder {
+  color: #766b4d;
+}
+.expression-panel-footer {
+  margin-top: auto;
+  padding: 14px 17px;
+  background: #f5f8ef;
+  border-top: 1px solid #e0e7d7;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.expression-panel-footer .text-button {
+  font-size: 11px;
+  justify-content: space-between;
+  padding: 0;
+}
+.expression-panel-footer > span {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #607253;
+}
+.expression-panel-footer > p,
+.expressions-empty {
+  font-size: 12px;
+  color: #65785a;
+  line-height: 1.7;
+  padding: 15px;
+}
+.graph-canvas-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.graph-display-options {
+  height: 48px;
+  padding: 0 18px;
+  border-bottom: 1px solid #e1e7db;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: #fcfdfb;
+}
+.graph-display-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #5d7151;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.graph-display-options input {
+  accent-color: #3c6b4b;
+}
+.graph-display-options > span {
+  font-size: 11px;
+  color: #67785b;
+  margin-left: auto;
+  text-align: right;
+}
+.graph-plot {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.plot-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 18px;
+  font-size: 11px;
+  color: #697b5c;
+}
+.plot-heading > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  font-weight: 600;
+}
+.plot-stage {
+  position: relative;
+  min-height: 480px;
+  height: calc(100vh - 305px);
+  max-height: 800px;
+  flex: 1;
+  overflow: hidden;
+}
+.plot-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: crosshair;
+  background: #fff;
+}
+.plot-svg:focus-visible {
+  outline-offset: -3px;
+}
+.is-panning .plot-svg {
+  cursor: grabbing;
+}
+.plot-grid line {
+  stroke: #e7ece4;
+  stroke-width: 1;
+}
+.plot-axes line {
+  stroke: #8f9f86;
+  stroke-width: 1.2;
+}
+.plot-ticks {
+  font-family: 'DM Sans Variable', sans-serif;
+  font-size: 11px;
+  fill: #607255;
+}
+.plot-ticks text {
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.curve-label {
+  font-family: 'Cambria Math', Georgia, serif;
+  font-size: 13px;
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.trace-line {
+  stroke: #bac8ad;
+  stroke-dasharray: 4 4;
+  pointer-events: none;
+}
+.plot-controls {
+  position: absolute;
+  right: 15px;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #d6e1cc;
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px #263c340a;
+}
+.plot-controls > button {
+  width: 33px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: #5f7950;
+  border-bottom: 1px solid #e4ebdc;
+  padding: 0;
+}
+.plot-controls > button:last-child {
+  border: 0;
+}
+.plot-controls > button:hover {
+  background: #eff5e9;
+  color: #355b29;
+}
+.plot-controls > button:focus-visible {
+  outline-offset: -3px;
+}
+.plot-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  padding: 50px;
+  text-align: center;
+}
+.plot-empty > span {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border: 1px solid #dce5d3;
+  border-radius: 12px;
+  background: #f6f9f0;
+  color: #708d56;
+  font-family: Georgia, serif;
+  font-size: 29px;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.plot-empty > strong {
+  font-family: 'Manrope Variable', sans-serif;
+  font-size: 18px;
+  color: #4f6a3f;
+  font-weight: 600;
+  background: #ffffffdd;
+  padding: 4px 6px;
+}
+.plot-empty > p {
+  font-size: 12px;
+  color: #667c56;
+  line-height: 1.7;
+  background: #ffffffdd;
+  max-width: 250px;
+}
+.plot-footer {
+  padding: 13px 17px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  border-top: 1px solid #e8ede2;
+  background: #fcfdfb;
+  font-size: 11px;
+  color: #64795a;
+}
+.plot-footer > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.plot-footer > span:last-child {
+  white-space: nowrap;
+}
+.trace-readout {
+  display: flex;
+  align-items: center;
+  gap: 10px 15px;
+  flex-wrap: wrap;
+  min-height: 42px;
+  padding: 12px 18px;
+  font-size: 11px;
+  color: #677b5b;
+  border-top: 1px solid #e8ede2;
+  font-variant-numeric: tabular-nums;
+}
+.trace-readout > strong {
+  font-weight: 600;
+  color: #405d35;
+}
+.trace-readout > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.trace-readout i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.plot-warnings {
+  background: #fff4ec;
+  color: #864b31;
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 13px 17px;
+}
+.bounds-panel {
+  position: absolute;
+  top: 16px;
+  right: 58px;
+  width: 250px;
+  background: #fff;
+  border: 1px solid #d7e1cd;
+  border-radius: 7px;
+  box-shadow: 0 5px 18px #263c341a;
+  padding: 17px;
+  z-index: 4;
+}
+.bounds-panel h3 {
+  font-size: 13px;
+  margin-bottom: 13px;
+  color: #446535;
+}
+.bounds-panel > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.bounds-panel label {
+  font-size: 11px;
+  color: #607a52;
+}
+.bounds-panel input {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px;
+  border: 1px solid #dce5d4;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.bounds-panel .button {
+  float: right;
+  height: 30px;
+  font-size: 11px;
+  padding: 0 10px;
+  margin-top: 14px;
+}
+.bounds-panel > .text-button {
+  margin-top: 14px;
+  font-size: 11px;
+}
+.bounds-panel p {
+  font-size: 11px;
+  color: #934832;
+  line-height: 1.6;
+  margin-top: 10px;
+}
+.graph-help {
+  padding: 23px;
+  background: #f1f5e9;
+  border: 1px solid #dce5d1;
+  border-radius: 7px;
+  margin-bottom: 20px;
+}
+.graph-help > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.graph-help h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #426333;
+}
+.graph-help p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #526b43;
+  margin-top: 10px;
+}
+.graph-help code {
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: #35572a;
+  background: #e5edda;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.help-examples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 20px;
+  margin: 15px 0;
+}
+.help-examples p {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 0;
+}
+.help-examples span {
+  font-size: 11px;
+}
+.example-confirm {
+  border: 1px solid #bacdad;
+  background: #f2f7e9;
+  border-radius: 7px;
+  padding: 20px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.example-confirm > div {
+  flex: 1;
+}
+.example-confirm strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #41662f;
+}
+.example-confirm p {
+  font-size: 11px;
+  color: #617852;
+  line-height: 1.7;
+  margin-top: 5px;
+}
+.open-calculator {
+  margin-top: 20px;
+  font-size: 11px;
+  height: 34px;
+}
+@media (min-width: 1600px) {
+  .calculator-main {
+    padding: 32px 38px;
+  }
+  .graph-workbench {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+  .expression-list {
+    max-height: calc(100vh - 360px);
+  }
+}
+@media (max-width: 1150px) {
+  .calculator-main {
+    padding: 24px 20px;
+  }
+  .graph-workbench {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  .graph-display-options > span {
+    display: none;
+  }
+  .calculator-actions {
+    gap: 8px;
+  }
+  .calculator-actions .button {
+    font-size: 11px;
+    padding: 0 10px;
+  }
+  .calculator-heading h1 {
+    font-size: 24px;
+  }
+  .expression-row {
+    padding: 13px;
+  }
+  .graph-add-bar {
+    gap: 4px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .graph-add-bar > button {
+    font-size: 11px;
+  }
+  .plot-heading {
+    padding: 12px;
+    font-size: 11px;
+    gap: 6px;
+  }
+  .plot-heading > span:first-child {
+    font-size: 11px;
+  }
+  .plot-footer {
+    padding: 12px 10px;
+    font-size: 11px;
+  }
+  .trace-readout {
+    padding: 12px;
+    font-size: 11px;
+  }
+  .bounds-panel {
+    width: 220px;
+    right: 53px;
+  }
+  .history-buttons {
+    padding-right: 7px;
+  }
+}
+@media (max-width: 950px) {
+  .calculator-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .calculator-actions {
+    margin-left: auto;
+  }
+  .graph-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .graph-canvas-column {
+    grid-row: 1;
+  }
+  .expression-panel {
+    border-right: 0;
+    border-top: 1px solid #dce4d7;
+  }
+  .expression-list {
+    max-height: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .expression-row {
+    border-right: 1px solid #e5eadf;
+  }
+  .plot-stage {
+    height: 390px;
+    min-height: 390px;
+    max-height: 390px;
+  }
+  .graph-display-options > span {
+    display: block;
+  }
+  .expression-panel-heading {
+    padding: 16px;
+  }
+  .graph-add-bar {
+    justify-content: flex-start;
+    padding-left: 16px;
+  }
+  .graph-add-bar > button {
+    font-size: 11px;
+    flex: 0 1 auto;
+    padding: 0 13px;
+    gap: 6px;
+  }
+  .expression-panel-footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .plot-heading {
+    font-size: 11px;
+  }
+  .plot-heading > span:first-child {
+    font-size: 11px;
+  }
+  .plot-footer,
+  .trace-readout {
+    font-size: 11px;
+  }
+  .calculator-actions .button {
+    font-size: 11px;
+  }
+  .graph-workbench .formula-input {
+    font-size: 16px;
+  }
+}
+@media (max-width: 520px) {
+  .calculator-main {
+    padding: 20px 12px;
+  }
+  .calculator-heading {
+    gap: 10px;
+    margin-bottom: 17px;
+  }
+  .calculator-heading h1 {
+    font-size: 23px;
+  }
+  .calculator-heading .back-link {
+    margin-bottom: 17px;
+  }
+  .calculator-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .calculator-actions .button {
+    font-size: 11px;
+    padding: 0 11px;
+  }
+  .calculator-heading .eyebrow {
+    font-size: 11px;
+  }
+  .graph-display-options {
+    padding: 0 12px;
+    gap: 14px;
+    height: 43px;
+  }
+  .graph-display-options > span {
+    font-size: 11px;
+    max-width: 100px;
+  }
+  .graph-display-options label {
+    font-size: 11px;
+  }
+  .plot-stage {
+    height: 350px;
+    min-height: 350px;
+    max-height: 350px;
+  }
+  .plot-controls {
+    right: 10px;
+    top: 9px;
+  }
+  .plot-footer {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .trace-readout {
+    font-size: 11px;
+  }
+  .expression-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .expression-row {
+    border-right: 0;
+    padding: 14px 17px;
+  }
+  .expression-row-top .icon-button {
+    width: 30px;
+    height: 28px;
+  }
+  .graph-add-bar > button {
+    flex: 1;
+    font-size: 11px;
+    padding: 0 8px;
+    height: 34px;
+  }
+  .entry-kind {
+    font-size: 11px;
+  }
+  .formula-input {
+    font-size: 17px !important;
+  }
+  .expression-options > summary,
+  .parameter-settings > summary {
+    font-size: 11px;
+  }
+  .parameter-kind,
+  .parameter-extents {
+    font-size: 11px;
+  }
+  .expression-panel-footer {
+    font-size: 11px;
+    flex-wrap: wrap;
+  }
+  .expression-panel-footer .text-button {
+    font-size: 11px;
+  }
+  .help-examples {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .graph-help {
+    padding: 16px;
+  }
+  .graph-help p {
+    font-size: 11px;
+  }
+  .graph-help code {
+    font-size: 11px;
+  }
+  .bounds-panel {
+    width: 245px;
+    right: 50px;
+    padding: 14px;
+  }
+  .example-confirm {
+    flex-wrap: wrap;
+    padding: 17px;
+  }
+  .example-confirm > div {
+    flex-basis: 100%;
+  }
+  .plot-empty {
+    padding: 45px 25px;
+  }
+  .plot-empty > strong {
+    font-size: 16px;
+  }
+}

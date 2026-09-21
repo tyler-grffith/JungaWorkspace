@@ -86,3 +86,11 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 - Node 24 `npm ci` and `npm run check` pass (87 unit tests/build). Eleven targeted browser tests pass, including real production-build tests under a nested directory/direct index URL with no root asset fallback; existing scene and designer behavior remains passing. Feature/task/handoff updated; no deployment, library transfer or ProductManagement edits.
 
 Weekly addendum: the integrated Junga build is now portable to a personal-site subfolder without a folder-specific rebuild.
+
+## Daily — September 21, 2026 — Branch consolidation into `main`
+
+- At Tyler's explicit direction, merged all three outstanding branches into `main` via `gh pr merge --admin`, in order: PR #1 (GitHub collaboration baseline, clean fast-forward), PR #2 (extensible baseline, clean rebase), PR #3 (Cosmic Clock outputs + subfolder hosting, committed from the previously-uncommitted worktree, then rebased onto post-registry `main`).
+- Rebasing PR #3 produced real conflicts in `src/App.tsx` and `src/library.ts` (both branches had independently modified project-type handling and tool rendering); resolved by hand, keeping the registry-driven module/example rendering and layering the Code project branch on top.
+- `tests/cosmic-clock.spec.ts`'s reload test needed `test.setTimeout(90000)`: it exceeded the default 30s limit on GitHub Actions' software-rendered runner (passed locally without the extension).
+- Deleted the standalone `Cosmic Clock` repo that had been copied into this repo's working tree (superseded by `src/interactive-scenes/cosmic-clock/`) and its stray duplicate of the integration worktree, and removed the `~/Work/Creative Code/Cosmic Clock/junga-integration` git worktree and the three merged branches (local and remote).
+- Verification on `main`: `npm run check` passes (93 unit tests, TypeScript, build); all 65 Playwright tests pass (chromium + designer projects); manual check confirmed the Cosmic Clock project → Earth Clock output flow renders correctly.

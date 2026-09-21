@@ -1617,7 +1617,7 @@ export default function App() {
                 <div className="heading-actions">
                   {view === 'all' && (
                     <button className="button secondary" onClick={addCosmicClock}>
-                      Create Cosmic Clock project
+                      Cosmic Clock
                     </button>
                   )}
                   {view === 'all' &&

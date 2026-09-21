@@ -1,6 +1,6 @@
 # Cosmic Clock in Junga
 
-Cosmic Clock is a **code project**. Earth Clock is its first **interactive-scene output**. Create it intentionally with **Create Cosmic Clock project** in the library; nothing is seeded automatically. A generic Code project can also attach an Earth Clock output.
+Cosmic Clock is a **code project**. Earth Clock is its first **interactive-scene output**. Create it intentionally with **Cosmic Clock** in the library; nothing is seeded automatically. A generic Code project can also attach an Earth Clock output.
 
 The light source overview separates **Working material** (the versioned repository manifest, sources, asset licenses and configuration) from **Outputs**. **Edit output settings → Apply output settings** saves metadata and validated defaults. This app does not edit or synchronize repository source files. In-browser programming requires a separate architecture decision.
 

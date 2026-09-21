@@ -23,6 +23,9 @@ async function accessible(page: Page) {
 }
 
 test('template, viewer, temporary interactions, reload, and source ownership', async ({ page }) => {
+  // Two full WebGL scene loads plus two accessibility scans can exceed the default
+  // test timeout on slower/software-rendered CI runners.
+  test.setTimeout(90000)
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await create(page)

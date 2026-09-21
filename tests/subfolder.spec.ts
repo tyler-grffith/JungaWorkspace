@@ -87,7 +87,7 @@ for (const entry of ['directory', 'index.html'] as const) {
         page.locator('.brand img').evaluate((image) => (image as HTMLImageElement).naturalWidth),
       )
       .toBeGreaterThan(0)
-    await page.getByRole('button', { name: 'Create Cosmic Clock project', exact: true }).click()
+    await page.getByRole('button', { name: 'Cosmic Clock', exact: true }).click()
     const sourceRoute = page.url()
     const creditLink = page.getByRole('link', {
       name: 'Asset attribution, licenses & original sources ↗',

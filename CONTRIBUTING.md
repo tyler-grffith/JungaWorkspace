@@ -61,6 +61,8 @@ gh pr create --base main
 
 If you do not have direct write access and the repository is public, use a fork and submit a PR. A private repository requires an invitation before cloning. For agents on Tyler's other computers, authenticating the same GitHub account needs no collaborator invitation. Other humans should use their own accounts; Tyler chooses who receives write access. Never share Tyler's credentials with another collaborator.
 
+[docs/RELEASING.md](docs/RELEASING.md) is the end-to-end runbook: branch, PR, merge, bringing local `main` up to date, and deploying the website.
+
 The CI workflow checks dependencies, unit tests, TypeScript/build, and Chromium behavior/accessibility on a GitHub-hosted Linux runner. PR updates cancel obsolete runs. It has read-only repository permissions and no deployment step. Failed browser runs retain test artifacts for seven days. Untrusted fork workflow runs can require owner approval through GitHub.
 
 ## Review and ownership

@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright'
 
 async function create(page: Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Create Cosmic Clock project', exact: true }).click()
+  await page.getByRole('button', { name: 'Cosmic Clock', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Cosmic Clock', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Working material' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Outputs', exact: true })).toBeVisible()

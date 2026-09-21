@@ -5,7 +5,7 @@ const bundled = {
   ...import.meta.glob(
     [
       '/src/interactive-scenes/cosmic-clock/**/*.{ts,tsx,js,mjs,css,md,vert,frag}',
-      '!/src/interactive-scenes/cosmic-clock/**/*.test.js',
+      '!/src/interactive-scenes/cosmic-clock/**/*.test.*',
     ],
     { query: '?raw', import: 'default' },
   ),

@@ -29,4 +29,9 @@ describe('bundled source material', () => {
     expect(materialFor('src/library.ts')).toBeNull()
     expect(materialFor('elsewhere/notes.txt')).toBeNull()
   })
+  it('keeps test files out of the bundle, whatever their extension', () => {
+    // A leaked test file ships to the website inside the production build.
+    expect(materialFor('src/interactive-scenes/cosmic-clock/sources.test.ts')).toBeNull()
+    expect(materialFor('src/interactive-scenes/cosmic-clock/clock.test.js')).toBeNull()
+  })
 })

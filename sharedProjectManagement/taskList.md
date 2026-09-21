@@ -4,6 +4,8 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 **Feature documentation:** Each time an agent implements a feature at Tyler's request, create a concise markdown file in `features/`, one file per feature. Follow [implicit equations](<features/implicit equations.md>): feature title, Context, Tyler's Request, Conceptual gaps I, the agent, filled in, and What details should Tyler be able to fine tune by hand? Distinguish current in-app controls from possible refinements; update an existing feature's record when extending it.
 
+**Open questions:** Undecided big-picture questions live in [openQuestions.md](openQuestions.md) — product shape, multi-user, workflow, and automation. Nothing there is a decision; when one is settled it moves into [the decision log](../docs/DECISIONS.md) and, if it creates work, into this file.
+
 **Target:** a functional browser prototype by **October 15, 2026**, with library organization, a spreadsheet, and a graphing calculator. The owner has now requested the first spreadsheet/graph integration using Octahedron Sections. The second half of the semester is for UX refinement and launching to other users.
 
 ## Next up

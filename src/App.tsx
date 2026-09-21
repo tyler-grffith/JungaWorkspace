@@ -1,3 +1,5 @@
+import CodeProjectOverview from './CodeProjectOverview'
+import OutputPage from './OutputPage'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Archive,
@@ -34,6 +36,9 @@ import {
   X,
 } from 'lucide-react'
 import {
+  createCosmicClock,
+  addEarthClock,
+  saveOutput,
   actOnProject,
   addProject,
   duplicateProject,
@@ -53,6 +58,7 @@ import {
   type Project,
   type ProjectAction,
   type ProjectInput,
+  type ProjectType,
   type Sort,
   type Tool,
   type View,
@@ -94,9 +100,10 @@ function ToolIcon({ tool, size = 18 }: { tool: Tool; size?: number }) {
   const Icon = moduleById[tool].icon
   return <Icon size={size} />
 }
-function ToolLabels({ tools }: { tools: Tool[] }) {
+function ToolLabels({ tools, code = false }: { tools: Tool[]; code?: boolean }) {
   return (
     <span className="tool-labels">
+      {code && <span>Code project</span>}
       {tools.map((tool) => (
         <span key={tool}>
           <ToolIcon tool={tool} size={13} />
@@ -107,13 +114,22 @@ function ToolLabels({ tools }: { tools: Tool[] }) {
   )
 }
 
-function ProjectArt({ tools, large = false }: { tools: Tool[]; large?: boolean }) {
+function ProjectArt({
+  tools,
+  large = false,
+  code = false,
+}: {
+  tools: Tool[]
+  large?: boolean
+  code?: boolean
+}) {
   return (
     <div
-      className={`project-art ${tools.length === 2 ? 'mixed-art' : tools[0]} ${large ? 'large-art' : ''}`}
+      className={`project-art ${code ? 'code-art' : tools.length === 2 ? 'mixed-art' : tools[0]} ${large ? 'large-art' : ''}`}
       aria-hidden="true"
     >
-      {tools.includes('graph') && (
+      {code && <span>{'</>'}</span>}
+      {!code && tools.includes('graph') && (
         <svg className="graph-art" viewBox="0 0 320 140" fill="none">
           <path className="art-axis" d="M20 100H306M72 14V129" />
           <path
@@ -127,7 +143,7 @@ function ProjectArt({ tools, large = false }: { tools: Tool[]; large?: boolean }
           <circle cx="107" cy="32" r="4" className="art-dot" />
         </svg>
       )}
-      {tools.includes('sheet') && (
+      {!code && tools.includes('sheet') && (
         <div className="sheet-art">
           <div className="sheet-ruler">
             <span />
@@ -213,6 +229,7 @@ function ProjectForm({
   const [title, setTitle] = useState(project?.title ?? '')
   const [description, setDescription] = useState(project?.description ?? '')
   const [tools, setTools] = useState<Tool[]>(project?.tools ?? ['graph', 'sheet'])
+  const [projectType, setProjectType] = useState<ProjectType>(project?.projectType ?? 'workable')
   const [collection, setCollection] = useState(project?.collectionId ?? collectionId ?? '')
   const [referenceUrl, setReferenceUrl] = useState(project?.referenceUrl ?? '')
   const [validation, setValidation] = useState('')
@@ -222,12 +239,19 @@ function ProjectForm({
       setValidation('Give your project a name.')
       return
     }
-    if (!tools.length) {
+    if (projectType === 'workable' && !tools.length) {
       setValidation('Choose at least one tool.')
       return
     }
     setValidation('')
-    onSave({ title, description, tools, collectionId: collection || null, referenceUrl })
+    onSave({
+      title,
+      description,
+      tools: projectType === 'code' ? [] : tools,
+      projectType,
+      collectionId: collection || null,
+      referenceUrl,
+    })
   }
   return (
     <form onSubmit={submit} className="project-form">
@@ -252,29 +276,44 @@ function ProjectForm({
           placeholder="What are you working on?"
         />
       </label>
-      <fieldset>
-        <legend>Tools in this project</legend>
-        <div className="tool-choices">
-          {modules.map(({ id: tool, name }) => (
-            <label className={`tool-choice ${tools.includes(tool) ? 'selected' : ''}`} key={tool}>
-              <input
-                type="checkbox"
-                checked={tools.includes(tool)}
-                onChange={(e) =>
-                  setTools(e.target.checked ? [...tools, tool] : tools.filter((t) => t !== tool))
-                }
-              />
-              <ToolIcon tool={tool} size={23} />
-              <span>{name}</span>
-              <span className="check-box">{tools.includes(tool) && <Check size={13} />}</span>
-            </label>
-          ))}
-        </div>
+      <label>
+        Project type
+        <select value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)}>
+          <option value="workable">Workable project</option>
+          <option value="code">Code project</option>
+        </select>
+      </label>
+      {projectType === 'code' && (
         <p className="field-hint">
-          Choose one tool or several. Open a spreadsheet and graph side by side to connect
-          spreadsheet cells to plotted points.
+          Manage repository source references and authored output settings. Code remains
+          repository-managed.
         </p>
-      </fieldset>
+      )}
+      {projectType === 'workable' && (
+        <fieldset>
+          <legend>Tools in this project</legend>
+          <div className="tool-choices">
+            {modules.map(({ id: tool, name }) => (
+              <label className={`tool-choice ${tools.includes(tool) ? 'selected' : ''}`} key={tool}>
+                <input
+                  type="checkbox"
+                  checked={tools.includes(tool)}
+                  onChange={(e) =>
+                    setTools(e.target.checked ? [...tools, tool] : tools.filter((t) => t !== tool))
+                  }
+                />
+                <ToolIcon tool={tool} size={23} />
+                <span>{name}</span>
+                <span className="check-box">{tools.includes(tool) && <Check size={13} />}</span>
+              </label>
+            ))}
+          </div>
+          <p className="field-hint">
+            Choose one tool or several. Open a spreadsheet and graph side by side to connect
+            spreadsheet cells to plotted points.
+          </p>
+        </fieldset>
+      )}
       <label>
         Collection
         <select value={collection} onChange={(e) => setCollection(e.target.value)}>
@@ -464,7 +503,7 @@ function ProjectCard({
           open(project)
         }}
       >
-        <ProjectArt tools={project.tools} />
+        <ProjectArt tools={project.tools} code={project.projectType === 'code'} />
       </a>
       <div className="card-body">
         <div className="card-heading">
@@ -483,7 +522,7 @@ function ProjectCard({
         <p className="card-description">
           {project.description || 'A little space for your next idea.'}
         </p>
-        <ToolLabels tools={project.tools} />
+        <ToolLabels tools={project.tools} code={project.projectType === 'code'} />
         <div className="card-footer">
           <span className="card-collection">
             <Folder size={13} />
@@ -520,11 +559,15 @@ export default function App() {
   const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
   const [sheetDraft, setSheetDraft] = useState<{ id: string; value: SheetDocument } | null>(null)
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
+  const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
-      if ((notesDraft || graphDraft || sheetDraft || sheetEditing) && readRoute() !== route) {
+      if (
+        (notesDraft || graphDraft || sheetDraft || sheetEditing || outputEditing) &&
+        readRoute() !== route
+      ) {
         if (
           !window.confirm(
             'Your latest changes have not been saved. Leave this project and discard those unsaved changes?',
@@ -542,16 +585,16 @@ export default function App() {
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
-  }, [notesDraft, graphDraft, sheetDraft, sheetEditing, route])
+  }, [notesDraft, graphDraft, sheetDraft, sheetEditing, outputEditing, route])
   useEffect(() => {
-    if (!notesDraft && !graphDraft && !sheetDraft && !sheetEditing) return
+    if (!notesDraft && !graphDraft && !sheetDraft && !sheetEditing && !outputEditing) return
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [notesDraft, graphDraft, sheetDraft, sheetEditing])
+  }, [notesDraft, graphDraft, sheetDraft, sheetEditing, outputEditing])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -583,6 +626,8 @@ export default function App() {
           : 'all'
   const projectId = route.startsWith('#/project/') ? route.slice(10).split('/')[0] : null
   const currentProject = library?.projects.find((p) => p.id === projectId)
+  const outputRoute = /^#\/project\/[^/]+\/output\/([^/]+)$/.exec(route)
+  const currentOutput = currentProject?.outputs.find((output) => output.id === outputRoute?.[1])
   if (library && currentProject) draftBase.current = library
   const projectTools = currentProject?.tools ?? []
   const openModule = currentProject ? moduleForRoute(route, projectTools) : null
@@ -623,8 +668,8 @@ export default function App() {
             ? (currentCollection?.name ?? 'Collection not found')
             : design.library.title
   useEffect(() => {
-    document.title = `${currentProject?.title ?? title} · Junga`
-  }, [title, currentProject?.title])
+    document.title = `${currentOutput ? currentOutput.title + ' · ' : ''}${currentProject?.title ?? title} · Junga`
+  }, [title, currentProject?.title, currentOutput?.title])
 
   function navigate(view: View) {
     window.location.hash = viewRoute(view)
@@ -670,6 +715,17 @@ export default function App() {
       commit((current) => initializeTools(current, project.id, tools))
     )
       window.location.hash = `${projectRoute(project.id)}/${segment}`
+  }
+  function addCosmicClock() {
+    let id = ''
+    if (
+      commit((current) => {
+        const result = createCosmicClock(current, currentCollection?.id ?? null)
+        id = result.project.id
+        return result.library
+      })
+    )
+      window.location.hash = projectRoute(id)
   }
   function createExample(example: ExampleProject) {
     let id = ''
@@ -769,7 +825,7 @@ export default function App() {
       })
     }
   }
-  const hasDrafts = !!(notesDraft || graphDraft || sheetDraft || sheetEditing)
+  const hasDrafts = !!(notesDraft || graphDraft || sheetDraft || sheetEditing || outputEditing)
   const backupDialog = modal?.kind === 'backup' && (
     <Modal
       title="Restore library backup"
@@ -834,6 +890,8 @@ export default function App() {
       </main>
     )
 
+  if (outputRoute) return <OutputPage project={currentProject} output={currentOutput} />
+
   const projects = selectProjects(library, view, query, tool, sort)
   const total = selectProjects(library, view).length
   const activeCount = selectProjects(library, 'all').length
@@ -870,7 +928,7 @@ export default function App() {
         className={`sidebar ${sidebarOpen ? 'is-open' : ''}`}
       >
         <a href="#/all" className="brand" aria-label="Junga home">
-          <img src="/favicon.svg" alt="" width="35" height="35" />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="35" height="35" />
           <span>
             junga<span className="brand-subtitle">{design.shell.brandSubtitle}</span>
           </span>
@@ -998,7 +1056,7 @@ export default function App() {
             <DesignerSwitch />
             <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
               <span className="status-dot" />
-              {saveError || notesDraft || graphDraft || sheetDraft
+              {saveError || notesDraft || graphDraft || sheetDraft || outputEditing
                 ? 'Changes not saved'
                 : sheetEditing
                   ? 'Editing cell'
@@ -1167,14 +1225,20 @@ export default function App() {
                   </button>
                   <div className="project-detail-heading">
                     <div className="detail-icon">
-                      {currentProject.tools.length > 1 ? (
+                      {currentProject.projectType === 'code' ? (
+                        <span aria-hidden="true">{'</>'}</span>
+                      ) : currentProject.tools.length > 1 ? (
                         <Layers3 size={27} />
                       ) : (
                         <ToolIcon tool={currentProject.tools[0]} size={27} />
                       )}
                     </div>
                     <div className="detail-title">
-                      <div className="eyebrow">PROJECT OVERVIEW</div>
+                      <div className="eyebrow">
+                        {currentProject.projectType === 'code'
+                          ? 'CODE PROJECT · SOURCE'
+                          : 'PROJECT OVERVIEW'}
+                      </div>
                       <h1>{currentProject.title}</h1>
                     </div>
                     <div className="detail-actions">
@@ -1243,146 +1307,161 @@ export default function App() {
                     <span>Created {formatDate(currentProject.createdAt)}</span>
                     <span>Updated {formatDate(currentProject.updatedAt)}</span>
                   </div>
-                  <div className="project-detail-grid">
-                    <section className="project-main">
-                      <div className="section-heading">
-                        <h2>Project tools</h2>
-                        <span>
-                          {currentProject.tools.length}{' '}
-                          {currentProject.tools.length === 1 ? 'tool' : 'tools'}
-                        </span>
-                      </div>
-                      {projectViews.map((v) => (
-                        <button
-                          key={v.id}
-                          className="button primary open-linked-workspace"
-                          onClick={() => openEditor(currentProject, v.requires, v.route)}
-                        >
-                          <v.icon size={17} />
-                          {v.openLabel}
-                          <ArrowRight size={15} />
-                        </button>
-                      ))}
-                      <div className="tool-panels">
-                        {currentProject.tools.map((t) => {
-                          const m = moduleById[t]
-                          return (
-                            <div className={`tool-panel ${m.cssClass}`} key={t}>
-                              <div className="tool-panel-icon">
-                                <ToolIcon tool={t} size={25} />
+                  {currentProject.projectType === 'code' && (
+                    <CodeProjectOverview
+                      key={currentProject.id}
+                      project={currentProject}
+                      onDraftChange={setOutputEditing}
+                      onSave={(output, expected) =>
+                        commit((current) =>
+                          saveOutput(current, currentProject.id, output, expected),
+                        )
+                      }
+                      onAdd={() => commit((current) => addEarthClock(current, currentProject.id))}
+                    />
+                  )}
+                  {currentProject.projectType !== 'code' && (
+                    <div className="project-detail-grid">
+                      <section className="project-main">
+                        <div className="section-heading">
+                          <h2>Project tools</h2>
+                          <span>
+                            {currentProject.tools.length}{' '}
+                            {currentProject.tools.length === 1 ? 'tool' : 'tools'}
+                          </span>
+                        </div>
+                        {projectViews.map((v) => (
+                          <button
+                            key={v.id}
+                            className="button primary open-linked-workspace"
+                            onClick={() => openEditor(currentProject, v.requires, v.route)}
+                          >
+                            <v.icon size={17} />
+                            {v.openLabel}
+                            <ArrowRight size={15} />
+                          </button>
+                        ))}
+                        <div className="tool-panels">
+                          {currentProject.tools.map((t) => {
+                            const m = moduleById[t]
+                            return (
+                              <div className={`tool-panel ${m.cssClass}`} key={t}>
+                                <div className="tool-panel-icon">
+                                  <ToolIcon tool={t} size={25} />
+                                </div>
+                                <h3>{m.longName}</h3>
+                                <p>{m.description}</p>
+                                <button
+                                  className="button primary open-calculator"
+                                  onClick={() => openEditor(currentProject, [t], m.route)}
+                                >
+                                  {m.openLabel}
+                                  <ArrowRight size={15} />
+                                </button>
                               </div>
-                              <h3>{m.longName}</h3>
-                              <p>{m.description}</p>
+                            )
+                          })}
+                        </div>
+                        <div className="section-heading notes-heading">
+                          <h2>
+                            <StickyNote size={18} />
+                            Project notes
+                          </h2>
+                          <span>
+                            <CheckCheck size={14} />
+                            {notesDraft ? 'Draft not saved' : 'Saved as you type'}
+                          </span>
+                        </div>
+                        <textarea
+                          className="notes-editor"
+                          aria-label="Project notes"
+                          placeholder="Capture an idea, outline your model, or leave a note for next time…"
+                          value={
+                            notesDraft?.id === currentProject.id
+                              ? notesDraft.value
+                              : currentProject.notes
+                          }
+                          maxLength={20000}
+                          disabled={currentProject.status === 'trashed'}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setNotesDraft({ id: currentProject.id, value })
+                            if (commit((current) => saveNotes(current, currentProject.id, value)))
+                              setNotesDraft(null)
+                          }}
+                        />
+                        <>
+                          {notesDraft?.id === currentProject.id && (
+                            <div className="unsaved-note" role="status">
+                              <span>Your draft is kept on this page. Save it before leaving.</span>
                               <button
-                                className="button primary open-calculator"
-                                onClick={() => openEditor(currentProject, [t], m.route)}
+                                className="button secondary"
+                                onClick={() => {
+                                  if (
+                                    commit((current) =>
+                                      saveNotes(current, currentProject.id, notesDraft.value),
+                                    )
+                                  ) {
+                                    setNotesDraft(null)
+                                    setToast({ text: 'Notes saved.' })
+                                  }
+                                }}
                               >
-                                {m.openLabel}
-                                <ArrowRight size={15} />
+                                Retry saving notes
                               </button>
                             </div>
-                          )
-                        })}
-                      </div>
-                      <div className="section-heading notes-heading">
-                        <h2>
-                          <StickyNote size={18} />
-                          Project notes
-                        </h2>
-                        <span>
-                          <CheckCheck size={14} />
-                          {notesDraft ? 'Draft not saved' : 'Saved as you type'}
-                        </span>
-                      </div>
-                      <textarea
-                        className="notes-editor"
-                        aria-label="Project notes"
-                        placeholder="Capture an idea, outline your model, or leave a note for next time…"
-                        value={
-                          notesDraft?.id === currentProject.id
-                            ? notesDraft.value
-                            : currentProject.notes
-                        }
-                        maxLength={20000}
-                        disabled={currentProject.status === 'trashed'}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setNotesDraft({ id: currentProject.id, value })
-                          if (commit((current) => saveNotes(current, currentProject.id, value)))
-                            setNotesDraft(null)
-                        }}
-                      />
-                      <>
-                        {notesDraft?.id === currentProject.id && (
-                          <div className="unsaved-note" role="status">
-                            <span>Your draft is kept on this page. Save it before leaving.</span>
-                            <button
-                              className="button secondary"
-                              onClick={() => {
-                                if (
-                                  commit((current) =>
-                                    saveNotes(current, currentProject.id, notesDraft.value),
-                                  )
-                                ) {
-                                  setNotesDraft(null)
-                                  setToast({ text: 'Notes saved.' })
+                          )}
+                        </>
+                        <p className="notes-footnote">
+                          A little context now makes it easier to pick up later.
+                        </p>
+                      </section>
+                      <aside className="project-context" aria-label="Project references and context">
+                        <h2>Project reference</h2>
+                        {currentProject.referenceUrl ? (
+                          <a
+                            className="reference-card"
+                            href={currentProject.referenceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <span className="reference-icon">
+                              <ExternalLink size={18} />
+                            </span>
+                            <strong>{new URL(currentProject.referenceUrl).hostname}</strong>
+                            <span>
+                              Open reference
+                              <ExternalLink size={13} />
+                            </span>
+                          </a>
+                        ) : (
+                          <div className="no-reference">
+                            <ExternalLink size={21} />
+                            <p>Keep a link to the inspiration or source behind your project.</p>
+                            {currentProject.status !== 'trashed' && (
+                              <button
+                                className="text-button"
+                                onClick={() =>
+                                  showModal({ kind: 'project', project: currentProject })
                                 }
-                              }}
-                            >
-                              Retry saving notes
-                            </button>
+                              >
+                                Add a reference
+                                <Plus size={14} />
+                              </button>
+                            )}
                           </div>
                         )}
-                      </>
-                      <p className="notes-footnote">
-                        A little context now makes it easier to pick up later.
-                      </p>
-                    </section>
-                    <aside className="project-context" aria-label="Project references and context">
-                      <h2>Project reference</h2>
-                      {currentProject.referenceUrl ? (
-                        <a
-                          className="reference-card"
-                          href={currentProject.referenceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <span className="reference-icon">
-                            <ExternalLink size={18} />
-                          </span>
-                          <strong>{new URL(currentProject.referenceUrl).hostname}</strong>
-                          <span>
-                            Open reference
-                            <ExternalLink size={13} />
-                          </span>
-                        </a>
-                      ) : (
-                        <div className="no-reference">
-                          <ExternalLink size={21} />
-                          <p>Keep a link to the inspiration or source behind your project.</p>
-                          {currentProject.status !== 'trashed' && (
-                            <button
-                              className="text-button"
-                              onClick={() =>
-                                showModal({ kind: 'project', project: currentProject })
-                              }
-                            >
-                              Add a reference
-                              <Plus size={14} />
-                            </button>
-                          )}
+                        <div className="context-tip">
+                          <FolderOpen size={22} />
+                          <h3>A home for the whole project</h3>
+                          <p>
+                            Your notes, references, and tools stay together. Each tool will have its
+                            own working data.
+                          </p>
                         </div>
-                      )}
-                      <div className="context-tip">
-                        <FolderOpen size={22} />
-                        <h3>A home for the whole project</h3>
-                        <p>
-                          Your notes, references, and tools stay together. Each tool will have its
-                          own working data.
-                        </p>
-                      </div>
-                    </aside>
-                  </div>
+                      </aside>
+                    </div>
+                  )}
                 </>
               )
             ) : (
@@ -1414,6 +1493,11 @@ export default function App() {
                   </p>
                 </div>
                 <div className="heading-actions">
+                  {view === 'all' && (
+                    <button className="button secondary" onClick={addCosmicClock}>
+                      Create Cosmic Clock project
+                    </button>
+                  )}
                   {view === 'all' &&
                     design.library.showExamples &&
                     examples

@@ -66,3 +66,23 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 - Published the shared GitHub baseline in PR #1, enabled main-branch protection, and invited `bobjunga`. Agents and people use separate branches and PRs, with owner-controlled merges and deployment decisions. The public bootstrap branch is ready to clone before the initial merge.
 
 - Delivered working first versions of all three MVP components, manual backup recovery, spreadsheet/graph integration through Octahedron Sections, calculator interactions, and direct designer refinement controls. Current verification covers 67 unit and 58 browser tests. Shared priorities focus on hands-on review, the first remote PR/CI cycle, and example-driven refinements before October 15. External import and broader integration remain deferred. No merge or deployment performed.
+
+
+## Daily — September 20, 2026 — Cosmic Clock integration
+
+- Integrated the existing p5.js project on `codex/cosmic-clock-outputs` in an isolated Junga worktree. Added backward-compatible project types, owned scene definitions, a concrete source inventory, explicit defaults/metadata editing and an optional creation template. Bundled assets and licenses; no repository editor or iframe.
+- Separated authoring from the nested viewer route. Camera, clock and zone interaction cannot commit library changes. Added cancellation and disposal for imports, requests, events, observers, p5 canvases and GPU contexts. Preserved output content through project lifecycle and backups, with independent copied output IDs.
+- Node 24 `npm ci` and pinned dependency installation completed. `npm run check` passes: 87 unit tests plus TypeScript/build. All 63 browser tests pass across the full run and targeted reruns. Corrected select/date test locators, mobile template-action overflow and clock renders resetting partially entered dates. Verified desktop/mobile accessibility, metadata editing, unchanged persisted defaults, reloads and cleanup during loading/repeated visits. Manual preview confirmed day/night textures and city lights, India picking, Nepal local time and return cleanup.
+- Updated feature record, decisions, task list and handoff. Source editing/synchronization, further scene kinds and named authored presets remain separate work. No ProductManagement edits, existing-library mutation, commit, push, PR, merge or deployment. Original Junga checkout stays clean.
+
+## Weekly snippet — week ending September 20, 2026
+
+- Junga now has its first code project with an interactive-scene output, while ordinary project/tool workflows and old backups remain compatible. Ready for Tyler to review source/output ownership, editable starting defaults and the dark Earth Clock viewer. Source files remain repository-managed.
+
+
+### September 20 follow-up — portable hosting paths
+
+- Added Vite’s relative base, fixed the runtime logo and HTML entry/favicon references, and documented uploading `dist/` into any website folder. Confirmed `src/main.tsx` local imports already resolve correctly and the built entry points to a relative JavaScript bundle.
+- Node 24 `npm ci` and `npm run check` pass (87 unit tests/build). Eleven targeted browser tests pass, including real production-build tests under a nested directory/direct index URL with no root asset fallback; existing scene and designer behavior remains passing. Feature/task/handoff updated; no deployment, library transfer or ProductManagement edits.
+
+Weekly addendum: the integrated Junga build is now portable to a personal-site subfolder without a folder-specific rebuild.

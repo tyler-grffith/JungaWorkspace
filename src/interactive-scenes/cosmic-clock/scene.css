@@ -1,0 +1,324 @@
+.output-page {
+  min-height: 100dvh;
+  background: #080f15;
+}
+.output-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-height: 64px;
+  padding: 18px 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafbf9;
+  color: #263c34;
+  border-bottom: 1px solid #e4e9e2;
+}
+.output-header a,
+.output-header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.output-header a {
+  font-weight: 600;
+}
+.output-header span {
+  font-size: 12px;
+}
+.output-page .empty-state {
+  background: #fafbf9;
+  padding: 100px 24px;
+}
+.cosmic-clock-viewer {
+  color: #eef0e9;
+  background: radial-gradient(ellipse at 38% 35%, #152330 0%, #0a131d 43%, #080f15 75%);
+  padding: 38px clamp(20px, 4vw, 64px) 24px;
+  min-height: calc(100dvh - 64px);
+}
+.cosmic-clock-viewer .cc-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #bdc9ce;
+  font-weight: 500;
+}
+.cosmic-clock-viewer .cc-intro {
+  max-width: 780px;
+}
+.cosmic-clock-viewer .cc-intro h1 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(42px, 5vw, 70px);
+  letter-spacing: -0.025em;
+  margin: 8px 0;
+  line-height: 1;
+}
+.cosmic-clock-viewer .cc-intro > p:last-child {
+  color: #bdc9ce;
+  max-width: 620px;
+  line-height: 1.7;
+}
+.cosmic-clock-viewer .cc-experience {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 32px;
+  align-items: center;
+}
+.cosmic-clock-viewer .cc-globe-wrap {
+  position: relative;
+  min-width: 0;
+}
+.cosmic-clock-viewer .cc-globe {
+  position: relative;
+  width: 100%;
+  height: clamp(430px, 60vh, 680px);
+  touch-action: none;
+  cursor: grab;
+  border-radius: 16px;
+  outline-offset: -3px;
+}
+.cosmic-clock-viewer .cc-globe:active {
+  cursor: grabbing;
+}
+.cosmic-clock-viewer .cc-globe canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+.cosmic-clock-viewer .cc-globe:focus-visible {
+  outline: 2px solid #d9ba83;
+}
+.cosmic-clock-viewer .cc-instructions {
+  text-align: center;
+  color: #afbec8;
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 0 0 14px;
+}
+.cosmic-clock-viewer button,
+.cosmic-clock-viewer input,
+.cosmic-clock-viewer select {
+  color: #ecede8;
+  background: #15212c;
+  border: 1px solid #52606a;
+  border-radius: 7px;
+  min-height: 40px;
+  padding: 9px 12px;
+}
+.cosmic-clock-viewer input::placeholder {
+  color: #aebdc8;
+}
+.cosmic-clock-viewer input,
+.cosmic-clock-viewer select {
+  color-scheme: dark;
+  min-width: 0;
+  width: 100%;
+}
+.cosmic-clock-viewer label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  color: #c5ced1;
+}
+.cosmic-clock-viewer button:hover {
+  background: #263846;
+}
+.cosmic-clock-viewer button[aria-pressed='true'] {
+  color: #f8d6a0;
+  border-color: #b99a69;
+  background: #302e27;
+}
+.cosmic-clock-viewer :is(button, a, input, select, summary):focus-visible {
+  outline: 2px solid #f8d6a0;
+  outline-offset: 3px;
+}
+.cosmic-clock-viewer .cc-view-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cosmic-clock-viewer .cc-loading {
+  position: absolute;
+  inset: 36% 10% auto;
+  text-align: center;
+  padding: 24px;
+  background: #13212ce8;
+  border: 1px solid #3a4b57;
+  border-radius: 12px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.cosmic-clock-viewer .cc-tooltip {
+  position: absolute;
+  display: grid;
+  gap: 6px;
+  background: #14232feb;
+  border: 1px solid #76838b;
+  border-radius: 8px;
+  padding: 10px 14px;
+  pointer-events: none;
+  width: 176px;
+}
+.cosmic-clock-viewer .cc-tooltip span {
+  font-family: 'DM Mono', monospace;
+  color: #f8d6a0;
+}
+.cosmic-clock-viewer .cc-inspector {
+  border-left: 1px solid #394754;
+  padding: 28px 0 28px 28px;
+}
+.cosmic-clock-viewer .cc-inspector h2 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 38px;
+  font-weight: 400;
+  margin: 14px 0 4px;
+}
+.cosmic-clock-viewer .cc-zone-id {
+  font-size: 11px;
+  color: #bac8d0;
+  overflow-wrap: anywhere;
+}
+.cosmic-clock-viewer .cc-local-time {
+  font-family: 'DM Mono', monospace;
+  font-size: clamp(28px, 3.4vw, 43px);
+  letter-spacing: -0.055em;
+  margin: 24px 0 8px;
+}
+.cosmic-clock-viewer .cc-inspector > p {
+  line-height: 1.6;
+}
+.cosmic-clock-viewer .cc-offset {
+  margin-top: 12px;
+  color: #f8d6a0;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+}
+.cosmic-clock-viewer .cc-selection-hint {
+  min-height: 55px;
+  margin: 18px 0;
+  font-size: 12px;
+  color: #bac8d0;
+}
+.cosmic-clock-viewer .cc-search {
+  margin-top: 22px;
+}
+.cosmic-clock-viewer .cc-facts {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #394754;
+  margin-top: 25px;
+  padding-top: 20px;
+  color: #bac8d0;
+  font-size: 11px;
+}
+.cosmic-clock-viewer .cc-facts span {
+  display: grid;
+  gap: 6px;
+}
+.cosmic-clock-viewer .cc-facts strong {
+  font-size: 19px;
+  font-weight: 400;
+  color: #e5e6df;
+}
+.cosmic-clock-viewer .cc-time-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 25px 0;
+  margin-top: 28px;
+  border-block: 1px solid #394754;
+}
+.cosmic-clock-viewer .cc-moment {
+  display: grid;
+  gap: 12px;
+  align-self: center;
+}
+.cosmic-clock-viewer .cc-moment time {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+}
+.cosmic-clock-viewer .cc-playback,
+.cosmic-clock-viewer .cc-date-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.cosmic-clock-viewer .cc-playback label {
+  min-width: 112px;
+}
+.cosmic-clock-viewer .cc-date-form [role='alert'] {
+  flex-basis: 100%;
+  color: #ffbea8;
+}
+.cosmic-clock-viewer .cc-footer {
+  color: #afbec8;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+}
+.cosmic-clock-viewer .cc-footer details {
+  max-width: 650px;
+}
+.cosmic-clock-viewer .cc-footer summary {
+  cursor: pointer;
+  color: #e5e6df;
+}
+.cosmic-clock-viewer .cc-footer details p {
+  margin-top: 12px;
+}
+.cosmic-clock-viewer .cc-footer a {
+  display: inline-block;
+  margin: 12px 16px 0 0;
+  text-decoration: underline;
+  color: #f8d6a0;
+}
+@media (max-width: 760px) {
+  .output-header {
+    padding: 16px 20px;
+  }
+  .output-header span {
+    flex-basis: 100%;
+  }
+  .cosmic-clock-viewer {
+    padding-top: 26px;
+  }
+  .cosmic-clock-viewer .cc-experience {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .cosmic-clock-viewer .cc-globe {
+    height: 390px;
+  }
+  .cosmic-clock-viewer .cc-inspector {
+    border-left: 0;
+    border-top: 1px solid #394754;
+    padding: 26px 0 0;
+  }
+  .cosmic-clock-viewer .cc-local-time {
+    font-size: 44px;
+  }
+  .cosmic-clock-viewer .cc-time-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cosmic-clock-viewer .cc-moment {
+    align-self: start;
+  }
+  .cosmic-clock-viewer .cc-date-form label {
+    flex: 1;
+  }
+}

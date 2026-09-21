@@ -9,6 +9,16 @@ Open http://127.0.0.1:5173. The server listens only on this computer.
 
 Click **User mode** in the top bar to enter designer mode. Preview label controls, graph and spreadsheet layout, shared appearance, the workspace shell, and library copy; switch back to user mode to try the result, and **Save design** to keep accepted settings in `Design/settings.json`. Every control is one entry in `src/design/registry.ts`. The panel also prepares short requests for an agent. See [Small refinements](docs/REFINEMENTS.md). Production builds apply the saved design without designer editing access.
 
+## Hosting in a website subfolder
+
+Run `npm run build` with Node 24, then copy the **contents of `dist/`** into the chosen website folder, preserving its directory structure. For example, `https://your-site.example/junga/` can serve `index.html`, `favicon.svg`, and `assets/` together. The same build works at the site root or a deeper folder; no hostname or folder name is compiled into it.
+
+Vite uses `base: './'` to produce relative scripts, styles, fonts and CSS image references. Runtime assets use `import.meta.env.BASE_URL`, including the logo, Earth textures, time-zone data and credits. Keep the folder URL's trailing slash (the host should redirect `/junga` to `/junga/`), or open `/junga/index.html`. Routes stay in the hash, such as `/junga/#/project/<id>/output/<outputId>`, so they do not require server-side route rewrites. External design/source links keep their original URLs.
+
+Upload the built files, not the source/development server. Publishing the app does not publish your browser-local projects; move a library using explicit backup/restore. Browser storage is shared by origin (scheme, hostname and port), so two Junga folders on the same origin use the same library key. No hosting or deployment has been performed by this change.
+
+`npm run test:e2e -- tests/subfolder.spec.ts --project=chromium --workers=2` verifies the production build beneath a nested folder with no files or fallback at the site root, including direct `index.html` entry, scene reloads and asset requests.
+
 ## Checks
 
 Run `npm run check` for unit tests, TypeScript, and a production build.
@@ -36,6 +46,14 @@ Graph and spreadsheet documents save with the project and are included in librar
 Data stays in this browser's local storage for this exact site address. There is no account, server storage, or synchronization. Clearing site data removes this copy. **Download library backup** saves a native JSON snapshot; **Restore library backup** validates and previews a file (up to 10 MB), then adds independent copies by default. Whole-library replacement requires explicit acknowledgment and offers a download of existing data first. A preview becomes stale if another tab changes the stored library; refresh it before restoring.
 
 Backups include saved content and unsaved notes, graph changes, and spreadsheet cell edits retained on the page. Save failures offer **Download unsaved work** without clearing drafts or marking them saved. Apply project details and calculator settings before downloading. If stored data is unreadable, recovery offers an unchanged raw-data download and replacement from a known-good backup. This is manual backup/recovery, not automatic history or synchronization.
+
+## Code projects and outputs
+
+Choose **Create Cosmic Clock project** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, and documentation; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. Generic project creation/editing also supports the Code type.
+
+The nested output route identifies its owner and provides **Back to Cosmic Clock**. Orbit/zoom, local-time hover/pinning, date, pause/speed, Live, and boundary toggles last only for that visit; they do not save or dirty the source. Existing project/backup data stays compatible, and copies and lifecycle actions retain authored definitions. No template is seeded automatically.
+
+Junga currently manages metadata/configuration and a source inventory, **not repository file editing or filesystem synchronization**. Scene code, images, and boundary data ship with the app. See the [scene guide](src/interactive-scenes/cosmic-clock/README.md) for schema, lifecycle, licensing and map/time accuracy limits.
 
 ## Repository
 

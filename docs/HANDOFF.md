@@ -1,6 +1,29 @@
 # Current handoff
 
-## Ready for product review
+## Subfolder hosting follow-up — September 20, 2026
+
+The same uncommitted integration worktree now builds with relative asset URLs (`base: './'`), relative HTML entry/favicon references and a base-aware runtime logo. `src/main.tsx` already uses relative local imports; the production HTML loads compiled JavaScript from `./assets/`, not TypeScript source. CSS/public asset URLs are rewritten by Vite, and Cosmic Clock’s runtime URLs already use the build base.
+
+For publication, upload the **contents of `dist/`** into the website folder and use a trailing slash (for example `/junga/`) or `/junga/index.html`. Hash routes remain under that document, without server-side rewrites. [Hosting instructions](../README.md#hosting-in-a-website-subfolder). This prepares the build only; no upload/deployment or browser-library transfer was performed.
+
+Validation: Node 24 `npm ci`; `npm run check` passes with 87 unit tests, TypeScript and build. All 11 targeted browser tests pass: five scene checks, four designer checks and two new tests serving the production build strictly under `/personal/tools/junga/`, with site-root requests returning 404. Directory entry/redirect and direct index entry both load fonts, logo, thumbnail, lazy scene code, textures, zone data, credits and reloaded output routes without missing or escaped requests.
+
+## Latest local increment — Cosmic Clock outputs (September 20, 2026)
+
+Reviewable, uncommitted implementation on `codex/cosmic-clock-outputs`, in the registered Junga worktree `/home/tsg/Work/Creative Code/Cosmic Clock/junga-integration`. It starts from the documented `origin/codex/github-collaboration` bootstrap baseline. The original Junga checkout remains clean; ProductManagement is unchanged. Per Tyler’s request, no commit, push, PR, merge or deployment.
+
+**Try:** run this worktree with Node 24 (`npm ci`, `npm run dev`), then **Create Cosmic Clock project** → **Open scene**. The optional local preview for this review is `http://127.0.0.1:4185/`; it uses a separate browser origin and has a test template instance. It does not transfer or overwrite the user’s existing library.
+
+- Existing projects become `projectType: 'workable'` and `outputs: []` in memory; new Code projects own serializable scene definitions and a versioned bundled source-manifest reference. Old library/backup format v1 still loads. Duplication and restore-as-copies assign independent output IDs; archive/trash/restore retain content.
+- Source route `#/project/<id>` separates **Working material** and **Outputs**. **Edit output settings → Apply output settings** authors title/description/status, camera, live/simulation date/speed/pause, initial boundary visibility, attribution and source reference. Apply settings before backup; settings forms are not backup drafts. Stale output edits are rejected.
+- Output route `#/project/<id>/output/<outputId>` shows ownership and **Back to Cosmic Clock**, with no project controls or generic save indicator. All orbit/zoom, time, playback, hover/pin and overlay interaction is visit-local. Opening/reloading/exiting an output does not write the library. Trashed projects require restoration before viewing.
+- p5 and Astronomy Engine load through a React mount/unmount adapter. Teardown aborts requests/listeners, disconnects resize observation, removes canvases and releases WebGL contexts, including departure during loading. Styling is scoped; no iframe or second app entry.
+
+**Validation:** Node 24.21.0, `npm ci`, and pinned new dependencies. `npm run check`: **87 unit tests, TypeScript and production build pass**. All **63 Playwright tests** pass across the full run and targeted reruns. The full run initially exposed three narrow-layout regressions from the added template button; the responsive action layout was fixed and all three passed again, together with all five scene tests. Desktop/mobile accessibility, authored settings, unchanged storage after interactions, reload, repeated context cleanup and aborted initialization pass. Manual review verified NASA day/night rendering and city lights, actual polygon picking in India, Nepal’s quarter-hour time, fixed UTC dates, narrow layout and zero remaining scene canvases after leaving. Date entry now remains independent of clock refreshes.
+
+**Limits:** code and assets are repository-managed; Junga edits scene metadata/configuration, not repository files. The simplified 2026d zone map is current geography, not historical boundaries; local-time rules depend on browser IANA data. See [scene architecture and licenses](../src/interactive-scenes/cosmic-clock/README.md) and the [feature record](<../sharedProjectManagement/features/cosmic clock outputs.md>). The lazy renderer bundle (~377 KB gzip) produces Vite’s normal large-chunk warning; the library loads without it.
+
+## Published baseline and earlier product review
 
 Current priorities and follow-ups live in the shared [task list](../sharedProjectManagement/taskList.md).
 

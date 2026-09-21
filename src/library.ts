@@ -1,4 +1,12 @@
 import {
+  earthClockOutput,
+  validOutput,
+  validOutputs,
+  validManifest,
+  type Output,
+  type SourceManifest,
+} from './outputs'
+import {
   emptyGraph,
   laplaceGraph,
   LAPLACE_URL,
@@ -9,12 +17,16 @@ import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
 import { TOOL_IDS, isTool, type Tool } from './modules/ids'
 
 export type { Tool } from './modules/ids'
+export type ProjectType = 'workable' | 'code'
 export type ProjectStatus = 'active' | 'archived' | 'trashed'
 export type Collection = { id: string; name: string }
 export type Project = {
   id: string
   title: string
   description: string
+  projectType: ProjectType
+  outputs: Output[]
+  sourceManifest?: SourceManifest
   tools: Tool[]
   collectionId: string | null
   notes: string
@@ -32,7 +44,7 @@ export type Library = { version: 1; projects: Project[]; collections: Collection
 export type ProjectInput = Pick<
   Project,
   'title' | 'description' | 'tools' | 'collectionId' | 'referenceUrl'
->
+> & { projectType?: ProjectType }
 export type View = 'all' | 'favorites' | 'archive' | 'trash' | `collection:${string}`
 export type Sort = 'updated' | 'name' | 'created'
 export const STORAGE_KEY = 'junga.library.v1'
@@ -45,10 +57,16 @@ const name = (value: string, label: string, max: number) => {
   return clean
 }
 
-export function validateInput(input: ProjectInput, library: Library): ProjectInput {
+export function validateInput(
+  input: ProjectInput,
+  library: Library,
+): ProjectInput & { projectType: ProjectType } {
   const title = name(input.title, 'Project name', 100)
   if (input.description.length > 500) throw new Error('Keep the description under 500 characters.')
-  if (!input.tools.length || !input.tools.every(isTool))
+  const projectType = input.projectType ?? 'workable'
+  if (!['workable', 'code'].includes(projectType))
+    throw new Error('Choose a supported project type.')
+  if ((projectType === 'workable' && !input.tools.length) || !input.tools.every(isTool))
     throw new Error('Choose at least one tool.')
   if (input.collectionId && !library.collections.some((c) => c.id === input.collectionId))
     throw new Error('That collection no longer exists. Choose another collection.')
@@ -65,6 +83,7 @@ export function validateInput(input: ProjectInput, library: Library): ProjectInp
   }
   return {
     title,
+    projectType,
     description: input.description.trim(),
     tools: [...new Set(input.tools)],
     collectionId: input.collectionId,
@@ -83,6 +102,7 @@ export function addProject(
   const project: Project = {
     ...validateInput(input, library),
     id: crypto.randomUUID(),
+    outputs: [],
     notes,
     favorite: false,
     status: 'active',
@@ -110,6 +130,8 @@ export function editProject(library: Library, id: string, input: ProjectInput): 
   const fields = validateInput(input, library)
   return changeProject(library, id, (p) => {
     if (p.status === 'trashed') throw new Error('Restore this project before editing it.')
+    if (fields.projectType !== 'code' && (p.outputs.length || p.sourceManifest))
+      throw new Error('This project owns code material and outputs. Keep its Code project type.')
     return { ...p, ...fields, updatedAt: timestamp() }
   })
 }
@@ -146,7 +168,20 @@ export function duplicateProject(library: Library, id: string) {
   let title = `${base} (copy)`
   let n = 2
   while (titles.has(title)) title = `${base} (copy ${n++})`
-  return addProject(library, { ...original, title }, original.notes, original.graph, original.sheet)
+  const result = addProject(
+    library,
+    { ...original, title },
+    original.notes,
+    original.graph,
+    original.sheet,
+  )
+  result.project.outputs = structuredClone(original.outputs).map((output) => ({
+    ...output,
+    id: crypto.randomUUID(),
+  }))
+  if (original.sourceManifest)
+    result.project.sourceManifest = structuredClone(original.sourceManifest)
+  return result
 }
 
 export function saveGraph(library: Library, id: string, graph: GraphDocument): Library {
@@ -320,7 +355,7 @@ export function parseLibrary(raw: string | null): Library {
         typeof p.referenceUrl === 'string' &&
         typeof p.favorite === 'boolean' &&
         Array.isArray(p.tools) &&
-        p.tools.length > 0 &&
+        (p.projectType === 'code' || p.tools.length > 0) &&
         p.tools.length <= TOOL_IDS.length &&
         new Set(p.tools).size === p.tools.length &&
         p.tools.every(isTool) &&
@@ -333,6 +368,15 @@ export function parseLibrary(raw: string | null): Library {
         isDate(p.updatedAt) &&
         (p.openedAt === null || isDate(p.openedAt))
       if (!valid) return false
+      if (p.projectType !== undefined && !['workable', 'code'].includes(p.projectType as string))
+        return false
+      if (p.outputs !== undefined && !validOutputs(p.outputs)) return false
+      if (p.sourceManifest !== undefined && !validManifest(p.sourceManifest)) return false
+      if (
+        p.projectType !== 'code' &&
+        ((Array.isArray(p.outputs) && p.outputs.length) || p.sourceManifest)
+      )
+        return false
       if (p.graph !== undefined && !validGraph(p.graph)) return false
       if (p.sheet !== undefined && !validSheet(p.sheet)) return false
       if (p.referenceUrl) {
@@ -348,7 +392,15 @@ export function parseLibrary(raw: string | null): Library {
   )
     throw invalid()
   if (new Set(data.projects.map((p) => p.id)).size !== data.projects.length) throw invalid()
-  return data as Library
+  // Upgrade in memory only; reading/reloading an old library never rewrites storage.
+  return {
+    ...data,
+    projects: data.projects.map((p) => ({
+      ...p,
+      projectType: p.projectType ?? 'workable',
+      outputs: p.outputs ?? [],
+    })),
+  } as Library
 }
 
 export type StorageAccess = Pick<Storage, 'getItem' | 'setItem'>
@@ -385,3 +437,55 @@ export const starterInput: ProjectInput = {
 }
 export const starterNotes =
   'Reference for the first graphing prototype.\n\nf(t) = e^(-t) sin(t), for t > 0\nf₂(t) = e^(a t), for t > 0\nfₚ(t) = sin(p t)\nzₜ(t) = f(t) f₂(t) fₚ(t)\nzₚ(t) = f(t) f₂(t)\n\nParameters in the reference: p = 3.8 (0 to 10); a = 1.16 (-0.5 to 2).\n\nOpen the calculator to explore this recreated example with editable functions, sliders, domain restrictions, and graph notes. The original Desmos project remains linked as a reference.'
+
+export function createCosmicClock(library: Library, collectionId: string | null = null) {
+  const result = addProject(library, {
+    projectType: 'code',
+    title: 'Cosmic Clock',
+    description: 'Source, assets, and scene defaults for a three-dimensional Earth clock.',
+    tools: [],
+    collectionId,
+    referenceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
+  })
+  result.project.sourceManifest = { kind: 'cosmic-clock', version: 1 }
+  result.project.outputs = [earthClockOutput()]
+  return result
+}
+export function addEarthClock(library: Library, projectId: string): Library {
+  return changeProject(library, projectId, (project) => {
+    if (project.projectType !== 'code' || project.status === 'trashed')
+      throw new Error('Choose a code project outside the trash.')
+    if (project.outputs.length >= 20) throw new Error('A project can contain up to 20 outputs.')
+    return {
+      ...project,
+      sourceManifest: { kind: 'cosmic-clock', version: 1 },
+      outputs: [...project.outputs, earthClockOutput()],
+      updatedAt: timestamp(),
+    }
+  })
+}
+export function saveOutput(
+  library: Library,
+  projectId: string,
+  output: Output,
+  expected?: Output,
+): Library {
+  if (!validOutput(output)) throw new Error('Check the output metadata and scene defaults.')
+  return changeProject(library, projectId, (project) => {
+    if (project.projectType !== 'code' || project.status === 'trashed')
+      throw new Error('Restore this code project before editing its output.')
+    const previous = project.outputs.find((item) => item.id === output.id)
+    if (!previous) throw new Error('This output is no longer available.')
+    if (expected && JSON.stringify(previous) !== JSON.stringify(expected))
+      throw new Error(
+        'This output changed in another tab. Cancel and reopen its settings before saving.',
+      )
+    return {
+      ...project,
+      outputs: project.outputs.map((item) =>
+        item.id === output.id ? structuredClone(output) : item,
+      ),
+      updatedAt: timestamp(),
+    }
+  })
+}

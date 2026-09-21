@@ -76,6 +76,7 @@ export function restoreCopies(current: Library, backup: Library): Library {
   const projects = structuredClone(backup.projects).map((p) => ({
     ...p,
     id: crypto.randomUUID(),
+    outputs: p.outputs.map((output) => ({ ...output, id: crypto.randomUUID() })),
     title: uniqueName(p.title, titles, 100),
     collectionId: p.collectionId === null ? null : collectionIds.get(p.collectionId)!,
   }))

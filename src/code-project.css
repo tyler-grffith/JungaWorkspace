@@ -1,0 +1,148 @@
+.code-project-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 32px;
+  margin-top: 32px;
+}
+.code-project-overview section > p {
+  line-height: 1.7;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.code-project-overview .code-manifest-version {
+  margin: 22px 0 12px;
+  font-size: 12px;
+}
+.code-project-overview .code-inventory {
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 10px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+.code-project-overview .code-inventory summary {
+  cursor: pointer;
+  padding: 16px;
+  font-weight: 600;
+}
+.code-project-overview .code-inventory summary span {
+  float: right;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+.code-project-overview .code-inventory ul {
+  padding: 0 16px 16px;
+  margin: 0;
+  list-style: none;
+}
+.code-project-overview .code-inventory li {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.code-project-overview code {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.code-project-overview .code-inventory p {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.code-project-overview .code-source-link {
+  display: block;
+  margin: 16px 0;
+  color: var(--green);
+  text-decoration: underline;
+}
+.code-project-overview .code-repository-note {
+  padding: 16px;
+  background: var(--soft);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.code-project-overview .code-output-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  margin: 20px 0;
+}
+.code-project-overview .code-output-art {
+  height: 160px;
+  background: radial-gradient(ellipse, #213746, #0c1720 75%);
+  display: grid;
+  place-items: center;
+}
+.code-project-overview .code-output-art > div {
+  border-radius: 50%;
+  width: 124px;
+  height: 124px;
+  background:
+    linear-gradient(90deg, transparent 35%, #020914ed),
+    url('/assets/cosmic-clock/earth-day.jpg') center / 250px 125px;
+  box-shadow:
+    -2px 0 10px #519bba66,
+    inset 10px 0 18px #59a8d133;
+  transform: rotate(-23.4deg);
+}
+.code-project-overview .code-output-body {
+  padding: 22px;
+}
+.code-project-overview .code-output-medium {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+.code-project-overview .code-output-medium span {
+  background: var(--soft);
+  padding: 2px 8px;
+  border-radius: 9px;
+  color: var(--green);
+}
+.code-project-overview .code-output-body h3 {
+  font-size: 23px;
+  margin: 12px 0 8px;
+}
+.code-project-overview .code-output-body p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.code-project-overview .code-output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.code-output-settings .code-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.code-output-settings .code-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.code-output-settings .code-check input {
+  width: 18px;
+  height: 18px;
+}
+.code-output-settings .field-hint {
+  margin-bottom: 12px;
+}
+.project-art.code-art {
+  background: radial-gradient(ellipse, #324f43, #1b3429);
+  display: grid;
+  place-items: center;
+  color: #f0f3e7;
+  font: 48px monospace;
+}
+@media (max-width: 1000px) {
+  .code-project-overview {
+    grid-template-columns: 1fr;
+  }
+}

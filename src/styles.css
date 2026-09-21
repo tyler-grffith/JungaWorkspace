@@ -426,6 +426,7 @@ button:disabled:hover {
 }
 .page-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
@@ -439,6 +440,7 @@ button:disabled:hover {
 }
 .heading-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -1964,13 +1966,13 @@ button:disabled:hover {
     height: 35px;
     padding: 0 11px;
     font-size: 11px;
-    margin-top: 18px;
+    margin-top: 0;
   }
   .page-heading .button svg {
     width: 14px;
   }
   .heading-actions {
-    gap: 0;
+    gap: 8px;
   }
   .library-toolbar {
     flex-wrap: wrap;

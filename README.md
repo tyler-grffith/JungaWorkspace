@@ -15,15 +15,29 @@ Run `npm run build` with Node 24, then copy the **contents of `dist/`** into the
 
 Vite uses `base: './'` to produce relative scripts, styles, fonts and CSS image references. Runtime assets use `import.meta.env.BASE_URL`, including the logo, Earth textures, time-zone data and credits. Keep the folder URL's trailing slash (the host should redirect `/junga` to `/junga/`), or open `/junga/index.html`. Routes stay in the hash, such as `/junga/#/project/<id>/output/<outputId>`, so they do not require server-side route rewrites. External design/source links keep their original URLs.
 
-Upload the built files, not the source/development server. Publishing the app does not publish your browser-local projects; move a library using explicit backup/restore. Browser storage is shared by origin (scheme, hostname and port), so two Junga folders on the same origin use the same library key. No hosting or deployment has been performed by this change.
+Upload the built files, not the source/development server — `dist/` is gitignored here on purpose, so nothing serves this app until something explicitly builds and copies it out. Publishing the app does not publish your browser-local projects; move a library using explicit backup/restore. Browser storage is shared by origin (scheme, hostname and port), so two Junga folders on the same origin use the same library key.
 
 `npm run test:e2e -- tests/subfolder.spec.ts --project=chromium --workers=2` verifies the production build beneath a nested folder with no files or fallback at the site root, including direct `index.html` entry, scene reloads and asset requests.
+
+## Deploying to tylergriffith.us
+
+`tylergriffith.us` vendors this app's `dist/` output as plain static files under `JungaWorkspace/`; there is no build step on the server, so a deploy means build here, copy the output into that repo, and push it there.
+
+```
+npm run deploy            # check, build, vendor, commit locally — review before pushing
+npm run deploy -- --push  # also push the website repo's remote
+npm run deploy -- --live  # also deploy live via SSH
+```
+
+The script refuses to publish an unclean tree, a commit that is not on `origin/main`, or a failing build. It assumes the website repo is a sibling directory (`../tylergriffith.us`); override with `WEBSITE_REPO`.
+
+**[docs/RELEASING.md](docs/RELEASING.md) is the full runbook** — merging to `main`, deploying, what each stage does and does not change, and the failure modes worth recognizing. Per [AGENTS.md](AGENTS.md), deploying is Tyler's explicit decision, never a side effect of a feature change.
 
 ## Checks
 
 Run `npm run check` for unit tests, TypeScript, and a production build.
 Run `npx playwright install chromium` once, then `npm run test:e2e` for browser acceptance tests.
-CI runs both on pull requests; it does not deploy.
+CI runs both on pull requests and on pushes to `main`; it does not deploy. See [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Collaborate from another computer
 

@@ -364,14 +364,16 @@
   }
 }
 
-/* Output cards for code-run outputs reuse the card structure with their own artwork. */
-.code-outputs .code-output-art {
+/* Output cards for code-run outputs reuse the card structure with their own artwork. The
+   Cosmic Clock overview also renders a .code-outputs section, so these stay scoped to
+   .code-run-outputs and leave the scene card's Earth artwork alone. */
+.code-run-outputs .code-output-art {
   height: 120px;
   background: linear-gradient(135deg, #16241c, #0c1710 70%);
   display: grid;
   place-items: center;
 }
-.code-outputs .code-output-art > div {
+.code-run-outputs .code-output-art > div {
   width: 78px;
   height: 46px;
   border-radius: 8px;
@@ -380,9 +382,9 @@
     linear-gradient(#5e8f6333 1px, transparent 1px) 0 8px / 100% 11px,
     linear-gradient(90deg, #0f1a12, #16261a);
 }
-.code-outputs .code-output-body {
+.code-run-outputs .code-output-body {
   padding: 18px;
 }
-.code-outputs .code-output-body h3 {
+.code-run-outputs .code-output-body h3 {
   font-size: 19px;
 }

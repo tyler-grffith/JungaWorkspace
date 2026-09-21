@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Eye } from 'lucide-react'
 import type { Project } from './library'
 import { validOutput, type Output, type SceneOutput } from './outputs'
 import { cosmicClockManifest } from './interactive-scenes/cosmic-clock/manifest'
+import { isViewable } from './interactive-scenes/cosmic-clock/sources'
+import SourceViewer from './SourceViewer'
 import './code-project.css'
 
 function OutputSettings({
@@ -318,6 +321,7 @@ export default function CodeProjectOverview({
   onDraftChange: (dirty: boolean) => void
 }) {
   const [editing, setEditing] = useState<SceneOutput | null>(null)
+  const [viewing, setViewing] = useState<{ path: string; description: string } | null>(null)
   const credits = `${import.meta.env.BASE_URL}assets/cosmic-clock/CREDITS.md`
   return (
     <div className="code-project-overview">
@@ -340,12 +344,29 @@ export default function CodeProjectOverview({
                   <span>{group.entries.length} items</span>
                 </summary>
                 <ul>
-                  {group.entries.map((entry) => (
-                    <li key={entry.path}>
-                      <code>{entry.path}</code>
-                      <p>{entry.description}</p>
-                    </li>
-                  ))}
+                  {group.entries.map((entry) =>
+                    isViewable(entry.path) ? (
+                      <li key={entry.path}>
+                        <button
+                          type="button"
+                          className="code-inventory-open"
+                          onClick={() => setViewing(entry)}
+                        >
+                          <code>{entry.path}</code>
+                          <p>{entry.description}</p>
+                          <span className="code-inventory-action">
+                            <Eye size={14} />
+                            View file
+                          </span>
+                        </button>
+                      </li>
+                    ) : (
+                      <li key={entry.path}>
+                        <code>{entry.path}</code>
+                        <p>{entry.description}</p>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </details>
             ))}
@@ -418,6 +439,14 @@ export default function CodeProjectOverview({
           </button>
         )}
       </section>
+      {viewing && (
+        <SourceViewer
+          key={viewing.path}
+          path={viewing.path}
+          description={viewing.description}
+          close={() => setViewing(null)}
+        />
+      )}
       {editing && (
         <OutputSettings
           key={editing.id}

@@ -61,7 +61,9 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 
 `code` is now a module you tick when creating a project, beside Graphing and Spreadsheet. It holds text files and folders you write or import, edits them with CodeMirror, and runs them through `code-run` outputs on the existing output route — data URLs plus an import map inside a frame sandboxed without `allow-same-origin`, so no server, no build step, and no access to the saved library. Cosmic Clock is unchanged; its `projectType: 'code'` container is now labelled "Bundled source project" in the form. See decisions 27–29 and `sharedProjectManagement/features/code projects.md`.
 
-Open questions for Tyler: binary assets (images, fonts, data) need storage beyond the shared local-storage key before they can be imported; JSX/TypeScript compilation and bare npm imports need a build step; navigation between HTML files inside one output is not supported; and the sandbox's network access should be reconsidered when accounts arrive.
+**Working material** in a bundled source project now opens each file it lists, read-only, reusing the code module's editor. See decision 30.
+
+Open questions for Tyler: whether a bundled file should be copyable into a code project so it can be edited and run; binary assets (images, fonts, data) need storage beyond the shared local-storage key before they can be imported; JSX/TypeScript compilation and bare npm imports need a build step; navigation between HTML files inside one output is not supported; and the sandbox's network access should be reconsidered when accounts arrive.
 
 ### Next increment
 

@@ -146,3 +146,88 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Manifest rows that can show their file act as buttons; the rest stay plain text. */
+.code-project-overview .code-inventory-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.code-project-overview .code-inventory-open:hover,
+.code-project-overview .code-inventory-open:focus-visible {
+  background: var(--soft);
+}
+.code-project-overview .code-inventory-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--green);
+}
+.code-project-overview .code-inventory-open:hover .code-inventory-action {
+  text-decoration: underline;
+}
+/* Wider than the ordinary modal: this one holds a file, not a short form. */
+.modal.source-viewer {
+  width: min(960px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+}
+.modal.source-viewer .modal-heading {
+  margin-bottom: 16px;
+}
+.modal.source-viewer .modal-heading h2 {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.source-viewer-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  max-height: min(64vh, 620px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.source-viewer-body .code-mirror-host {
+  min-height: 0;
+}
+.source-viewer-note {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.source-viewer-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: auto;
+}
+.source-viewer-origin {
+  margin: 0 auto 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.modal.source-viewer .modal-footer {
+  align-items: center;
+  gap: 12px;
+}
+.modal.source-viewer .modal-footer .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

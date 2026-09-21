@@ -192,3 +192,32 @@ test('create and edit flow supports code type and unavailable output routes', as
   await expect(page.getByRole('heading', { name: 'Output unavailable' })).toBeVisible()
   await expect(page.locator('.save-indicator')).toHaveCount(0)
 })
+
+test('working material opens the bundled files it lists, read-only', async ({ page }) => {
+  await create(page)
+  const section = (name: string) =>
+    page.locator('.code-inventory summary').filter({ hasText: name })
+  await section('Modules').click()
+  await page.getByRole('button', { name: 'src/interactive-scenes/cosmic-clock/math.js' }).click()
+  const viewer = page.getByRole('dialog', { name: /math\.js/ })
+  await expect(viewer).toBeVisible()
+  await expect(
+    viewer.getByText('Shared globe coordinates, rotation, and ray picking.'),
+  ).toBeVisible()
+  // The real file, not a placeholder, and not editable from here.
+  await expect(viewer.locator('.cm-content')).toContainText('export')
+  await expect(viewer.locator('.cm-content')).toHaveAttribute('contenteditable', 'false')
+  await viewer.getByRole('button', { name: 'Close file' }).click()
+  await expect(viewer).toBeHidden()
+
+  // A served asset is fetched instead, and large files say what they are not showing.
+  await section('Assets & licenses').click()
+  await page.getByRole('button', { name: 'public/assets/cosmic-clock/timezones.geojson' }).click()
+  const data = page.getByRole('dialog', { name: /timezones\.geojson/ })
+  await expect(data.getByRole('status')).toContainText('more is not shown')
+  await expect(data.getByRole('link', { name: 'Open in a new tab' })).toHaveAttribute(
+    'href',
+    /assets\/cosmic-clock\/timezones\.geojson$/,
+  )
+  await expect(page.locator('.save-indicator')).toContainText('Saved on this device')
+})

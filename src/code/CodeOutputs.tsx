@@ -208,7 +208,7 @@ export default function CodeOutputs({
   )
   const editable = project.status !== 'trashed'
   return (
-    <section className="code-outputs">
+    <section className="code-outputs code-run-outputs">
       <div className="section-heading">
         <h2>Outputs</h2>
         <span>{outputs.length}</span>

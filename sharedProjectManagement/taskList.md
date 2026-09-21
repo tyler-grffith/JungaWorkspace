@@ -118,4 +118,11 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [ ] Awaiting Tyler: binary assets (images, fonts, data files) need storage beyond the shared local-storage key. A build step for JSX/TypeScript or bare npm imports, and navigation between HTML files inside one output, are also undecided.
 - [ ] Revisit the sandbox's network access when user accounts arrive; running someone else's project then means running untrusted code for other people.
 
+## Viewing bundled material — September 21, 2026
+
+- [x] Each modules/assets/licenses/documentation/maintenance row in a bundled source project's Working material opens the real file read-only: source from the bundle, served assets from their URL, images previewed, large text truncated with a link to the whole file.
+- [x] Fixed the Earth Clock card artwork, which the code-module commit had overridden through a shared `code-outputs` class.
+- [x] 117 unit tests, TypeScript and build pass; 70 browser tests pass. Same branch `codex/code-project-module`; no merge or deployment.
+- [ ] Awaiting Tyler: whether a bundled file should be copyable into a code project so it can be edited and run.
+
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

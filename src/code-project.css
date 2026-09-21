@@ -231,3 +231,52 @@
   align-items: center;
   gap: 6px;
 }
+
+/* Copying a bundled file into a code project, offered under the file it is showing. */
+.source-viewer-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 13px;
+}
+.source-viewer-copy label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.source-viewer-copy select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  max-width: 260px;
+}
+.source-viewer-copy .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.source-viewer-copy p {
+  margin: 0;
+}
+.source-viewer-copy code {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+.source-viewer-copy a {
+  color: var(--green);
+  text-decoration: underline;
+}
+.source-viewer-copy .form-error {
+  flex-basis: 100%;
+}

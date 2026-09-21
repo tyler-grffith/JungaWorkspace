@@ -4,7 +4,7 @@ import type { Project } from './library'
 import { validOutput, type Output, type SceneOutput } from './outputs'
 import { cosmicClockManifest } from './interactive-scenes/cosmic-clock/manifest'
 import { isViewable } from './interactive-scenes/cosmic-clock/sources'
-import SourceViewer from './SourceViewer'
+import SourceViewer, { type CopyRequest } from './SourceViewer'
 import './code-project.css'
 
 function OutputSettings({
@@ -314,11 +314,13 @@ export default function CodeProjectOverview({
   onSave,
   onAdd,
   onDraftChange,
+  copying,
 }: {
   project: Project
   onSave: (value: Output, expected: Output) => boolean
   onAdd: () => void
   onDraftChange: (dirty: boolean) => void
+  copying?: CopyRequest
 }) {
   const [editing, setEditing] = useState<SceneOutput | null>(null)
   const [viewing, setViewing] = useState<{ path: string; description: string } | null>(null)
@@ -445,6 +447,7 @@ export default function CodeProjectOverview({
           path={viewing.path}
           description={viewing.description}
           close={() => setViewing(null)}
+          copying={copying}
         />
       )}
       {editing && (

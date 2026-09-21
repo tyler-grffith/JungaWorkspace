@@ -25,11 +25,23 @@ file was for, but not what was in it.
 - The dialog says the file ships with the application and is read-only, so it is never mistaken for
   something a project owns or can edit.
 
+## Follow-up Tyler approved: copying a file out
+
+- Any viewable text file offers **Copy into**, choosing an existing code project or a new one. The
+  copy lands at its path below the scene root (`shaders/earth.frag`, not the whole repository path)
+  and is numbered rather than overwriting a file already there (`math-2.js`).
+- The whole file is copied, never the truncated preview. Files a code project cannot store — the
+  megabyte of time-zone data, the textures — are refused with the reason, not silently skipped.
+- A new project starts from that one file rather than the starter template, and takes the bundled
+  project's name plus "files". The confirmation names the project it actually created and links
+  straight to its files.
+
 ## What details should Tyler be able to fine tune by hand?
 
 - In Junga: which files the manifest lists and how each is described (`manifest.ts`).
 - For further refinement: the 120 KB preview limit, the dialog's width and height, and whether
   images should show their pixel dimensions or file size.
-- Not built, and awaiting a decision: copying a bundled file into a code project so it can be
-  edited and run, and syntax highlighting for GLSL shaders (no CodeMirror language package for it
-  is installed).
+- For the copy: the name a new project takes, and whether copying a file should bring its imports
+  with it.
+- Not built, and awaiting a decision: copying a whole manifest group at once, and syntax
+  highlighting for GLSL shaders (no CodeMirror language package for it is installed).

@@ -53,6 +53,8 @@ import {
   saveSheet,
   initializeTools,
   saveCode,
+  addCodeFile,
+  createCodeProjectWithFile,
   addCodeOutput,
   removeOutput,
   saveWorkspace,
@@ -569,6 +571,8 @@ export default function App() {
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
   const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
+  // Identifier of a project created by copying a bundled file, so the viewer can link to it.
+  const copied = useRef('')
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
@@ -1359,6 +1363,52 @@ export default function App() {
                         )
                       }
                       onAdd={() => commit((current) => addEarthClock(current, currentProject.id))}
+                      copying={{
+                        targets: [
+                          ...library.projects
+                            .filter((p) => p.tools.includes('code') && p.status !== 'trashed')
+                            .map((p) => ({ id: p.id, title: p.title })),
+                          { id: null, title: 'A new code project' },
+                        ],
+                        copy: (targetId, path, content) => {
+                          const title = targetId
+                            ? (library.projects.find((p) => p.id === targetId)?.title ??
+                              'that project')
+                            : `${currentProject.title} files`
+                          try {
+                            copied.current = targetId ?? ''
+                            const saved = commit((current) => {
+                              if (targetId) return addCodeFile(current, targetId, path, content)
+                              const result = createCodeProjectWithFile(
+                                current,
+                                title,
+                                path,
+                                content,
+                                currentProject.collectionId,
+                              )
+                              copied.current = result.project.id
+                              return result.library
+                            })
+                            return saved
+                              ? {
+                                  ok: true as const,
+                                  title,
+                                  route: `#/project/${copied.current}/code`,
+                                }
+                              : {
+                                  ok: false as const,
+                                  message:
+                                    'That copy could not be saved. Check the workspace save error.',
+                                }
+                          } catch (e) {
+                            return {
+                              ok: false as const,
+                              message:
+                                e instanceof Error ? e.message : 'That file could not be copied.',
+                            }
+                          }
+                        },
+                      }}
                     />
                   )}
                   {currentProject.projectType !== 'code' && (

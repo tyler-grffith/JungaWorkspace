@@ -63,7 +63,9 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 
 **Working material** in a bundled source project now opens each file it lists, read-only, reusing the code module's editor. See decision 30.
 
-Open questions for Tyler: whether a bundled file should be copyable into a code project so it can be edited and run; binary assets (images, fonts, data) need storage beyond the shared local-storage key before they can be imported; JSX/TypeScript compilation and bare npm imports need a build step; navigation between HTML files inside one output is not supported; and the sandbox's network access should be reconsidered when accounts arrive.
+Bundled text files can also be copied into a code project (existing or new) and edited there; see decision 31.
+
+Open questions for Tyler: whether copying should bring a file's imports with it; binary assets (images, fonts, data) need storage beyond the shared local-storage key before they can be imported; JSX/TypeScript compilation and bare npm imports need a build step; navigation between HTML files inside one output is not supported; and the sandbox's network access should be reconsidered when accounts arrive.
 
 ### Next increment
 

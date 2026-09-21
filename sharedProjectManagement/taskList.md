@@ -123,6 +123,7 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Each modules/assets/licenses/documentation/maintenance row in a bundled source project's Working material opens the real file read-only: source from the bundle, served assets from their URL, images previewed, large text truncated with a link to the whole file.
 - [x] Fixed the Earth Clock card artwork, which the code-module commit had overridden through a shared `code-outputs` class.
 - [x] 117 unit tests, TypeScript and build pass; 70 browser tests pass. Same branch `codex/code-project-module`; no merge or deployment.
-- [ ] Awaiting Tyler: whether a bundled file should be copyable into a code project so it can be edited and run.
+- [x] Tyler approved copying: a viewable text file copies into an existing code project or a new one, numbered rather than overwriting, with unstorable files refused by reason.
+- [ ] Awaiting Tyler: whether copying should bring a file's imports with it, and whether a whole manifest group should copy at once.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

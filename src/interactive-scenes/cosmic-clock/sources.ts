@@ -36,3 +36,11 @@ export function materialFor(path: string): Material | null {
 }
 
 export const isViewable = (path: string) => materialFor(path) !== null
+
+const COPY_ROOTS = ['src/interactive-scenes/cosmic-clock/', 'public/assets/cosmic-clock/', 'src/']
+
+/** Where a bundled file lands when copied into a code project: its path below the scene root. */
+export function copyPathFor(path: string): string {
+  const root = COPY_ROOTS.find((candidate) => path.startsWith(candidate))
+  return root ? path.slice(root.length) : path.slice(path.lastIndexOf('/') + 1)
+}

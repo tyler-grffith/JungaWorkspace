@@ -221,3 +221,26 @@ test('working material opens the bundled files it lists, read-only', async ({ pa
   )
   await expect(page.locator('.save-indicator')).toContainText('Saved on this device')
 })
+
+test('a bundled file can be copied into a code project and edited there', async ({ page }) => {
+  await create(page)
+  await page.locator('.code-inventory summary').filter({ hasText: 'Modules' }).click()
+  await page.getByRole('button', { name: 'src/interactive-scenes/cosmic-clock/math.js' }).click()
+  const viewer = page.getByRole('dialog', { name: /math\.js/ })
+  // With no code project yet, the only destination is a new one.
+  await viewer.getByRole('button', { name: 'Copy as math.js' }).click()
+  await expect(viewer.getByRole('status')).toContainText('Copied to Cosmic Clock files')
+  await viewer.getByRole('link', { name: 'Open its files' }).click()
+
+  // The copy is a real, editable file in the new project, not a second read-only view.
+  await expect(page.getByRole('heading', { name: 'Cosmic Clock files' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'math.js' })).toBeVisible()
+  const editor = page.locator('.code-mirror-host .cm-content')
+  await expect(editor).toContainText('wrapLongitude')
+  await expect(editor).toHaveAttribute('contenteditable', 'true')
+  await editor.click()
+  await page.keyboard.type('// copied\n')
+  await expect(page.getByText('Changes not saved')).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('.code-mirror-host .cm-content')).toContainText('// copied')
+})

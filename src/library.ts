@@ -7,7 +7,19 @@ import {
   type Output,
   type SourceManifest,
 } from './outputs'
-import { emptyCode, entryCandidates, validCode, type CodeDocument } from './code/model'
+import {
+  MAX_FILES,
+  MAX_FILE_CHARS,
+  MAX_TOTAL_CHARS,
+  availablePath,
+  emptyCode,
+  entryCandidates,
+  isTextPath,
+  normalizePath,
+  totalChars,
+  validCode,
+  type CodeDocument,
+} from './code/model'
 import {
   emptyGraph,
   laplaceGraph,
@@ -478,6 +490,69 @@ export function createCosmicClock(library: Library, collectionId: string | null 
   result.project.outputs = [earthClockOutput()]
   return result
 }
+const isHtml = (path: string) => /\.html?$/i.test(path)
+
+/**
+ * Check a file can be stored before copying it in, so the caller reports one clear reason
+ * instead of a failed save. Returns '' when the file is storable.
+ */
+export function codeFileProblem(code: CodeDocument, path: string, content: string): string {
+  const clean = normalizePath(path)
+  if (!clean) return 'That file name cannot be stored in a code project.'
+  if (!isTextPath(clean)) return 'A code project stores text files, so this file cannot be copied.'
+  if (content.length > MAX_FILE_CHARS)
+    return `This file is larger than the ${Math.round(MAX_FILE_CHARS / 1024)} KB limit for one file.`
+  if (code.files.length >= MAX_FILES) return `That project already holds ${MAX_FILES} files.`
+  if (totalChars([...code.files, { path: clean, content }]) > MAX_TOTAL_CHARS)
+    return `That project would pass its ${Math.round(MAX_TOTAL_CHARS / 1024)} KB total limit.`
+  return ''
+}
+
+/** Copy one text file into a project that holds the code tool, never replacing a file it has. */
+export function addCodeFile(
+  library: Library,
+  projectId: string,
+  path: string,
+  content: string,
+): Library {
+  const project = library.projects.find((p) => p.id === projectId)
+  if (!project) throw new Error('That project is no longer available.')
+  if (project.status === 'trashed') throw new Error('Restore that project before copying into it.')
+  if (!project.tools.includes('code')) throw new Error('Choose a project that has the code tool.')
+  const code = project.code ?? emptyCode()
+  const problem = codeFileProblem(code, path, content)
+  if (problem) throw new Error(problem)
+  const stored = availablePath(code.files, normalizePath(path))
+  if (!stored) throw new Error('That project already holds too many copies of this file.')
+  return saveCode(library, projectId, {
+    ...code,
+    entry: !code.entry && isHtml(stored) ? stored : code.entry,
+    files: [...code.files, { path: stored, content }],
+  })
+}
+
+/** Start a code project from one copied file, rather than the starter template. */
+export function createCodeProjectWithFile(
+  library: Library,
+  title: string,
+  path: string,
+  content: string,
+  collectionId: string | null = null,
+) {
+  const stored = normalizePath(path)
+  const empty: CodeDocument = { version: 1, entry: '', files: [] }
+  const problem = codeFileProblem(empty, stored, content)
+  if (problem) throw new Error(problem)
+  return addProject(
+    library,
+    { title, description: '', tools: ['code'], collectionId, referenceUrl: '' },
+    '',
+    undefined,
+    undefined,
+    { version: 1, entry: isHtml(stored) ? stored : '', files: [{ path: stored, content }] },
+  )
+}
+
 /** Cosmic Clock projects and projects holding the code tool are the two output owners. */
 export const ownsOutputs = (project: Pick<Project, 'projectType' | 'tools'>) =>
   project.projectType === 'code' || project.tools.includes('code')

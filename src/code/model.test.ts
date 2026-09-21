@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   MAX_FILE_CHARS,
+  availablePath,
   emptyCode,
   entryCandidates,
   normalizePath,
@@ -9,8 +10,10 @@ import {
   validCode,
 } from './model'
 import {
+  addCodeFile,
   addCodeOutput,
   addProject,
+  createCodeProjectWithFile,
   duplicateProject,
   emptyLibrary,
   initializeTools,
@@ -137,5 +140,47 @@ describe('code projects in the library', () => {
     const snapshot = libraryWithDrafts(library, { code: { id, value: draft } })
     expect(snapshot.projects[0].code).toEqual(draft)
     expect(library.projects[0].code).not.toEqual(draft)
+  })
+})
+
+describe('copying a bundled file into a code project', () => {
+  it('numbers a copy rather than replacing the file already there', () => {
+    const files = [
+      { path: 'math.js', content: 'a' },
+      { path: 'math-2.js', content: 'b' },
+      { path: 'lib/notes', content: 'c' },
+    ]
+    expect(availablePath(files, 'other.js')).toBe('other.js')
+    expect(availablePath(files, 'math.js')).toBe('math-3.js')
+    expect(availablePath(files, 'MATH.JS')).toBe('MATH-3.JS')
+    expect(availablePath(files, 'lib/notes')).toBe('lib/notes-2')
+  })
+  it('adds the file to a project holding the code tool and reports why it cannot', () => {
+    const { library, id } = withCode()
+    const next = addCodeFile(library, id, 'lib/format.js', 'export const x = 1')
+    // The starter template already has lib/format.js, so the copy is numbered.
+    expect(next.projects[0].code!.files.map((file) => file.path)).toContain('lib/format-2.js')
+    expect(parseLibrary(JSON.stringify(next))).toEqual(next)
+    expect(() => addCodeFile(library, id, 'zones.geojson', '{}')).toThrow('text files')
+    expect(() => addCodeFile(library, id, 'big.js', 'x'.repeat(MAX_FILE_CHARS + 1))).toThrow(
+      'larger than',
+    )
+    const other = addProject(emptyLibrary(), starterInput)
+    expect(() => addCodeFile(other.library, other.project.id, 'a.js', '')).toThrow('code tool')
+  })
+  it('starts a new code project from one file, without the starter template', () => {
+    const { library } = createCodeProjectWithFile(
+      emptyLibrary(),
+      'Scene files',
+      'math.js',
+      'export {}',
+    )
+    const project = library.projects[0]
+    expect(project.tools).toEqual(['code'])
+    expect(project.code!.files.map((file) => file.path)).toEqual(['math.js'])
+    expect(project.code!.entry).toBe('')
+    expect(parseLibrary(JSON.stringify(library))).toEqual(library)
+    const page = createCodeProjectWithFile(emptyLibrary(), 'Page', 'index.html', '<p>hi</p>')
+    expect(page.library.projects[0].code!.entry).toBe('index.html')
   })
 })

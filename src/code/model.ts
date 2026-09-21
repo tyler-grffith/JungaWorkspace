@@ -196,6 +196,23 @@ export function emptyCode(): CodeDocument {
   }
 }
 
+/**
+ * A path like `wanted` that no file uses yet, numbering before the extension: `math.js`,
+ * `math-2.js`, `math-3.js`. Used when copying a file in, so a copy never overwrites work.
+ */
+export function availablePath(files: readonly CodeFile[], wanted: string): string {
+  const taken = new Set(files.map((file) => file.path.toLowerCase()))
+  if (!taken.has(wanted.toLowerCase())) return wanted
+  const dot = wanted.lastIndexOf('.')
+  const stem = dot > wanted.lastIndexOf('/') + 1 ? wanted.slice(0, dot) : wanted
+  const suffix = stem === wanted ? '' : wanted.slice(dot)
+  for (let n = 2; n < 1000; n++) {
+    const candidate = `${stem}-${n}${suffix}`
+    if (!taken.has(candidate.toLowerCase())) return candidate
+  }
+  return ''
+}
+
 /** Entry candidates an output may point at. */
 export const entryCandidates = (document: CodeDocument) =>
   sortFiles(document.files.filter((file) => ['html', 'htm'].includes(extensionOf(file.path))))

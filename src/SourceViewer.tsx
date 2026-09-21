@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, FilePlus2 } from 'lucide-react'
 import {
   MAX_VIEW_CHARS,
+  copyPathFor,
   materialFor,
   type Material,
 } from './interactive-scenes/cosmic-clock/sources'
@@ -11,8 +12,18 @@ const CodeMirrorField = lazy(() => import('./code/CodeMirrorField'))
 type Loaded =
   | { state: 'loading' }
   | { state: 'error'; message: string }
-  | { state: 'text'; content: string; truncated: number }
+  | { state: 'text'; content: string; whole: string; truncated: number }
   | { state: 'image'; url: string }
+
+/** Where a copy of this file may go. `null` as an id means a new code project. */
+export type CopyTarget = { id: string | null; title: string }
+/** Where the copy landed, or why it could not be made. The destination names itself, because a
+ *  new project's title is decided by the caller rather than by the option that was chosen. */
+export type CopyResult = { ok: true; title: string; route: string } | { ok: false; message: string }
+export type CopyRequest = {
+  targets: readonly CopyTarget[]
+  copy: (targetId: string | null, path: string, content: string) => CopyResult
+}
 
 async function read(material: Material): Promise<Loaded> {
   if (material.kind === 'image') return { state: 'image', url: material.url }
@@ -25,6 +36,7 @@ async function read(material: Material): Promise<Loaded> {
         })
   return {
     state: 'text',
+    whole,
     content: whole.slice(0, MAX_VIEW_CHARS),
     truncated: Math.max(0, whole.length - MAX_VIEW_CHARS),
   }
@@ -40,15 +52,21 @@ export default function SourceViewer({
   path,
   description,
   close,
+  copying,
 }: {
   path: string
   description: string
   close: () => void
+  copying?: CopyRequest
 }) {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' })
+  const [target, setTarget] = useState<string>('')
+  const [copied, setCopied] = useState<{ route: string; title: string } | null>(null)
+  const [copyError, setCopyError] = useState('')
   const dialog = useRef<HTMLDialogElement>(null)
   const material = materialFor(path)
   const openable = material && material.kind !== 'source' ? material.url : null
+  const destination = copyPathFor(path)
 
   useEffect(() => {
     const element = dialog.current!
@@ -124,6 +142,48 @@ export default function SourceViewer({
           </>
         )}
       </div>
+      {copying && loaded.state === 'text' && (
+        <div className="source-viewer-copy">
+          {copied ? (
+            <p role="status">
+              Copied to {copied.title} as <code>{destination}</code>.{' '}
+              <a href={copied.route} onClick={close}>
+                Open its files
+              </a>
+            </p>
+          ) : (
+            <>
+              <label>
+                Copy into
+                <select value={target} onChange={(event) => setTarget(event.target.value)}>
+                  {copying.targets.map((option) => (
+                    <option key={option.id ?? 'new'} value={option.id ?? ''}>
+                      {option.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  const result = copying.copy(target || null, destination, loaded.whole)
+                  setCopyError(result.ok ? '' : result.message)
+                  if (result.ok) setCopied({ route: result.route, title: result.title })
+                }}
+              >
+                <FilePlus2 size={15} />
+                Copy as {destination}
+              </button>
+            </>
+          )}
+          {copyError && (
+            <p className="form-error" role="alert">
+              {copyError}
+            </p>
+          )}
+        </div>
+      )}
       <div className="modal-footer">
         <p className="source-viewer-origin">
           This file ships with the application and is shown read-only.

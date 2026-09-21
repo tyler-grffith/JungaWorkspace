@@ -1,14 +1,5 @@
 {
-  "version": 1,
-  "theme": {
-    "accent": "#285f4b",
-    "sidebar": "#f2f4ef",
-    "buttonRadius": 6
-  },
-  "graph": {
-    "panelWidth": 310,
-    "formulaSize": 17
-  },
+  "version": 2,
   "labels": {
     "title": "Label manager",
     "angleControl": "number",
@@ -19,5 +10,43 @@
     "padding": 14,
     "offsetX": 9,
     "offsetY": 10
+  },
+  "graph": {
+    "panelWidth": 310,
+    "formulaSize": 17
+  },
+  "sheet": {
+    "columnWidth": 128,
+    "rowHeight": 32,
+    "fontSize": 13
+  },
+  "theme": {
+    "accent": "#285f4b",
+    "sidebar": "#f2f4ef",
+    "ink": "#233c32",
+    "border": "#e4e9e2",
+    "soft": "#eef3e9",
+    "buttonRadius": 6,
+    "cardRadius": 9,
+    "fontSize": 14,
+    "headingFont": "'Manrope Variable', 'Segoe UI', sans-serif"
+  },
+  "shell": {
+    "sidebarWidth": 250,
+    "contentMaxWidth": 1440,
+    "contentPadding": 42,
+    "brandSubtitle": "YOUR WORKSPACE",
+    "workspaceName": "Personal workspace",
+    "workspaceTagline": "A place for your work"
+  },
+  "library": {
+    "gridColumns": 3,
+    "defaultLayout": "grid",
+    "defaultSort": "updated",
+    "showExamples": true,
+    "eyebrow": "YOUR WORK, TOGETHER",
+    "title": "Your library",
+    "tagline": "A home for your ideas, models, and working projects.",
+    "footerLine": "A little more organized. A little more possible."
   }
 }

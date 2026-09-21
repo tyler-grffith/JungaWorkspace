@@ -1,7 +1,15 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { Check, Copy, Palette, X } from 'lucide-react'
 import { DesignerContext, useDesign } from './context'
-import { refinementBrief, validDesign } from './model'
+import {
+  designGroups,
+  groupIds,
+  refinementBrief,
+  validDesign,
+  type DesignSettings,
+  type Field,
+  type GroupId,
+} from './model'
 import LabelManager from '../graph/LabelManager'
 import CurveLabel from '../graph/CurveLabel'
 import { newExpression, type PlotEntry } from '../graph/model'
@@ -60,22 +68,93 @@ function NumberSetting({
   )
 }
 
+/** One control per registry field kind. Labels come from the registry. */
+function FieldControl({
+  field,
+  value,
+  onChange,
+}: {
+  field: Field
+  value: unknown
+  onChange: (value: unknown) => void
+}) {
+  const help = field.help && <p className="designer-hint">{field.help}</p>
+  if (field.kind === 'number')
+    return (
+      <>
+        <NumberSetting
+          label={field.label}
+          value={value as number}
+          min={field.min}
+          max={field.max}
+          onChange={onChange}
+        />
+        {help}
+      </>
+    )
+  if (field.kind === 'toggle')
+    return (
+      <>
+        <label className="designer-field designer-toggle">
+          <input
+            type="checkbox"
+            checked={value as boolean}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+          <span>{field.label}</span>
+        </label>
+        {help}
+      </>
+    )
+  return (
+    <>
+      <label className="designer-field">
+        <span>{field.label}</span>
+        {field.kind === 'select' ? (
+          <select
+            value={String(value)}
+            onChange={(e) =>
+              onChange(
+                field.options.find((option) => String(option.value) === e.target.value)!.value,
+              )
+            }
+          >
+            {field.options.map((option) => (
+              <option key={String(option.value)} value={String(option.value)}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : field.kind === 'color' ? (
+          <input type="color" value={value as string} onChange={(e) => onChange(e.target.value)} />
+        ) : (
+          <input
+            value={value as string}
+            maxLength={field.maxLength}
+            required
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
+      </label>
+      {help}
+    </>
+  )
+}
+
 export default function DesignerPanel() {
   const settings = useDesign()
   const controls = useContext(DesignerContext)!
-  const [area, setArea] = useState('Label manager')
+  const [area, setArea] = useState<GroupId>('labels')
   const [request, setRequest] = useState('')
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
   const requestOutput = useRef<HTMLTextAreaElement>(null)
   const [sample, setSample] = useState<PlotEntry | null>(null)
   const [editingSample, setEditingSample] = useState(true)
-  const labels = (patch: Partial<typeof settings.labels>) =>
-    controls.update({ ...settings, labels: { ...settings.labels, ...patch } })
-  const graph = (patch: Partial<typeof settings.graph>) =>
-    controls.update({ ...settings, graph: { ...settings.graph, ...patch } })
-  const theme = (patch: Partial<typeof settings.theme>) =>
-    controls.update({ ...settings, theme: { ...settings.theme, ...patch } })
+  const group = designGroups[area]
+  const values = settings[area] as Record<string, unknown>
+  const setField = (key: string, value: unknown) =>
+    controls.update({ ...settings, [area]: { ...values, [key]: value } } as DesignSettings)
   const brief = refinementBrief(area, request)
   async function copyRequest() {
     try {
@@ -128,103 +207,28 @@ export default function DesignerPanel() {
               <select
                 value={area}
                 onChange={(e) => {
-                  setArea(e.target.value)
+                  setArea(e.target.value as GroupId)
                   setCopied(false)
                 }}
               >
-                <option>Label manager</option>
-                <option>Graph layout</option>
-                <option>Shared appearance</option>
+                {groupIds.map((id) => (
+                  <option key={id} value={id}>
+                    {designGroups[id].title}
+                  </option>
+                ))}
               </select>
             </label>
-            {area === 'Label manager' && (
-              <div className="designer-section">
-                <label className="designer-field">
-                  <span>Popup title</span>
-                  <input
-                    value={settings.labels.title}
-                    maxLength={40}
-                    required
-                    onChange={(e) => labels({ title: e.target.value })}
-                  />
-                </label>
-                <label className="designer-field">
-                  <span>Angle control</span>
-                  <select
-                    value={settings.labels.angleControl}
-                    onChange={(e) =>
-                      labels({ angleControl: e.target.value as 'number' | 'dropdown' })
-                    }
-                  >
-                    <option value="number">Typed number</option>
-                    <option value="dropdown">Dropdown</option>
-                  </select>
-                </label>
-                <label className="designer-field">
-                  <span>Rotation step</span>
-                  <select
-                    value={settings.labels.angleStep}
-                    onChange={(e) => labels({ angleStep: Number(e.target.value) })}
-                  >
-                    {[1, 5, 10, 15, 30, 45, 90].map((n) => (
-                      <option key={n} value={n}>
-                        {n}°
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="designer-hint">
-                  Used by the rotation buttons and dropdown. Typed angles can include decimals.
-                </p>
-                <label className="designer-field">
-                  <span>Size control</span>
-                  <select
-                    value={settings.labels.sizeControl}
-                    onChange={(e) => labels({ sizeControl: e.target.value as 'slider' | 'number' })}
-                  >
-                    <option value="slider">Slider</option>
-                    <option value="number">Typed number</option>
-                  </select>
-                </label>
-                <NumberSetting
-                  label="Default label size (px)"
-                  value={settings.labels.defaultSize}
-                  min={8}
-                  max={36}
-                  onChange={(defaultSize) => labels({ defaultSize })}
+            <div className="designer-section" key={area}>
+              <p className="designer-hint">{group.description}</p>
+              {Object.entries(group.fields as Record<string, Field>).map(([key, field]) => (
+                <FieldControl
+                  key={key}
+                  field={field}
+                  value={values[key]}
+                  onChange={(value) => setField(key, value)}
                 />
-                <NumberSetting
-                  label="Popup width (px)"
-                  value={settings.labels.width}
-                  min={240}
-                  max={420}
-                  onChange={(width) => labels({ width })}
-                />
-                <NumberSetting
-                  label="Popup padding (px)"
-                  value={settings.labels.padding}
-                  min={8}
-                  max={28}
-                  onChange={(padding) => labels({ padding })}
-                />
-                <NumberSetting
-                  label="Label offset right (px)"
-                  value={settings.labels.offsetX}
-                  min={-30}
-                  max={40}
-                  onChange={(offsetX) => labels({ offsetX })}
-                />
-                <NumberSetting
-                  label="Label offset above (px)"
-                  value={settings.labels.offsetY}
-                  min={-30}
-                  max={40}
-                  onChange={(offsetY) => labels({ offsetY })}
-                />
-                <p className="designer-hint">
-                  Default size applies to labels without a saved style. Existing custom label styles
-                  stay as you set them.
-                </p>
+              ))}
+              {area === 'labels' && (
                 <button
                   type="button"
                   className="button secondary"
@@ -235,57 +239,8 @@ export default function DesignerPanel() {
                 >
                   Preview label manager
                 </button>
-              </div>
-            )}
-            {area === 'Graph layout' && (
-              <div className="designer-section">
-                <NumberSetting
-                  label="Expression panel width (px)"
-                  value={settings.graph.panelWidth}
-                  min={250}
-                  max={440}
-                  onChange={(panelWidth) => graph({ panelWidth })}
-                />
-                <NumberSetting
-                  label="Formula text size (px)"
-                  value={settings.graph.formulaSize}
-                  min={12}
-                  max={24}
-                  onChange={(formulaSize) => graph({ formulaSize })}
-                />
-                <p className="designer-hint">
-                  Open a graph to preview these changes. Narrow screens keep the stacked layout.
-                </p>
-              </div>
-            )}
-            {area === 'Shared appearance' && (
-              <div className="designer-section">
-                <label className="designer-field">
-                  <span>Accent color</span>
-                  <input
-                    type="color"
-                    value={settings.theme.accent}
-                    onChange={(e) => theme({ accent: e.target.value })}
-                  />
-                </label>
-                <label className="designer-field">
-                  <span>Sidebar color</span>
-                  <input
-                    type="color"
-                    value={settings.theme.sidebar}
-                    onChange={(e) => theme({ sidebar: e.target.value })}
-                  />
-                </label>
-                <NumberSetting
-                  label="Button corner radius (px)"
-                  value={settings.theme.buttonRadius}
-                  min={0}
-                  max={24}
-                  onChange={(buttonRadius) => theme({ buttonRadius })}
-                />
-                <p className="designer-hint">Check text readability when changing colors.</p>
-              </div>
-            )}
+              )}
+            </div>
             <div className="designer-actions">
               <button
                 className="button primary"
@@ -353,7 +308,8 @@ export default function DesignerPanel() {
           <p className="designer-hint">Copying prepares the request. It does not start an agent.</p>
         </section>
         <footer className="designer-footer">
-          Local development only · Saved in <code>Design/settings.json</code>
+          Local development only · Saved in <code>Design/settings.json</code> · Fields in{' '}
+          <code>src/design/registry.ts</code>
         </footer>
       </aside>
       {sample && (

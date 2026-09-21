@@ -2,7 +2,7 @@ import type { Plugin } from 'vite'
 import { createHash } from 'node:crypto'
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
-import { DESIGN_ENDPOINT, validDesign, type DesignSnapshot } from './model.ts'
+import { DESIGN_ENDPOINT, completeDesign, validDesign, type DesignSnapshot } from './model.ts'
 
 // This route exists only in the loopback development server, and writes one fixed JSON file.
 export function designerServer(): Plugin {
@@ -18,8 +18,8 @@ export function designerServer(): Plugin {
         raw = await readFile(original, 'utf8')
       else throw e
     }
-    const settings: unknown = JSON.parse(raw)
-    if (!validDesign(settings))
+    const settings = completeDesign(JSON.parse(raw))
+    if (!settings)
       throw new Error('The saved design file is invalid. Repair it before saving a new design.')
     return { settings, revision: createHash('sha256').update(raw).digest('hex') }
   }

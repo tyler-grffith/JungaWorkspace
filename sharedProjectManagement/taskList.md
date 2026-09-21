@@ -8,6 +8,10 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 ## Next up
 
+- [ ] **Merge PR #1, then the extensible-baseline PR.** Tyler instructed the initial merge on September 20; the agent session could not perform the admin merge. Run `gh pr merge 1 --merge --admin`, then review the follow-up PR from `codex/extensible-baseline` (module and design registries, `docs/ARCHITECTURE.md`).
+- [ ] **Try the expanded designer areas.** Spreadsheet sizing, shared appearance colors and fonts, workspace shell dimensions and text, and library defaults/copy are now adjustable. Note which fixed details are still missing; each is one registry line.
+- [ ] **Choose the first new module.** Tyler names modules one at a time. Candidates from the owner's list: text, diagram, presentation, photos. Follow the checklist in `docs/ARCHITECTURE.md`.
+- [ ] **Shape portfolio and blog.** Both in-app views and exports, hosting undecided. First step: a per-module presentation render (static graph SVG, static sheet table) that both can reuse.
 - [x] **Publish the GitHub collaboration baseline.** Public repository and `codex/github-collaboration` branch are live in [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1), with contribution/agent guidance, templates, PR CI, and main-branch protection. `bobjunga` has a pending write invitation. See PR checks for remote validation; initial merge stays with Tyler and the designated supervisor.
 - [ ] **Review designer access.** Switch User mode → Designer mode in the top bar. Try the label preview, typed/dropdown angle controls, layout settings, and Save/Revert. Try copying a one-sentence refinement request. Implemented on `codex/designer-mode`; [workflow](../docs/REFINEMENTS.md).
 - [ ] **Review the six calculator refinements.** Try ordered pairs and implicit equations, drag row grips (or Alt+↑/↓), animate a slider at different speeds in loop/reverse/stop mode, inspect color swatches, and drag/double-click a curve label. Review label size, parallel alignment, 15° rotation, and popup layout. Implemented on `codex/graph-interactions`.
@@ -23,7 +27,7 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 
 ## Come back to
 
-- [ ] **Extend designer controls from actual use.** Gather the next frequently adjusted properties before adding more controls. Consider preset comparisons, more component coverage, and a hosted designer role when accounts/hosting exist.
+- [ ] **Extend designer controls from actual use.** Adding a control is one registry line; add them as Tyler asks. Consider preset comparisons, per-module groups for new modules, and a hosted designer role when accounts/hosting exist.
 - [ ] **Revisit recovery as storage evolves.** Manual full-library backups and restoration are implemented. Selective project recovery, scheduled backups, persistent version history, and coordinated simultaneous editing remain future decisions alongside server storage.
 - [ ] **Review new examples as they arrive.** Keep the first example as the early target. Turn newly identified needs into specific tasks without silently expanding the prototype scope.
 - [ ] **Inspect the larger engineering workbook in depth.** Initial read-only inventory found 22 worksheets, extensive arithmetic/trigonometry, and named function calls such as TRAT. Trace representative models with the owner to prioritize multiple sheets, cross-sheet references, custom functions, and larger grids. The current prototype is not compatible with the whole workbook.
@@ -95,5 +99,11 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Designer/user mode switch, live label-control and visual settings, sample preview, Save/Revert/download, and tab-local preview recovery. Accepted settings live in `Design/settings.json`; production omits editing controls.
 - [x] Typed decimal label angles with persistence, designer-selected rotation steps and control variants, plus area-aware **Copy request for agent** and a concise refinement protocol.
 - [x] 67 unit and 58 browser tests pass across full and targeted runs, including isolated saves, stale revisions, production exclusion, clipboard handoff, and desktop/mobile accessibility. Real local repository save and visual review completed. Local branch `codex/designer-mode`; no merge or deployment.
+
+## Extensible baseline — September 20, 2026
+
+- [x] Module ids, module registry (names, icons, copy, routes, combined views), and example registry; the shell renders from them and routing checks a project's tools. Saved formats unchanged.
+- [x] Design settings registry with six groups; validation, the designer panel, CSS variables, and the saved-file shape derive from field definitions. Older settings files complete with defaults.
+- [x] `docs/ARCHITECTURE.md` with the extension philosophy and checklists; workflow docs made tool-neutral. 73 unit tests, TypeScript, and build pass. Local branch `codex/extensible-baseline`; no merge or deployment.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

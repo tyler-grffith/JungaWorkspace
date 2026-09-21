@@ -6,8 +6,9 @@ import {
   type GraphDocument,
 } from './graph/model'
 import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
+import { TOOL_IDS, isTool, type Tool } from './modules/ids'
 
-export type Tool = 'graph' | 'sheet'
+export type { Tool } from './modules/ids'
 export type ProjectStatus = 'active' | 'archived' | 'trashed'
 export type Collection = { id: string; name: string }
 export type Project = {
@@ -47,7 +48,7 @@ const name = (value: string, label: string, max: number) => {
 export function validateInput(input: ProjectInput, library: Library): ProjectInput {
   const title = name(input.title, 'Project name', 100)
   if (input.description.length > 500) throw new Error('Keep the description under 500 characters.')
-  if (!input.tools.length || input.tools.some((tool) => tool !== 'graph' && tool !== 'sheet'))
+  if (!input.tools.length || !input.tools.every(isTool))
     throw new Error('Choose at least one tool.')
   if (input.collectionId && !library.collections.some((c) => c.id === input.collectionId))
     throw new Error('That collection no longer exists. Choose another collection.')
@@ -187,6 +188,14 @@ export function initializeSheet(library: Library, id: string): Library {
   if (!project) throw new Error('This project is no longer available.')
   return project.sheet ? library : saveSheet(library, id, emptySheet())
 }
+const initializers: Record<Tool, (library: Library, id: string) => Library> = {
+  graph: initializeGraph,
+  sheet: initializeSheet,
+}
+/** Create the saved document for each listed module if the project lacks it. */
+export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {
+  return tools.reduce((current, tool) => initializers[tool](current, id), library)
+}
 export function saveWorkspace(
   library: Library,
   id: string,
@@ -312,9 +321,9 @@ export function parseLibrary(raw: string | null): Library {
         typeof p.favorite === 'boolean' &&
         Array.isArray(p.tools) &&
         p.tools.length > 0 &&
-        p.tools.length <= 2 &&
+        p.tools.length <= TOOL_IDS.length &&
         new Set(p.tools).size === p.tools.length &&
-        p.tools.every((t) => t === 'graph' || t === 'sheet') &&
+        p.tools.every(isTool) &&
         (p.collectionId === null || ids.has(p.collectionId)) &&
         ['active', 'archived', 'trashed'].includes(p.status as string) &&
         (p.status === 'trashed'

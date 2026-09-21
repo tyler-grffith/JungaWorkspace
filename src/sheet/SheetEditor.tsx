@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useDesign } from '../design/context'
 import {
   AlignCenter,
   AlignLeft,
@@ -81,6 +82,7 @@ export default function SheetEditor({
   const [notice, setNotice] = useState(''),
     [confirmExample, setConfirmExample] = useState(false),
     [rangeInput, setRangeInput] = useState('A1')
+  const defaultWidth = useDesign().sheet.columnWidth
   const [resizing, setResizing] = useState<{ col: number; width: number } | null>(null)
   const latest = useRef(sheet),
     historyRef = useRef(history),
@@ -605,7 +607,9 @@ export default function SheetEditor({
               width:
                 44 +
                 Array.from({ length: sheet.columns }, (_, col) =>
-                  resizing?.col === col ? resizing.width : (sheet.widths[columnName(col)] ?? 128),
+                  resizing?.col === col
+                    ? resizing.width
+                    : (sheet.widths[columnName(col)] ?? defaultWidth),
                 ).reduce((a, n) => a + n, 0),
             }}
             role="grid"
@@ -664,7 +668,7 @@ export default function SheetEditor({
                     width:
                       resizing?.col === col
                         ? resizing.width
-                        : (sheet.widths[columnName(col)] ?? 128),
+                        : (sheet.widths[columnName(col)] ?? defaultWidth),
                   }}
                 />
               ))}
@@ -716,7 +720,7 @@ export default function SheetEditor({
                         finishEdit()
                         e.preventDefault()
                         e.currentTarget.setPointerCapture(e.pointerId)
-                        const width = sheet.widths[columnName(col)] ?? 128
+                        const width = sheet.widths[columnName(col)] ?? defaultWidth
                         resize.current = { col, x: e.clientX, start: width, width }
                       }}
                       onPointerMove={(e) => {
@@ -774,7 +778,7 @@ export default function SheetEditor({
                                 70,
                                 Math.min(
                                   420,
-                                  (sheet.widths[columnName(col)] ?? 128) +
+                                  (sheet.widths[columnName(col)] ?? defaultWidth) +
                                     (e.key === 'ArrowLeft' ? -10 : 10),
                                 ),
                               ),

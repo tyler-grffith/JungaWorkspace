@@ -28,7 +28,7 @@ Open http://127.0.0.1:5173. The app requires no service credentials. These comma
 
 ## One branch per assignment
 
-Read `AGENTS.md`, the current handoff, and the shared task list before editing. Choose a focused assignment and record its branch and scope. Use an issue for discussion/assignment when useful, and link it from the task list rather than maintaining two copies of every priority.
+Read `AGENTS.md`, `docs/ARCHITECTURE.md`, the current handoff, and the shared task list before editing. Choose a focused assignment and record its branch and scope. Use an issue for discussion/assignment when useful, and link it from the task list rather than maintaining two copies of every priority. Any agent tool or human contributor follows the same workflow; branch prefixes such as `codex/` are a naming convention only.
 
 Once the initial PR is merged, start work with:
 
@@ -65,7 +65,7 @@ The CI workflow checks dependencies, unit tests, TypeScript/build, and Chromium 
 
 ## Review and ownership
 
-Tyler retains product, merge, and deployment decisions. `CODEOWNERS` requests his review for repository changes once that file reaches the PR's base branch. Required reviews cannot be supplied by the PR author; owner-authored bootstrap work needs another authorized reviewer or an explicit owner decision using GitHub's administrator override. Agents must not use that override on their own.
+Tyler retains product, merge, and deployment decisions. `CODEOWNERS` requests his review for repository changes once that file reaches the PR's base branch. Required reviews cannot be supplied by the PR author. Because agents on Tyler's computers push as his account, their PRs need a review from another collaborator or an explicit owner decision using GitHub's administrator override (`gh pr merge <number> --merge --admin`). Agents must not use that override on their own.
 
 Main-branch protection is enabled: it requires a current passing `Application checks` result, a review, code-owner review, resolved conversations, and no force push or deletion of `main`. The owner retains administrator control. Agents authenticating as the owner inherit that account's rights; GitHub cannot distinguish the agent from Tyler. Use separate accounts or a narrowly scoped GitHub App if independent permission boundaries become necessary.
 

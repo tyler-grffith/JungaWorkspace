@@ -8,7 +8,7 @@
   color: #263c34;
   background: #fafbf9;
   font-synthesis: none;
-  font-size: 14px;
+  font-size: var(--design-font-size, 14px);
   font-weight: 400;
   --ink: #233c32;
   --muted: #61705c;
@@ -80,7 +80,7 @@ p {
 h1,
 h2,
 h3 {
-  font-family: 'Manrope Variable', 'Segoe UI', sans-serif;
+  font-family: var(--design-heading-font, 'Manrope Variable', 'Segoe UI', sans-serif);
 }
 h1 {
   font-size: 34px;
@@ -126,7 +126,7 @@ button:disabled:hover {
   min-height: 100vh;
 }
 .sidebar {
-  width: 250px;
+  width: var(--design-sidebar-width, 250px);
   position: fixed;
   inset: 0 auto 0 0;
   display: flex;
@@ -369,7 +369,7 @@ button:disabled:hover {
   color: var(--muted);
 }
 .main-shell {
-  margin-left: 250px;
+  margin-left: var(--design-sidebar-width, 250px);
   flex: 1;
   min-width: 0;
 }
@@ -413,9 +413,9 @@ button:disabled:hover {
   background: #668756;
 }
 .main-content {
-  max-width: 1440px;
+  max-width: var(--design-content-width, 1440px);
   margin: auto;
-  padding: 43px 42px 26px;
+  padding: 43px var(--design-content-padding, 42px) 26px;
 }
 .eyebrow {
   font-size: 11px;
@@ -838,12 +838,12 @@ button:disabled:hover {
 }
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--design-grid-columns, 3), minmax(0, 1fr));
   gap: 20px;
 }
 .project-card {
   border: 1px solid #e0e6d9;
-  border-radius: 9px;
+  border-radius: var(--design-card-radius, 9px);
   background: #fff;
   position: relative;
   min-width: 0;
@@ -1720,12 +1720,12 @@ button:disabled:hover {
 }
 @media (max-width: 1180px) {
   .sidebar {
-    width: 225px;
+    width: min(var(--design-sidebar-width, 250px), 225px);
     padding-left: 15px;
     padding-right: 15px;
   }
   .main-shell {
-    margin-left: 225px;
+    margin-left: min(var(--design-sidebar-width, 250px), 225px);
   }
   .topbar {
     padding: 0 28px;
@@ -1849,7 +1849,7 @@ button:disabled:hover {
     transform: translateX(-100%);
     visibility: hidden;
     transition: transform 0.2s;
-    width: 250px;
+    width: var(--design-sidebar-width, 250px);
     box-shadow: 8px 0 30px #263c3415;
   }
   .sidebar.is-open {

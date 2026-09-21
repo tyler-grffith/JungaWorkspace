@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Project } from './library'
-import { validOutput, type Output } from './outputs'
+import { validOutput, type Output, type SceneOutput } from './outputs'
 import { cosmicClockManifest } from './interactive-scenes/cosmic-clock/manifest'
 import './code-project.css'
 
@@ -10,7 +10,7 @@ function OutputSettings({
   close,
   onDraftChange,
 }: {
-  output: Output
+  output: SceneOutput
   save: (value: Output, expected: Output) => boolean
   close: () => void
   onDraftChange: (dirty: boolean) => void
@@ -34,7 +34,7 @@ function OutputSettings({
     onDraftChange(dirty)
     return () => onDraftChange(false)
   }, [dirty, onDraftChange])
-  function change(update: (next: Output) => void) {
+  function change(update: (next: SceneOutput) => void) {
     setValue((current) => {
       const next = structuredClone(current)
       update(next)
@@ -317,7 +317,7 @@ export default function CodeProjectOverview({
   onAdd: () => void
   onDraftChange: (dirty: boolean) => void
 }) {
-  const [editing, setEditing] = useState<Output | null>(null)
+  const [editing, setEditing] = useState<SceneOutput | null>(null)
   const credits = `${import.meta.env.BASE_URL}assets/cosmic-clock/CREDITS.md`
   return (
     <div className="code-project-overview">
@@ -379,37 +379,39 @@ export default function CodeProjectOverview({
           <span>{project.outputs.length}</span>
         </div>
         <p>Interactive experiences made by {project.title}.</p>
-        {project.outputs.map((output) => (
-          <article key={output.id} className="code-output-card" aria-label={output.title}>
-            <div className="code-output-art" aria-hidden="true">
-              <div />
-            </div>
-            <div className="code-output-body">
-              <div className="code-output-medium">
-                Interactive scene <span>{output.status === 'ready' ? 'Ready' : 'Draft'}</span>
+        {project.outputs
+          .filter((output): output is SceneOutput => output.type === 'interactive-scene')
+          .map((output) => (
+            <article key={output.id} className="code-output-card" aria-label={output.title}>
+              <div className="code-output-art" aria-hidden="true">
+                <div />
               </div>
-              <h3>{output.title}</h3>
-              <p>{output.description}</p>
-              <div className="code-output-actions">
-                {project.status !== 'trashed' ? (
-                  <>
-                    <a
-                      className="button primary"
-                      href={`#/project/${project.id}/output/${output.id}`}
-                    >
-                      Open scene
-                    </a>
-                    <button className="button secondary" onClick={() => setEditing(output)}>
-                      Edit output settings
-                    </button>
-                  </>
-                ) : (
-                  <p>Restore this project to open its output.</p>
-                )}
+              <div className="code-output-body">
+                <div className="code-output-medium">
+                  Interactive scene <span>{output.status === 'ready' ? 'Ready' : 'Draft'}</span>
+                </div>
+                <h3>{output.title}</h3>
+                <p>{output.description}</p>
+                <div className="code-output-actions">
+                  {project.status !== 'trashed' ? (
+                    <>
+                      <a
+                        className="button primary"
+                        href={`#/project/${project.id}/output/${output.id}`}
+                      >
+                        Open scene
+                      </a>
+                      <button className="button secondary" onClick={() => setEditing(output)}>
+                        Edit output settings
+                      </button>
+                    </>
+                  ) : (
+                    <p>Restore this project to open its output.</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))}
         {project.status !== 'trashed' && (
           <button className="button secondary" onClick={onAdd}>
             Add Earth Clock output

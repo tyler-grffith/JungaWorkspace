@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { Output } from '../../outputs'
+import type { SceneOutput } from '../../outputs'
 import type { SceneController, Snapshot } from './runtime'
 import '@fontsource/dm-mono/400.css'
 import '@fontsource/instrument-serif/400.css'
 import './scene.css'
 
-export default function SceneHost({ output }: { output: Output }) {
+export default function SceneHost({ output }: { output: SceneOutput }) {
   const host = useRef<HTMLDivElement>(null)
   const controller = useRef<SceneController | null>(null)
   // Freeze authoring input for this visit, including when another tab updates the project.

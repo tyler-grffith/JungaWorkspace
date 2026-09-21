@@ -9,7 +9,7 @@ Tyler is the product manager and UI designer. Agents build complete, working bas
 - **Registries over branches.** Anything that comes in a list (modules, examples, design settings, combined views) is a data entry in one file, not an `if` chain spread across components. A new entry should be most of the work of adding a new thing.
 - **Adjustable by hand.** Text, sizes, colors, and defaults that Tyler may want to change live in `Design/settings.json`, edited through designer mode, not in component source. If a value is being requested repeatedly, register it.
 - **Compatible persistence.** Saved projects and backups from earlier versions must keep loading. Document shapes are versioned and validated; new fields are optional with defaults. Never rename a saved key.
-- **Bounded engines.** The graph and spreadsheet engines are small, validated, and never evaluate JavaScript. Prefer extending them over embedding an external calculator.
+- **Bounded engines.** The graph and spreadsheet engines are small, validated, and never evaluate JavaScript. Prefer extending them over embedding an external calculator. The code module is the deliberate exception: it runs the user's own JavaScript, and confines it to a sandboxed frame with an opaque origin rather than trusting it (`src/code/bundle.ts`, decisions 27–29).
 - **Decide, record, move on.** Fill ordinary gaps without waiting. Record novel decisions in [DECISIONS.md](DECISIONS.md), keep the feature record current, and leave a reviewable PR.
 
 ## Layers
@@ -22,19 +22,19 @@ src/modules/ids.ts ──► src/library.ts (domain, storage) ──► src/App.
 src/modules/registry.ts   src/modules/examples.ts        editors: src/graph, src/sheet, src/linked
 ```
 
-| Layer           | Files                                     | Responsibility                                                                                                                             |
-| --------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Module ids      | `src/modules/ids.ts`                      | The stable tool identifiers. Also the key of each module's saved document on a project and its route segment.                              |
-| Domain          | `src/library.ts`, `src/backup.ts`         | Projects, collections, lifecycle, validation, local-storage commits, backup/restore. No React.                                             |
-| Module registry | `src/modules/registry.ts`                 | Names, icons, copy, routes, and combined views. The shell renders from this.                                                               |
-| Examples        | `src/modules/examples.ts`                 | Built-in example projects and where the library offers them.                                                                               |
-| Editors         | `src/graph/`, `src/sheet/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
-| Shell           | `src/App.tsx`                             | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
-| Design          | `src/design/`                             | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
+| Layer           | Files                                                  | Responsibility                                                                                                                             |
+| --------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Module ids      | `src/modules/ids.ts`                                   | The stable tool identifiers. Also the key of each module's saved document on a project and its route segment.                              |
+| Domain          | `src/library.ts`, `src/backup.ts`                      | Projects, collections, lifecycle, validation, local-storage commits, backup/restore. No React.                                             |
+| Module registry | `src/modules/registry.ts`                              | Names, icons, copy, routes, and combined views. The shell renders from this.                                                               |
+| Examples        | `src/modules/examples.ts`                              | Built-in example projects and where the library offers them.                                                                               |
+| Editors         | `src/graph/`, `src/sheet/`, `src/code/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
+| Shell           | `src/App.tsx`                                          | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
+| Design          | `src/design/`                                          | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
 
 ## Routing
 
-Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`) or a combined view route (`workspace`). `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
+Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
 
 ## Adding a module
 
@@ -74,7 +74,7 @@ These are both in-app views and exported outputs, with no hosting target chosen 
 ## What is deliberately not abstracted
 
 - Editor props and draft/save plumbing in `App.tsx`. Two editors do not justify a generic editor host; revisit at three or four.
-- Storage. One local-storage key holds the whole library. Accounts, sync, and server storage are future decisions and are isolated behind `useLibrary`/`commitLibrary`.
+- Storage. One local-storage key holds the whole library, which is why code projects are bounded to text files and a few hundred KB; binary assets need a storage decision first. Accounts, sync, and server storage are future decisions and are isolated behind `useLibrary`/`commitLibrary`.
 - The engines. Each module owns its parser and evaluator. Sharing between them happens through explicit links (`src/linked/`), not a shared expression language.
 
 ## Conventions

@@ -119,6 +119,24 @@ export const designGroups = {
       fontSize: number('Cell text size (px)', 13, 11, 16, { cssVar: '--design-sheet-font-size' }),
     },
   },
+  code: {
+    title: 'Code project',
+    description: 'File tree and editor sizing. Open a code project to preview these changes.',
+    files: 'src/code/CodeEditor.tsx; src/code/code.css',
+    fields: {
+      treeWidth: number('File tree width (px)', 232, 160, 360, {
+        cssVar: '--code-tree-width',
+      }),
+      editorHeight: number('Editor height (px)', 560, 320, 900, {
+        cssVar: '--code-editor-height',
+      }),
+      fontSize: number('Code text size (px)', 13, 11, 18, { cssVar: '--code-font-size' }),
+      runHeight: number('Run preview height (px)', 320, 200, 700, {
+        cssVar: '--code-run-height',
+        help: 'The output page always fills its own page height.',
+      }),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

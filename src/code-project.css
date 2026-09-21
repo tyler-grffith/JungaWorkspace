@@ -62,7 +62,7 @@
   border-radius: 8px;
   font-size: 12px;
 }
-.code-project-overview .code-output-card {
+.code-output-card {
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
@@ -87,30 +87,30 @@
     inset 10px 0 18px #59a8d133;
   transform: rotate(-23.4deg);
 }
-.code-project-overview .code-output-body {
+.code-output-body {
   padding: 22px;
 }
-.code-project-overview .code-output-medium {
+.code-output-medium {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
   color: var(--muted);
 }
-.code-project-overview .code-output-medium span {
+.code-output-medium span {
   background: var(--soft);
   padding: 2px 8px;
   border-radius: 9px;
   color: var(--green);
 }
-.code-project-overview .code-output-body h3 {
+.code-output-body h3 {
   font-size: 23px;
   margin: 12px 0 8px;
 }
-.code-project-overview .code-output-body p {
+.code-output-body p {
   color: var(--muted);
   line-height: 1.7;
 }
-.code-project-overview .code-output-actions {
+.code-output-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;

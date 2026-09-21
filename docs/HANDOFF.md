@@ -57,8 +57,14 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 - Are the distinction between restoring copies and replacing the library, and the unsaved-work recovery messages, clear?
 - Does the side-by-side workspace match how you want to explore the octahedron model? Should controls, named cells, and coordinate ranges be organized differently?
 
+### Code project module — branch `codex/code-project-module`
+
+`code` is now a module you tick when creating a project, beside Graphing and Spreadsheet. It holds text files and folders you write or import, edits them with CodeMirror, and runs them through `code-run` outputs on the existing output route — data URLs plus an import map inside a frame sandboxed without `allow-same-origin`, so no server, no build step, and no access to the saved library. Cosmic Clock is unchanged; its `projectType: 'code'` container is now labelled "Bundled source project" in the form. See decisions 27–29 and `sharedProjectManagement/features/code projects.md`.
+
+Open questions for Tyler: binary assets (images, fonts, data) need storage beyond the shared local-storage key before they can be imported; JSX/TypeScript compilation and bare npm imports need a build step; navigation between HTML files inside one output is not supported; and the sandbox's network access should be reconsidered when accounts arrive.
+
 ### Next increment
 
-Next: review Cosmic Clock source/output separation end to end; try the expanded designer areas; name the first new module (the checklist is in ARCHITECTURE.md); shape the portfolio/blog presentation render. Latest checks on `main`: 93 unit tests, TypeScript, and the production build pass; all 65 Playwright tests pass.
+Next: try a code project end to end and say what the file workspace is missing; review Cosmic Clock source/output separation; try the expanded designer areas; shape the portfolio/blog presentation render. Latest checks on `codex/code-project-module`: 114 unit tests, TypeScript, and the production build pass; all 69 Playwright tests pass.
 
 Deploying awaits the product owner's decision.

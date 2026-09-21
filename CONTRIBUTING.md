@@ -65,9 +65,11 @@ The CI workflow checks dependencies, unit tests, TypeScript/build, and Chromium 
 
 ## Review and ownership
 
-Tyler retains product, merge, and deployment decisions. `CODEOWNERS` requests his review for repository changes once that file reaches the PR's base branch. Required reviews cannot be supplied by the PR author. Because agents on Tyler's computers push as his account, their PRs need a review from another collaborator or an explicit owner decision using GitHub's administrator override (`gh pr merge <number> --merge --admin`). Agents must not use that override on their own.
+Tyler retains product, merge, and deployment decisions. `CODEOWNERS` requests his review for repository changes once that file reaches the PR's base branch; while Tyler is the only developer that review is advisory, because GitHub does not let an author approve their own pull request and agents on Tyler's computers push as his account. Requiring one approving review therefore deadlocked every PR and was removed on September 21, 2026. Restore `required_pull_request_reviews` in `.github/main-protection.json` as soon as a second person has write access.
 
-Main-branch protection is enabled: it requires a current passing `Application checks` result, a review, code-owner review, resolved conversations, and no force push or deletion of `main`. The owner retains administrator control. Agents authenticating as the owner inherit that account's rights; GitHub cannot distinguish the agent from Tyler. Use separate accounts or a narrowly scoped GitHub App if independent permission boundaries become necessary.
+Merging remains Tyler's decision, not an agent's: a passing check is permission for _him_ to merge, never an instruction for an agent to do it.
+
+Main-branch protection is enabled: it requires a current passing `Application checks` result, resolved conversations, and no force push or deletion of `main`. Because a status check is required, commits cannot be pushed straight to `main` — work still arrives through a branch and a pull request. The owner retains administrator control. Agents authenticating as the owner inherit that account's rights; GitHub cannot distinguish the agent from Tyler. Use separate accounts or a narrowly scoped GitHub App if independent permission boundaries become necessary.
 
 The applied settings are recorded in `.github/main-protection.json`. That file documents the policy; changing it does not apply settings automatically. Check GitHub's branch settings and the latest handoff for subsequent changes. Required review of `CODEOWNERS` changes takes effect after the file reaches `main`.
 

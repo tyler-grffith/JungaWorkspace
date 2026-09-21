@@ -67,7 +67,6 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 
 - Delivered working first versions of all three MVP components, manual backup recovery, spreadsheet/graph integration through Octahedron Sections, calculator interactions, and direct designer refinement controls. Current verification covers 67 unit and 58 browser tests. Shared priorities focus on hands-on review, the first remote PR/CI cycle, and example-driven refinements before October 15. External import and broader integration remain deferred. No merge or deployment performed.
 
-
 ## Daily — September 20, 2026 — Cosmic Clock integration
 
 - Integrated the existing p5.js project on `codex/cosmic-clock-outputs` in an isolated Junga worktree. Added backward-compatible project types, owned scene definitions, a concrete source inventory, explicit defaults/metadata editing and an optional creation template. Bundled assets and licenses; no repository editor or iframe.
@@ -78,7 +77,6 @@ Keep entries short: outcome, verification, next step, and meaningful decisions. 
 ## Weekly snippet — week ending September 20, 2026
 
 - Junga now has its first code project with an interactive-scene output, while ordinary project/tool workflows and old backups remain compatible. Ready for Tyler to review source/output ownership, editable starting defaults and the dark Earth Clock viewer. Source files remain repository-managed.
-
 
 ### September 20 follow-up — portable hosting paths
 
@@ -94,3 +92,24 @@ Weekly addendum: the integrated Junga build is now portable to a personal-site s
 - `tests/cosmic-clock.spec.ts`'s reload test needed `test.setTimeout(90000)`: it exceeded the default 30s limit on GitHub Actions' software-rendered runner (passed locally without the extension).
 - Deleted the standalone `Cosmic Clock` repo that had been copied into this repo's working tree (superseded by `src/interactive-scenes/cosmic-clock/`) and its stray duplicate of the integration worktree, and removed the `~/Work/Creative Code/Cosmic Clock/junga-integration` git worktree and the three merged branches (local and remote).
 - Verification on `main`: `npm run check` passes (93 unit tests, TypeScript, build); all 65 Playwright tests pass (chromium + designer projects); manual check confirmed the Cosmic Clock project → Earth Clock output flow renders correctly.
+
+## Daily — September 21, 2026 — Code project module
+
+- Added `code` as a third module (`src/code/`): a file workspace with a folder tree derived from paths, CodeMirror 6 editing, create/rename/delete/import, an entry file, and a live Run preview; plus `code-run` outputs that open the project's files on the existing output route.
+- Running uses no server and no build step: data URLs for every non-entry file and an import map for the project's own relative specifiers, inside a frame sandboxed without `allow-same-origin`. A console panel forwards logs and errors out of the frame, and modules carry `sourceURL` so failures name the project file.
+- Cosmic Clock is untouched: `projectType: 'code'` still owns its manifest and `interactive-scene` output; only the form's label changed to "Bundled source project". `validOutput` became a discriminated union over both output types.
+- CodeMirror is loaded lazily, keeping the initial bundle at 449 kB (from 423 kB) with a separate 606 kB editor chunk, rather than the 1,057 kB a static import produced.
+- Verification: `npm run check` passes (114 unit tests, TypeScript, build); all 69 Playwright tests pass (65 chromium including 4 new code-project tests, 4 designer). Browser check confirmed the editor, a multi-file import chain, the console panel, and the output route. Found and fixed two real defects on the way: bare relative references such as `href="styles.css"` were not resolved, and the output page's `<main>` collided with a landmark inside a running project (axe `landmark-unique`).
+
+### September 21 follow-up — viewing bundled material
+
+- Every file the Cosmic Clock manifest lists can now be opened read-only from **Working material**: application source through a narrow lazy `import.meta.glob` (one chunk per file, tests excluded), served assets through their normal URL, images previewed inline, and text over 120 KB truncated with a note plus a link to the complete file.
+- The viewer reuses the code module's CodeMirror in read-only mode, which is the first reuse between the two features.
+- Fixed a regression from the code-module commit: `CodeOutputs` rendered `className="code-outputs"`, the same class the Cosmic Clock overview uses, so the new card styles had replaced the Earth Clock card's globe artwork with the code artwork. The new styles are now scoped to `.code-run-outputs`.
+- Main bundle 449 kB → 455 kB; raw source files are 3–15 kB chunks loaded on demand. 117 unit tests and 70 browser tests pass.
+
+### September 21 follow-up — copying bundled files out
+
+- A viewable text file now offers **Copy into**: an existing code project, or a new one started from that single file and named after the bundled project. Copies are numbered rather than overwriting, the whole file is copied even when the preview was truncated, and files a code project cannot store are refused with the reason.
+- The confirmation names the project that was actually created and links to its files. A first pass reported the dropdown's label ("A new code project") instead, which the browser test caught.
+- 120 unit tests and 71 browser tests pass, including a test that copies a module, opens it, edits it and reloads.

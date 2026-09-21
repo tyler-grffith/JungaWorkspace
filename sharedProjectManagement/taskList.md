@@ -4,6 +4,8 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 **Feature documentation:** Each time an agent implements a feature at Tyler's request, create a concise markdown file in `features/`, one file per feature. Follow [implicit equations](<features/implicit equations.md>): feature title, Context, Tyler's Request, Conceptual gaps I, the agent, filled in, and What details should Tyler be able to fine tune by hand? Distinguish current in-app controls from possible refinements; update an existing feature's record when extending it.
 
+**Open questions:** Undecided big-picture questions live in [openQuestions.md](openQuestions.md) — product shape, multi-user, workflow, and automation. Nothing there is a decision; when one is settled it moves into [the decision log](../docs/DECISIONS.md) and, if it creates work, into this file.
+
 **Target:** a functional browser prototype by **October 15, 2026**, with library organization, a spreadsheet, and a graphing calculator. The owner has now requested the first spreadsheet/graph integration using Octahedron Sections. The second half of the semester is for UX refinement and launching to other users.
 
 ## Next up
@@ -108,5 +110,22 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Module ids, module registry (names, icons, copy, routes, combined views), and example registry; the shell renders from them and routing checks a project's tools. Saved formats unchanged.
 - [x] Design settings registry with six groups; validation, the designer panel, CSS variables, and the saved-file shape derive from field definitions. Older settings files complete with defaults.
 - [x] `docs/ARCHITECTURE.md` with the extension philosophy and checklists; workflow docs made tool-neutral. 73 unit tests, TypeScript, and build pass. Local branch `codex/extensible-baseline`; no merge or deployment.
+
+## Code project module — September 21, 2026
+
+- [x] `code` added as a third module: choose it in the project form beside Graphing and Spreadsheet, open `#/project/<id>/code`, and work in a file tree derived from stored paths. Create, rename, delete and import text files and folders, with CodeMirror 6 editing loaded on demand.
+- [x] `code-run` outputs open an HTML entry file on the existing output route and run the project's files in a frame sandboxed without `allow-same-origin`. Data URLs plus an import map resolve the project's own relative imports with no server and no build step; a console panel reports logs and errors.
+- [x] Cosmic Clock keeps its bundled manifest and `interactive-scene` output unchanged; existing libraries and backups load as before. Files, outputs and unsaved file drafts survive reload, duplication, trash/restore and backup/restore.
+- [x] 114 unit tests, TypeScript and build pass; 69 browser tests pass (65 chromium including 4 new code-project tests, 4 designer). Branch `codex/code-project-module`; no merge or deployment.
+- [ ] Awaiting Tyler: binary assets (images, fonts, data files) need storage beyond the shared local-storage key. A build step for JSX/TypeScript or bare npm imports, and navigation between HTML files inside one output, are also undecided.
+- [ ] Revisit the sandbox's network access when user accounts arrive; running someone else's project then means running untrusted code for other people.
+
+## Viewing bundled material — September 21, 2026
+
+- [x] Each modules/assets/licenses/documentation/maintenance row in a bundled source project's Working material opens the real file read-only: source from the bundle, served assets from their URL, images previewed, large text truncated with a link to the whole file.
+- [x] Fixed the Earth Clock card artwork, which the code-module commit had overridden through a shared `code-outputs` class.
+- [x] 117 unit tests, TypeScript and build pass; 70 browser tests pass. Same branch `codex/code-project-module`; no merge or deployment.
+- [x] Tyler approved copying: a viewable text file copies into an existing code project or a new one, numbered rather than overwriting, with unstorable files refused by reason.
+- [ ] Awaiting Tyler: whether copying should bring a file's imports with it, and whether a whole manifest group should copy at once.
 
 See [the handoff](../docs/HANDOFF.md) for the current implementation and [the work log](../docs/WORK_LOG.md) for daily and weekly updates.

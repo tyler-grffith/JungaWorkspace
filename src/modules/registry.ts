@@ -2,7 +2,7 @@
 // from here instead of branching on tool ids, so a new module is mostly a new entry.
 // Editor components and their draft/save plumbing stay explicit in App.tsx because each
 // editor's document type and callbacks differ; see docs/ARCHITECTURE.md.
-import { Layers3, SquareFunction, Table2, type LucideIcon } from 'lucide-react'
+import { Code2, Layers3, SquareFunction, Table2, type LucideIcon } from 'lucide-react'
 import type { Tool } from './ids'
 
 export type ModuleDefinition = {
@@ -41,6 +41,16 @@ export const modules: readonly ModuleDefinition[] = [
     route: 'sheet',
     icon: Table2,
     cssClass: 'sheet',
+  },
+  {
+    id: 'code',
+    name: 'Code',
+    longName: 'Code project',
+    description: 'A space to write or import files and run them as an output.',
+    openLabel: 'Open files',
+    route: 'code',
+    icon: Code2,
+    cssClass: 'code',
   },
 ]
 

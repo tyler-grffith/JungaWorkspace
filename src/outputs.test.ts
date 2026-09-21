@@ -14,7 +14,7 @@ import {
   type Library,
 } from './library'
 import { parseBackup, restoreBackup, restoreCopies, serializeBackup } from './backup'
-import { earthClockOutput, validOutput } from './outputs'
+import { earthClockOutput, validOutput, type SceneOutput } from './outputs'
 
 function store(library: Library) {
   let raw = JSON.stringify(library),
@@ -74,9 +74,10 @@ describe('code projects and owned outputs', () => {
     const copy = duplicateProject(library, project.id)
     expect(copy.project.outputs[0].id).not.toBe(project.outputs[0].id)
     expect(copy.project.sourceManifest).toEqual(project.sourceManifest)
-    copy.project.outputs[0].source.defaultState.camera.latitude = -30
+    const copied = copy.project.outputs[0] as SceneOutput
+    copied.source.defaultState.camera.latitude = -30
     copy.project.outputs[0].metadata.attribution = 'Copy only'
-    expect(project.outputs[0].source.defaultState.camera.latitude).toBe(20)
+    expect((project.outputs[0] as SceneOutput).source.defaultState.camera.latitude).toBe(20)
     expect(project.outputs[0].metadata.attribution).not.toBe('Copy only')
   })
   it('retains outputs through metadata edits, archive, trash, restore, export and both restore modes', () => {
@@ -93,8 +94,8 @@ describe('code projects and owned outputs', () => {
     expect(restored.projects[0].outputs).toEqual(project.outputs)
     const copies = restoreCopies(library, backup)
     expect(copies.projects[0].outputs[0].id).not.toBe(project.outputs[0].id)
-    copies.projects[0].outputs[0].source.defaultState.showTimeZones = false
-    expect(project.outputs[0].source.defaultState.showTimeZones).toBe(true)
+    ;(copies.projects[0].outputs[0] as SceneOutput).source.defaultState.showTimeZones = false
+    expect((project.outputs[0] as SceneOutput).source.defaultState.showTimeZones).toBe(true)
     const storage = store(emptyLibrary())
     expect(
       restoreBackup(storage, backup, 'replace', storage.getItem()).projects[0].outputs,
@@ -168,7 +169,7 @@ describe('code projects and owned outputs', () => {
   })
   it('explicitly saves valid defaults, protects stale edits, and never aliases a form draft', () => {
     const { library, project } = createCosmicClock(emptyLibrary()),
-      output = structuredClone(project.outputs[0])
+      output = structuredClone(project.outputs[0]) as SceneOutput
     output.source.defaultState.time = {
       mode: 'simulation',
       date: '2026-06-21T12:00:00.000Z',

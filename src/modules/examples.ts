@@ -2,6 +2,7 @@
 // registry decides where. Add an entry here to ship a new example; see docs/ARCHITECTURE.md.
 import { laplaceGraph, type GraphDocument } from '../graph/model'
 import type { SheetDocument } from '../sheet/model'
+import type { CodeDocument } from '../code/model'
 import { octahedronExample, OCTAHEDRON_URL } from '../linked/model'
 import { starterInput, starterNotes, type ProjectInput } from '../library'
 import type { Tool } from './ids'
@@ -16,7 +17,7 @@ export type ExampleProject = {
   tools: readonly Tool[]
   input: Omit<ProjectInput, 'collectionId'>
   notes: string
-  documents: () => { graph?: GraphDocument; sheet?: SheetDocument }
+  documents: () => { graph?: GraphDocument; sheet?: SheetDocument; code?: CodeDocument }
   /** Where to go after creation: the overview or one combined/module route segment. */
   openRoute: string
   toast?: string

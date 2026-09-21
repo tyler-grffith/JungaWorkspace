@@ -1,4 +1,5 @@
 import {
+  codeRunOutput,
   earthClockOutput,
   validOutput,
   validOutputs,
@@ -6,6 +7,19 @@ import {
   type Output,
   type SourceManifest,
 } from './outputs'
+import {
+  MAX_FILES,
+  MAX_FILE_CHARS,
+  MAX_TOTAL_CHARS,
+  availablePath,
+  emptyCode,
+  entryCandidates,
+  isTextPath,
+  normalizePath,
+  totalChars,
+  validCode,
+  type CodeDocument,
+} from './code/model'
 import {
   emptyGraph,
   laplaceGraph,
@@ -39,6 +53,7 @@ export type Project = {
   openedAt: string | null
   graph?: GraphDocument
   sheet?: SheetDocument
+  code?: CodeDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -97,6 +112,7 @@ export function addProject(
   notes = '',
   graph?: GraphDocument,
   sheet?: SheetDocument,
+  code?: CodeDocument,
 ): { library: Library; project: Project } {
   const now = timestamp()
   const project: Project = {
@@ -112,6 +128,7 @@ export function addProject(
     openedAt: null,
     ...(graph ? { graph: structuredClone(graph) } : {}),
     ...(sheet ? { sheet: structuredClone(sheet) } : {}),
+    ...(code ? { code: structuredClone(code) } : {}),
   }
   return { library: { ...library, projects: [project, ...library.projects] }, project }
 }
@@ -130,8 +147,12 @@ export function editProject(library: Library, id: string, input: ProjectInput): 
   const fields = validateInput(input, library)
   return changeProject(library, id, (p) => {
     if (p.status === 'trashed') throw new Error('Restore this project before editing it.')
-    if (fields.projectType !== 'code' && (p.outputs.length || p.sourceManifest))
-      throw new Error('This project owns code material and outputs. Keep its Code project type.')
+    if (!ownsOutputs({ projectType: fields.projectType, tools: fields.tools }) && p.outputs.length)
+      throw new Error('This project owns code outputs. Keep its code tool or Code project type.')
+    if (fields.projectType !== 'code' && p.sourceManifest)
+      throw new Error(
+        'This project owns code material bundled with the app. Keep its Code project type.',
+      )
     return { ...p, ...fields, updatedAt: timestamp() }
   })
 }
@@ -174,6 +195,7 @@ export function duplicateProject(library: Library, id: string) {
     original.notes,
     original.graph,
     original.sheet,
+    original.code,
   )
   result.project.outputs = structuredClone(original.outputs).map((output) => ({
     ...output,
@@ -223,9 +245,27 @@ export function initializeSheet(library: Library, id: string): Library {
   if (!project) throw new Error('This project is no longer available.')
   return project.sheet ? library : saveSheet(library, id, emptySheet())
 }
+export function saveCode(library: Library, id: string, code: CodeDocument): Library {
+  if (!validCode(code))
+    throw new Error('The files could not be saved. Check their names, sizes, and entry file.')
+  return changeProject(library, id, (project) => {
+    if (project.status === 'trashed')
+      throw new Error('Restore this project before editing its files.')
+    if (!project.tools.includes('code'))
+      throw new Error('Add the code tool to this project before editing its files.')
+    return { ...project, code, updatedAt: timestamp() }
+  })
+}
+
+export function initializeCode(library: Library, id: string): Library {
+  const project = library.projects.find((p) => p.id === id)
+  if (!project) throw new Error('This project is no longer available.')
+  return project.code ? library : saveCode(library, id, emptyCode())
+}
 const initializers: Record<Tool, (library: Library, id: string) => Library> = {
   graph: initializeGraph,
   sheet: initializeSheet,
+  code: initializeCode,
 }
 /** Create the saved document for each listed module if the project lacks it. */
 export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {
@@ -372,13 +412,12 @@ export function parseLibrary(raw: string | null): Library {
         return false
       if (p.outputs !== undefined && !validOutputs(p.outputs)) return false
       if (p.sourceManifest !== undefined && !validManifest(p.sourceManifest)) return false
-      if (
-        p.projectType !== 'code' &&
-        ((Array.isArray(p.outputs) && p.outputs.length) || p.sourceManifest)
-      )
-        return false
+      const ownsOutput = p.projectType === 'code' || (p.tools as unknown[]).includes('code')
+      if (!ownsOutput && Array.isArray(p.outputs) && p.outputs.length) return false
+      if (p.projectType !== 'code' && p.sourceManifest) return false
       if (p.graph !== undefined && !validGraph(p.graph)) return false
       if (p.sheet !== undefined && !validSheet(p.sheet)) return false
+      if (p.code !== undefined && !validCode(p.code)) return false
       if (p.referenceUrl) {
         try {
           if (!['http:', 'https:'].includes(new URL(p.referenceUrl as string).protocol))
@@ -451,6 +490,104 @@ export function createCosmicClock(library: Library, collectionId: string | null 
   result.project.outputs = [earthClockOutput()]
   return result
 }
+const isHtml = (path: string) => /\.html?$/i.test(path)
+
+/**
+ * Check a file can be stored before copying it in, so the caller reports one clear reason
+ * instead of a failed save. Returns '' when the file is storable.
+ */
+export function codeFileProblem(code: CodeDocument, path: string, content: string): string {
+  const clean = normalizePath(path)
+  if (!clean) return 'That file name cannot be stored in a code project.'
+  if (!isTextPath(clean)) return 'A code project stores text files, so this file cannot be copied.'
+  if (content.length > MAX_FILE_CHARS)
+    return `This file is larger than the ${Math.round(MAX_FILE_CHARS / 1024)} KB limit for one file.`
+  if (code.files.length >= MAX_FILES) return `That project already holds ${MAX_FILES} files.`
+  if (totalChars([...code.files, { path: clean, content }]) > MAX_TOTAL_CHARS)
+    return `That project would pass its ${Math.round(MAX_TOTAL_CHARS / 1024)} KB total limit.`
+  return ''
+}
+
+/** Copy one text file into a project that holds the code tool, never replacing a file it has. */
+export function addCodeFile(
+  library: Library,
+  projectId: string,
+  path: string,
+  content: string,
+): Library {
+  const project = library.projects.find((p) => p.id === projectId)
+  if (!project) throw new Error('That project is no longer available.')
+  if (project.status === 'trashed') throw new Error('Restore that project before copying into it.')
+  if (!project.tools.includes('code')) throw new Error('Choose a project that has the code tool.')
+  const code = project.code ?? emptyCode()
+  const problem = codeFileProblem(code, path, content)
+  if (problem) throw new Error(problem)
+  const stored = availablePath(code.files, normalizePath(path))
+  if (!stored) throw new Error('That project already holds too many copies of this file.')
+  return saveCode(library, projectId, {
+    ...code,
+    entry: !code.entry && isHtml(stored) ? stored : code.entry,
+    files: [...code.files, { path: stored, content }],
+  })
+}
+
+/** Start a code project from one copied file, rather than the starter template. */
+export function createCodeProjectWithFile(
+  library: Library,
+  title: string,
+  path: string,
+  content: string,
+  collectionId: string | null = null,
+) {
+  const stored = normalizePath(path)
+  const empty: CodeDocument = { version: 1, entry: '', files: [] }
+  const problem = codeFileProblem(empty, stored, content)
+  if (problem) throw new Error(problem)
+  return addProject(
+    library,
+    { title, description: '', tools: ['code'], collectionId, referenceUrl: '' },
+    '',
+    undefined,
+    undefined,
+    { version: 1, entry: isHtml(stored) ? stored : '', files: [{ path: stored, content }] },
+  )
+}
+
+/** Cosmic Clock projects and projects holding the code tool are the two output owners. */
+export const ownsOutputs = (project: Pick<Project, 'projectType' | 'tools'>) =>
+  project.projectType === 'code' || project.tools.includes('code')
+
+export function addCodeOutput(library: Library, projectId: string, title?: string): Library {
+  return changeProject(library, projectId, (project) => {
+    if (!project.tools.includes('code') || project.status === 'trashed')
+      throw new Error('Add the code tool to this project outside the trash.')
+    if (project.outputs.length >= 20) throw new Error('A project can contain up to 20 outputs.')
+    const code = project.code ?? emptyCode()
+    const entry = code.entry || (entryCandidates(code)[0]?.path ?? '')
+    if (!entry)
+      throw new Error('Add an HTML file to this project before creating an output that runs it.')
+    return {
+      ...project,
+      outputs: [...project.outputs, codeRunOutput(entry, title || `${project.title} output`)],
+      updatedAt: timestamp(),
+    }
+  })
+}
+
+export function removeOutput(library: Library, projectId: string, outputId: string): Library {
+  return changeProject(library, projectId, (project) => {
+    if (project.status === 'trashed')
+      throw new Error('Restore this project before removing its outputs.')
+    if (!project.outputs.some((output) => output.id === outputId))
+      throw new Error('This output is no longer available.')
+    return {
+      ...project,
+      outputs: project.outputs.filter((output) => output.id !== outputId),
+      updatedAt: timestamp(),
+    }
+  })
+}
+
 export function addEarthClock(library: Library, projectId: string): Library {
   return changeProject(library, projectId, (project) => {
     if (project.projectType !== 'code' || project.status === 'trashed')
@@ -472,7 +609,7 @@ export function saveOutput(
 ): Library {
   if (!validOutput(output)) throw new Error('Check the output metadata and scene defaults.')
   return changeProject(library, projectId, (project) => {
-    if (project.projectType !== 'code' || project.status === 'trashed')
+    if (!ownsOutputs(project) || project.status === 'trashed')
       throw new Error('Restore this code project before editing its output.')
     const previous = project.outputs.find((item) => item.id === output.id)
     if (!previous) throw new Error('This output is no longer available.')

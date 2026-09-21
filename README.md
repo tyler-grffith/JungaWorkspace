@@ -47,13 +47,21 @@ Data stays in this browser's local storage for this exact site address. There is
 
 Backups include saved content and unsaved notes, graph changes, and spreadsheet cell edits retained on the page. Save failures offer **Download unsaved work** without clearing drafts or marking them saved. Apply project details and calculator settings before downloading. If stored data is unreadable, recovery offers an unchanged raw-data download and replacement from a known-good backup. This is manual backup/recovery, not automatic history or synchronization.
 
-## Code projects and outputs
+## Code projects
 
-Choose **Create Cosmic Clock project** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, and documentation; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. Generic project creation/editing also supports the Code type.
+Tick **Code** when creating a project to get a file workspace. **Open files** lists the project's files as a folder tree, with **New file**, **Import files**, rename, delete, and an entry file marked with a star. Editing uses CodeMirror, which loads the first time a code project is opened. A project holds up to 100 text files, 128 KB each and 512 KB in total, because the whole library shares one browser-storage key; images, fonts and other binary assets are not stored yet.
+
+**Run** opens the entry file beside the editor. **Add output** on the project overview creates an output that opens the same files on their own page, at `#/project/<id>/output/<outputId>`; **Edit output settings** names it and chooses which HTML file it opens.
+
+Running needs no server and no build step. Every file but the entry becomes a `data:` URL and an import map resolves the project's own relative imports, so `import './lib/util.js'` works across several files. The page runs in a sandboxed frame without `allow-same-origin`, so it cannot read your saved library or the page around it; it _can_ reach the network, so a CDN library works. The console panel shows the running page's logs, warnings and errors. Not supported: JSX or TypeScript compilation, bare npm imports without a CDN URL, and navigating between HTML files inside one output.
+
+## Bundled source projects and scene outputs
+
+Choose **Create Cosmic Clock project** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, documentation, and maintenance scripts, and **View file** opens any of them read-only, with **Copy into** to put a text file in a code project where it can be edited and run — source from the application bundle, served assets from their URL, images as a preview, and very large data files truncated with a link to the whole file; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. This is the **Bundled source project** type in the project form: source that ships with the app, with no files kept in the browser.
 
 The nested output route identifies its owner and provides **Back to Cosmic Clock**. Orbit/zoom, local-time hover/pinning, date, pause/speed, Live, and boundary toggles last only for that visit; they do not save or dirty the source. Existing project/backup data stays compatible, and copies and lifecycle actions retain authored definitions. No template is seeded automatically.
 
-Junga currently manages metadata/configuration and a source inventory, **not repository file editing or filesystem synchronization**. Scene code, images, and boundary data ship with the app. See the [scene guide](src/interactive-scenes/cosmic-clock/README.md) for schema, lifecycle, licensing and map/time accuracy limits.
+For a bundled source project, Junga manages metadata/configuration and a source inventory, **not repository file editing or filesystem synchronization**; its scene code, images, and boundary data ship with the app. Files you write or import live in a code-tool project instead, as described above. See the [scene guide](src/interactive-scenes/cosmic-clock/README.md) for schema, lifecycle, licensing and map/time accuracy limits.
 
 ## Repository
 

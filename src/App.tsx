@@ -1,4 +1,7 @@
 import CodeProjectOverview from './CodeProjectOverview'
+import CodeEditor from './code/CodeEditor'
+import CodeOutputs from './code/CodeOutputs'
+import { emptyCode, type CodeDocument } from './code/model'
 import OutputPage from './OutputPage'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
@@ -49,6 +52,11 @@ import {
   saveGraph,
   saveSheet,
   initializeTools,
+  saveCode,
+  addCodeFile,
+  createCodeProjectWithFile,
+  addCodeOutput,
+  removeOutput,
   saveWorkspace,
   selectProjects,
   STORAGE_KEY,
@@ -280,13 +288,14 @@ function ProjectForm({
         Project type
         <select value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)}>
           <option value="workable">Workable project</option>
-          <option value="code">Code project</option>
+          <option value="code">Bundled source project</option>
         </select>
       </label>
       {projectType === 'code' && (
         <p className="field-hint">
-          Manage repository source references and authored output settings. Code remains
-          repository-managed.
+          For source that ships with the app, such as Cosmic Clock: a repository inventory and
+          authored output settings, with no files stored in the browser. To write or import your own
+          files, choose a workable project and add the Code tool.
         </p>
       )}
       {projectType === 'workable' && (
@@ -558,14 +567,17 @@ export default function App() {
   const [notesDraft, setNotesDraft] = useState<{ id: string; value: string } | null>(null)
   const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
   const [sheetDraft, setSheetDraft] = useState<{ id: string; value: SheetDocument } | null>(null)
+  const [codeDraft, setCodeDraft] = useState<{ id: string; value: CodeDocument } | null>(null)
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
   const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
+  // Identifier of a project created by copying a bundled file, so the viewer can link to it.
+  const copied = useRef('')
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
       if (
-        (notesDraft || graphDraft || sheetDraft || sheetEditing || outputEditing) &&
+        (notesDraft || graphDraft || sheetDraft || codeDraft || sheetEditing || outputEditing) &&
         readRoute() !== route
       ) {
         if (
@@ -579,22 +591,24 @@ export default function App() {
         setNotesDraft(null)
         setGraphDraft(null)
         setSheetDraft(null)
+        setCodeDraft(null)
         setSheetEditing(null)
       }
       setRoute(readRoute())
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
-  }, [notesDraft, graphDraft, sheetDraft, sheetEditing, outputEditing, route])
+  }, [notesDraft, graphDraft, sheetDraft, codeDraft, sheetEditing, outputEditing, route])
   useEffect(() => {
-    if (!notesDraft && !graphDraft && !sheetDraft && !sheetEditing && !outputEditing) return
+    if (!notesDraft && !graphDraft && !sheetDraft && !codeDraft && !sheetEditing && !outputEditing)
+      return
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [notesDraft, graphDraft, sheetDraft, sheetEditing, outputEditing])
+  }, [notesDraft, graphDraft, sheetDraft, codeDraft, sheetEditing, outputEditing])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -634,9 +648,11 @@ export default function App() {
   const openView = currentProject ? combinedViewForRoute(route, projectTools) : null
   const graphOpen = openModule?.id === 'graph'
   const sheetOpen = openModule?.id === 'sheet'
+  const codeOpen = openModule?.id === 'code'
   const linkedOpen = openView?.id === 'workspace'
   const projectViews = availableViews(projectTools)
   const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
+  const fallbackCode = useMemo(() => emptyCode(), [currentProject?.id])
   const fallbackGraph = useMemo(
     () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
     [currentProject?.id, currentProject?.referenceUrl],
@@ -788,11 +804,12 @@ export default function App() {
         notes: notesDraft,
         graph: graphDraft,
         sheet: pendingSheet,
+        code: codeDraft,
       })
       downloadData(serializeBackup(snapshot))
       setToast({
         text:
-          notesDraft || graphDraft || pendingSheet
+          notesDraft || graphDraft || pendingSheet || codeDraft
             ? 'Backup downloaded, including unsaved project edits. This does not save them in the browser.'
             : 'Library backup downloaded.',
       })
@@ -825,7 +842,14 @@ export default function App() {
       })
     }
   }
-  const hasDrafts = !!(notesDraft || graphDraft || sheetDraft || sheetEditing || outputEditing)
+  const hasDrafts = !!(
+    notesDraft ||
+    graphDraft ||
+    sheetDraft ||
+    codeDraft ||
+    sheetEditing ||
+    outputEditing
+  )
   const backupDialog = modal?.kind === 'backup' && (
     <Modal
       title="Restore library backup"
@@ -1056,7 +1080,7 @@ export default function App() {
             <DesignerSwitch />
             <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
               <span className="status-dot" />
-              {saveError || notesDraft || graphDraft || sheetDraft || outputEditing
+              {saveError || notesDraft || graphDraft || sheetDraft || codeDraft || outputEditing
                 ? 'Changes not saved'
                 : sheetEditing
                   ? 'Editing cell'
@@ -1201,6 +1225,27 @@ export default function App() {
                     return saved
                   }}
                 />
+              ) : codeOpen ? (
+                <CodeEditor
+                  key={currentProject.id}
+                  title={currentProject.title}
+                  code={
+                    codeDraft?.id === currentProject.id
+                      ? codeDraft.value
+                      : (currentProject.code ?? fallbackCode)
+                  }
+                  readOnly={currentProject.status === 'trashed'}
+                  unsaved={codeDraft?.id === currentProject.id}
+                  onBack={() => {
+                    window.location.hash = projectRoute(currentProject.id)
+                  }}
+                  onChange={(code) => {
+                    setCodeDraft({ id: currentProject.id, value: code })
+                    const saved = commit((current) => saveCode(current, currentProject.id, code))
+                    if (saved) setCodeDraft(null)
+                    return saved
+                  }}
+                />
               ) : (
                 <>
                   <button
@@ -1318,6 +1363,52 @@ export default function App() {
                         )
                       }
                       onAdd={() => commit((current) => addEarthClock(current, currentProject.id))}
+                      copying={{
+                        targets: [
+                          ...library.projects
+                            .filter((p) => p.tools.includes('code') && p.status !== 'trashed')
+                            .map((p) => ({ id: p.id, title: p.title })),
+                          { id: null, title: 'A new code project' },
+                        ],
+                        copy: (targetId, path, content) => {
+                          const title = targetId
+                            ? (library.projects.find((p) => p.id === targetId)?.title ??
+                              'that project')
+                            : `${currentProject.title} files`
+                          try {
+                            copied.current = targetId ?? ''
+                            const saved = commit((current) => {
+                              if (targetId) return addCodeFile(current, targetId, path, content)
+                              const result = createCodeProjectWithFile(
+                                current,
+                                title,
+                                path,
+                                content,
+                                currentProject.collectionId,
+                              )
+                              copied.current = result.project.id
+                              return result.library
+                            })
+                            return saved
+                              ? {
+                                  ok: true as const,
+                                  title,
+                                  route: `#/project/${copied.current}/code`,
+                                }
+                              : {
+                                  ok: false as const,
+                                  message:
+                                    'That copy could not be saved. Check the workspace save error.',
+                                }
+                          } catch (e) {
+                            return {
+                              ok: false as const,
+                              message:
+                                e instanceof Error ? e.message : 'That file could not be copied.',
+                            }
+                          }
+                        },
+                      }}
                     />
                   )}
                   {currentProject.projectType !== 'code' && (
@@ -1362,6 +1453,34 @@ export default function App() {
                             )
                           })}
                         </div>
+                        {currentProject.tools.includes('code') && (
+                          <CodeOutputs
+                            key={currentProject.id}
+                            project={currentProject}
+                            code={
+                              codeDraft?.id === currentProject.id
+                                ? codeDraft.value
+                                : (currentProject.code ?? fallbackCode)
+                            }
+                            onDraftChange={setOutputEditing}
+                            onSave={(output, expected) =>
+                              commit((current) =>
+                                saveOutput(current, currentProject.id, output, expected),
+                              )
+                            }
+                            onAdd={() =>
+                              commit((current) => {
+                                const ready = initializeTools(current, currentProject.id, ['code'])
+                                return addCodeOutput(ready, currentProject.id)
+                              })
+                            }
+                            onRemove={(outputId) =>
+                              commit((current) =>
+                                removeOutput(current, currentProject.id, outputId),
+                              )
+                            }
+                          />
+                        )}
                         <div className="section-heading notes-heading">
                           <h2>
                             <StickyNote size={18} />
@@ -1416,7 +1535,10 @@ export default function App() {
                           A little context now makes it easier to pick up later.
                         </p>
                       </section>
-                      <aside className="project-context" aria-label="Project references and context">
+                      <aside
+                        className="project-context"
+                        aria-label="Project references and context"
+                      >
                         <h2>Project reference</h2>
                         {currentProject.referenceUrl ? (
                           <a

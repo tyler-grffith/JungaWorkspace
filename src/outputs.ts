@@ -1,18 +1,30 @@
+import { normalizePath } from './code/model'
+
 /** Serializable authoring data. Runtime interaction never writes these definitions. */
 export type CosmicClockDefaults = {
   camera: { latitude: number; sunLongitudeOffset: number; distance: number }
   time: { mode: 'live' | 'simulation'; date: string; speed: number; paused: boolean }
   showTimeZones: boolean
 }
-export type Output = {
+type OutputBase = {
   id: string
-  type: 'interactive-scene'
   title: string
   description: string
   status: 'draft' | 'ready'
-  source: { sceneKind: 'cosmic-clock'; version: 1; defaultState: CosmicClockDefaults }
   metadata: { attribution: string; sourceUrl: string }
 }
+/** An experience built into the app, configured by authored defaults. */
+export type SceneOutput = OutputBase & {
+  type: 'interactive-scene'
+  source: { sceneKind: 'cosmic-clock'; version: 1; defaultState: CosmicClockDefaults }
+}
+/** The project's own files, run in a sandboxed frame from the named entry document. */
+export type CodeRunOutput = OutputBase & {
+  type: 'code-run'
+  source: { kind: 'project-files'; version: 1; entry: string }
+}
+export type Output = SceneOutput | CodeRunOutput
+export const isCodeRun = (output: Output): output is CodeRunOutput => output.type === 'code-run'
 export type SourceManifest = { kind: 'cosmic-clock'; version: 1 }
 export const MIN_SCENE_DATE = Date.UTC(1970, 0, 1)
 export const MAX_SCENE_DATE = Date.UTC(2101, 0, 1) - 1
@@ -62,22 +74,31 @@ export function validOutput(value: unknown): value is Output {
   )
     return false
   const { source, metadata } = value
-  return (
+  const shared =
     typeof value.id === 'string' &&
     /^[a-zA-Z0-9_-]{1,100}$/.test(value.id) &&
-    value.type === 'interactive-scene' &&
     text(value.title, 100, true) &&
     text(value.description, 500) &&
     ['draft', 'ready'].includes(value.status as string) &&
-    record(source) &&
-    keys(source, ['sceneKind', 'version', 'defaultState']) &&
-    source.sceneKind === 'cosmic-clock' &&
-    source.version === 1 &&
-    validDefaults(source.defaultState) &&
     record(metadata) &&
     keys(metadata, ['attribution', 'sourceUrl']) &&
     text(metadata.attribution, 4000) &&
     safeSourceUrl(metadata.sourceUrl)
+  if (!shared || !record(source)) return false
+  if (value.type === 'code-run')
+    return (
+      keys(source, ['kind', 'version', 'entry']) &&
+      source.kind === 'project-files' &&
+      source.version === 1 &&
+      typeof source.entry === 'string' &&
+      normalizePath(source.entry) === source.entry
+    )
+  return (
+    value.type === 'interactive-scene' &&
+    keys(source, ['sceneKind', 'version', 'defaultState']) &&
+    source.sceneKind === 'cosmic-clock' &&
+    source.version === 1 &&
+    validDefaults(source.defaultState)
   )
 }
 export function validOutputs(value: unknown): value is Output[] {
@@ -96,7 +117,7 @@ export function validManifest(value: unknown): value is SourceManifest {
     value.version === 1
   )
 }
-export function earthClockOutput(): Output {
+export function earthClockOutput(): SceneOutput {
   return {
     id: crypto.randomUUID(),
     type: 'interactive-scene',
@@ -117,5 +138,18 @@ export function earthClockOutput(): Output {
         'NASA Blue Marble and Black Marble imagery. Timezone Boundary Builder 2026d, © OpenStreetMap contributors, ODbL 1.0. p5.js (LGPL-2.1), Astronomy Engine (MIT), DM fonts and Instrument Serif (OFL).',
       sourceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
     },
+  }
+}
+
+/** A new output that runs the project's own files. */
+export function codeRunOutput(entry: string, title = 'Run output'): CodeRunOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'code-run',
+    title,
+    description: 'Runs this project\u2019s files in a sandboxed frame.',
+    status: 'draft',
+    source: { kind: 'project-files', version: 1, entry },
+    metadata: { attribution: '', sourceUrl: '' },
   }
 }

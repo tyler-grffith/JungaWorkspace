@@ -1,39 +1,14 @@
 # Current handoff
 
-## Subfolder hosting follow-up — September 20, 2026
+## All branches consolidated into `main` — September 21, 2026
 
-The same uncommitted integration worktree now builds with relative asset URLs (`base: './'`), relative HTML entry/favicon references and a base-aware runtime logo. `src/main.tsx` already uses relative local imports; the production HTML loads compiled JavaScript from `./assets/`, not TypeScript source. CSS/public asset URLs are rewritten by Vite, and Cosmic Clock’s runtime URLs already use the build base.
+At Tyler's direction, all outstanding work is now merged into `main`, in order: [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1) (GitHub collaboration baseline), [PR #2](https://github.com/tyler-grffith/JungaWorkspace/pull/2) (extensible baseline: module and design registries), and [PR #3](https://github.com/tyler-grffith/JungaWorkspace/pull/3) (Cosmic Clock code project + interactive-scene output, and portable subfolder hosting). `main` now holds the full application; the feature branches were deleted after merging.
 
-For publication, upload the **contents of `dist/`** into the website folder and use a trailing slash (for example `/junga/`) or `/junga/index.html`. Hash routes remain under that document, without server-side rewrites. [Hosting instructions](../README.md#hosting-in-a-website-subfolder). This prepares the build only; no upload/deployment or browser-library transfer was performed.
+Merging PR #3 required rebasing `codex/cosmic-clock-outputs` (previously uncommitted work in the worktree `~/Work/Creative Code/Cosmic Clock/junga-integration`) onto the post-registry `main`. `src/App.tsx` and `src/library.ts` had real conflicts — both branches had independently rewritten them — resolved by hand to keep the registry-driven module/example rendering from the extensible baseline while adding the Code project branch (`CodeProjectOverview`, `OutputPage`, `outputs.ts`) alongside it. `tests/cosmic-clock.spec.ts`'s reload test also needed a longer timeout (`test.setTimeout(90000)`): two full WebGL scene loads plus two accessibility scans exceeded the default 30s limit on GitHub Actions' software-rendered runner, though it passed locally.
 
-Validation: Node 24 `npm ci`; `npm run check` passes with 87 unit tests, TypeScript and build. All 11 targeted browser tests pass: five scene checks, four designer checks and two new tests serving the production build strictly under `/personal/tools/junga/`, with site-root requests returning 404. Directory entry/redirect and direct index entry both load fonts, logo, thumbnail, lazy scene code, textures, zone data, credits and reloaded output routes without missing or escaped requests.
+The standalone `Cosmic Clock` project (a separate, unrelated git repository that had been copied into this repo's working tree, along with a stray duplicate of the integration worktree) has been deleted — its content is fully superseded by `src/interactive-scenes/cosmic-clock/`, now part of this repo's own history. The `~/Work/Creative Code/Cosmic Clock/junga-integration` git worktree was also removed.
 
-## Latest local increment — Cosmic Clock outputs (September 20, 2026)
-
-Reviewable, uncommitted implementation on `codex/cosmic-clock-outputs`, in the registered Junga worktree `/home/tsg/Work/Creative Code/Cosmic Clock/junga-integration`. It starts from the documented `origin/codex/github-collaboration` bootstrap baseline. The original Junga checkout remains clean; ProductManagement is unchanged. Per Tyler’s request, no commit, push, PR, merge or deployment.
-
-**Try:** run this worktree with Node 24 (`npm ci`, `npm run dev`), then **Create Cosmic Clock project** → **Open scene**. The optional local preview for this review is `http://127.0.0.1:4185/`; it uses a separate browser origin and has a test template instance. It does not transfer or overwrite the user’s existing library.
-
-- Existing projects become `projectType: 'workable'` and `outputs: []` in memory; new Code projects own serializable scene definitions and a versioned bundled source-manifest reference. Old library/backup format v1 still loads. Duplication and restore-as-copies assign independent output IDs; archive/trash/restore retain content.
-- Source route `#/project/<id>` separates **Working material** and **Outputs**. **Edit output settings → Apply output settings** authors title/description/status, camera, live/simulation date/speed/pause, initial boundary visibility, attribution and source reference. Apply settings before backup; settings forms are not backup drafts. Stale output edits are rejected.
-- Output route `#/project/<id>/output/<outputId>` shows ownership and **Back to Cosmic Clock**, with no project controls or generic save indicator. All orbit/zoom, time, playback, hover/pin and overlay interaction is visit-local. Opening/reloading/exiting an output does not write the library. Trashed projects require restoration before viewing.
-- p5 and Astronomy Engine load through a React mount/unmount adapter. Teardown aborts requests/listeners, disconnects resize observation, removes canvases and releases WebGL contexts, including departure during loading. Styling is scoped; no iframe or second app entry.
-
-**Validation:** Node 24.21.0, `npm ci`, and pinned new dependencies. `npm run check`: **87 unit tests, TypeScript and production build pass**. All **63 Playwright tests** pass across the full run and targeted reruns. The full run initially exposed three narrow-layout regressions from the added template button; the responsive action layout was fixed and all three passed again, together with all five scene tests. Desktop/mobile accessibility, authored settings, unchanged storage after interactions, reload, repeated context cleanup and aborted initialization pass. Manual review verified NASA day/night rendering and city lights, actual polygon picking in India, Nepal’s quarter-hour time, fixed UTC dates, narrow layout and zero remaining scene canvases after leaving. Date entry now remains independent of clock refreshes.
-
-**Limits:** code and assets are repository-managed; Junga edits scene metadata/configuration, not repository files. The simplified 2026d zone map is current geography, not historical boundaries; local-time rules depend on browser IANA data. See [scene architecture and licenses](../src/interactive-scenes/cosmic-clock/README.md) and the [feature record](<../sharedProjectManagement/features/cosmic clock outputs.md>). The lazy renderer bundle (~377 KB gzip) produces Vite’s normal large-chunk warning; the library loads without it.
-
-## Published baseline and earlier product review
-
-Current priorities and follow-ups live in the shared [task list](../sharedProjectManagement/taskList.md).
-
-Feature completion convention: create one concise markdown record per requested feature in `sharedProjectManagement/features/`, following the owner's [implicit equations example](<../sharedProjectManagement/features/implicit equations.md>). Record the context, request, agent decisions, and details Tyler can fine-tune. Update the same record when extending a feature. The latest calculator batch now has individual records.
-
-Current increment: **Extensible baseline** (module and design registries, architecture guide), on top of GitHub collaboration, designer access, calculator interactions, the linked workspace, backup recovery, and the three MVP components. Local branch: `codex/extensible-baseline`, based on `codex/github-collaboration`.
-
-The repository is public at [tyler-grffith/JungaWorkspace](https://github.com/tyler-grffith/JungaWorkspace). The prototype and collaboration setup are in [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1); Tyler instructed its merge on September 20, and it needs his one-line admin merge because the agent session could not perform it. `bobjunga` has accepted write access. Main-branch protection is active: current passing Application checks, one approving review, code-owner review, and resolved conversations; force pushes and branch deletion are blocked. Tyler retains administrator override, which agents may not use independently.
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for checkout instructions, [ARCHITECTURE.md](ARCHITECTURE.md) for the extension philosophy, and each PR's Checks tab for remote validation. No merge or deployment has been performed.
+**Validation on `main`:** Node 24.21.0, `npm ci`. `npm run check`: **93 unit tests, TypeScript and production build pass**. All **65 Playwright tests** pass (chromium + designer projects) across backup, graph, sheet, linked, library, designer, cosmic-clock, and subfolder specs. Manual verification: creating a Cosmic Clock project and opening its Earth Clock output renders the live day/night globe with real local time.
 
 Run `npm ci` and `npm run dev`, then open http://127.0.0.1:5173.
 
@@ -84,6 +59,6 @@ When saving fails, **Download unsaved work** produces a restorable backup with t
 
 ### Next increment
 
-Next: merge PR #1 and review the extensible-baseline PR; try the expanded designer areas; name the first new module (the checklist is in ARCHITECTURE.md); shape the portfolio/blog presentation render. Latest checks: 73 unit tests, TypeScript, and the production build pass; the browser suite result is recorded in the PR and WORK_LOG.md.
+Next: review Cosmic Clock source/output separation end to end; try the expanded designer areas; name the first new module (the checklist is in ARCHITECTURE.md); shape the portfolio/blog presentation render. Latest checks on `main`: 93 unit tests, TypeScript, and the production build pass; all 65 Playwright tests pass.
 
-Merging and deploying await the product owner's decision.
+Deploying awaits the product owner's decision.

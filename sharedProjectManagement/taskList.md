@@ -8,7 +8,10 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 
 ## Next up
 
-- [ ] **Merge PR #1, then the extensible-baseline PR.** Tyler instructed the initial merge on September 20; the agent session could not perform the admin merge. Run `gh pr merge 1 --merge --admin`, then review the follow-up PR from `codex/extensible-baseline` (module and design registries, `docs/ARCHITECTURE.md`).
+- [x] **Merge PR #1, the extensible-baseline PR, and the Cosmic Clock outputs PR into `main`.** All three branches (GitHub collaboration baseline, module/design registries, Cosmic Clock code project + subfolder hosting) are consolidated on `main` at Tyler's direction.
+- [x] **Make the production build portable under a personal-site subfolder.** Relative build/runtime assets and documented `dist/` hosting; production scene, fonts, textures and reloads verified beneath a strict nested path.
+- [x] **Integrate Cosmic Clock as a code project with an Interactive scene output.** Source inventory and explicit defaults/metadata editor; separate temporary viewer sessions; lifecycle/migration/backups preserved.
+- [ ] **Review Cosmic Clock source/output separation.** Create the template, edit output defaults, open Earth Clock, change its date/camera, return and reopen. Confirm Working material vs Outputs, ownership, mobile controls, and that ordinary viewing never saves. Repository source editing, filesystem synchronization and additional scene kinds remain future decisions.
 - [ ] **Try the expanded designer areas.** Spreadsheet sizing, shared appearance colors and fonts, workspace shell dimensions and text, and library defaults/copy are now adjustable. Note which fixed details are still missing; each is one registry line.
 - [ ] **Choose the first new module.** Tyler names modules one at a time. Candidates from the owner's list: text, diagram, presentation, photos. Follow the checklist in `docs/ARCHITECTURE.md`.
 - [ ] **Shape portfolio and blog.** Both in-app views and exports, hosting undecided. First step: a per-module presentation render (static graph SVG, static sheet table) that both can reuse.

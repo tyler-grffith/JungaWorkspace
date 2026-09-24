@@ -2,13 +2,15 @@
 // viewer, and the library-card art for each document module. The shell renders from this, so
 // a new module is one entry here and one in `documents.ts`.
 import type { ComponentType, ReactNode } from 'react'
-import { FileText, LibraryBig, Shapes, type LucideIcon } from 'lucide-react'
+import { Box, FileText, LibraryBig, Printer, Shapes, type LucideIcon } from 'lucide-react'
 import type { Project } from '../library'
 import type { Output } from '../outputs'
 import type { DesignSettings } from '../design/registry'
 import { emptyCanvas } from '../canvas/model'
 import { emptyDocument } from '../document/model'
 import { emptyCollections } from '../collection/model'
+import { emptyModeler } from '../modeler/model'
+import { emptySlicer, formatDuration } from '../slicer/model'
 import CanvasEditor from '../canvas/CanvasEditor'
 import CanvasOutputs from '../canvas/CanvasOutputs'
 import CanvasPresenter from '../canvas/CanvasPresenter'
@@ -18,6 +20,10 @@ import DocumentReader from '../document/DocumentReader'
 import CollectionEditor from '../collection/CollectionEditor'
 import CollectionOutputs from '../collection/CollectionOutputs'
 import CollectionBrowser from '../collection/CollectionBrowser'
+import ModelerEditor, { ModelerViewport } from '../modeler/ModelerEditor'
+import SlicerEditor, { SlicerViewport } from '../slicer/SlicerEditor'
+import ModuleOutputs from './ModuleOutputs'
+import '../workbench/workbench.css'
 import type { DocumentTool, ModuleDocuments } from './documents'
 
 export type EditorProps<D> = {
@@ -119,6 +125,92 @@ export const editorModules: { [K in DocumentTool]: EditorModule<ModuleDocuments[
         <rect x="40" y="30" width="70" height="80" rx="8" />
         <rect x="125" y="30" width="70" height="80" rx="8" />
         <rect x="210" y="30" width="70" height="80" rx="8" />
+      </svg>
+    ),
+  },
+  modeler: {
+    Editor: ModelerEditor,
+    Outputs: ({ project, document, onAdd, onRemove }) => (
+      <ModuleOutputs
+        project={project}
+        tool="modeler"
+        heading="Model outputs"
+        help="A model view shows the part read-only in the modeler viewport with its feature list."
+        summary={`${document.features.length} features · ${document.material}`}
+        onAdd={onAdd}
+        onRemove={onRemove}
+      />
+    ),
+    Viewer: ({ document, output }) => (
+      <div className="workbench theme-light wb-output">
+        <h1 className="visually-hidden">{output.title}</h1>
+        <section className="wb-viewport" aria-label="Model">
+          <ModelerViewport document={document} selectedFeature={null} section={false} />
+        </section>
+        <ul className="wb-output-list">
+          {document.features.map((f) => (
+            <li key={f.id}>{f.name}</li>
+          ))}
+          {!document.features.length && <li>No features yet.</li>}
+        </ul>
+      </div>
+    ),
+    empty: () => emptyModeler(),
+    outputLabel: 'Model view',
+    outputIcon: Box,
+    art: (
+      <svg className="canvas-art" viewBox="0 0 320 140" fill="none" aria-hidden="true">
+        <path className="art-shape" d="M160 5L230 40V100L160 135L90 100V40Z" />
+        <path className="art-line" d="M160 5V135M90 40L230 100M230 40L90 100" opacity="0.5" />
+      </svg>
+    ),
+  },
+  slicer: {
+    Editor: SlicerEditor,
+    Outputs: ({ project, document, onAdd, onRemove }) => (
+      <ModuleOutputs
+        project={project}
+        tool="slicer"
+        heading="Print outputs"
+        help="A plate view shows the build plate read-only with its objects and the last estimate."
+        summary={
+          document.sliced
+            ? `${formatDuration(document.sliced.seconds)} · ${document.sliced.grams} g`
+            : `${document.plates.length} ${document.plates.length === 1 ? 'plate' : 'plates'} · not sliced`
+        }
+        onAdd={onAdd}
+        onRemove={onRemove}
+      />
+    ),
+    Viewer: ({ document, output }) => (
+      <div className="workbench theme-dark wb-output">
+        <h1 className="visually-hidden">{output.title}</h1>
+        <section className="wb-viewport" aria-label="Build plate">
+          <SlicerViewport document={document} selected={null} />
+        </section>
+        <ul className="wb-output-list">
+          <li>{document.printer}</li>
+          <li>
+            {document.filament.type} · {document.process.layerHeight} mm layers ·{' '}
+            {document.process.infill}% infill
+          </li>
+          {document.sliced && (
+            <li>
+              {formatDuration(document.sliced.seconds)} · {document.sliced.grams} g ·{' '}
+              {document.sliced.layers} layers
+            </li>
+          )}
+        </ul>
+      </div>
+    ),
+    empty: () => emptySlicer(),
+    outputLabel: 'Plate view',
+    outputIcon: Printer,
+    art: (
+      <svg className="canvas-art" viewBox="0 0 320 140" fill="none" aria-hidden="true">
+        <rect className="art-shape" x="70" y="96" width="180" height="16" rx="4" />
+        <rect className="art-shape" x="120" y="46" width="60" height="50" rx="4" />
+        <path className="art-line" d="M120 60H180M120 74H180M120 88H180" opacity="0.6" />
       </svg>
     ),
   },

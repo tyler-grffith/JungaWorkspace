@@ -6,7 +6,9 @@ import {
   Code2,
   FileText,
   Layers3,
+  Box,
   LibraryBig,
+  Printer,
   Shapes,
   SquareFunction,
   Table2,
@@ -91,6 +93,27 @@ export const modules: readonly ModuleDefinition[] = [
     route: 'collection',
     icon: LibraryBig,
     cssClass: 'collection',
+  },
+  {
+    id: 'modeler',
+    name: '3D modeler',
+    longName: '3D modeler',
+    description:
+      'A SolidWorks-style part modeler: sketches, features, and a history tree (prototype).',
+    openLabel: 'Open modeler',
+    route: 'modeler',
+    icon: Box,
+    cssClass: 'modeler',
+  },
+  {
+    id: 'slicer',
+    name: 'Slicer',
+    longName: 'Slicer',
+    description: 'A Bambu Studio-style slicer: printer, filament, process, plates (prototype).',
+    openLabel: 'Open slicer',
+    route: 'slicer',
+    icon: Printer,
+    cssClass: 'slicer',
   },
 ]
 

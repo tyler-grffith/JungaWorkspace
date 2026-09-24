@@ -1,6 +1,6 @@
 # Junga Workspace
 
-A browser workspace for a project library, graphing calculator, spreadsheet, code projects, a visual canvas, documents, and curated collections.
+A browser workspace for a project library, graphing calculator, spreadsheet, code projects, a visual canvas, documents, curated collections, and prototypes of a 3D modeler and a slicer.
 
 ## Run locally
 
@@ -87,6 +87,10 @@ The document is saved as blocks of styled runs, validated like every other modul
 
 Tick **Collection** when creating a project, then **Open collection**. Collections nest as a graph: a collection or an item can be filed under several parents without copying, and loops are refused. Start a collection from a preset (Music, Movies, Photography, Poems, Books, Ideas, or blank), which seeds its fields, emoji, accent color, and layout; everything edits in place afterwards, and **Fields** changes what items show. Add an item by typing a title or pasting a link into the one box; a YouTube or YouTube Music link produces the cover from its video id. The detail panel edits title, subtitle, link, image (link or downscaled upload), rating, fields, notes, and which collections hold the item. Layouts are grid, list, and gallery; **Browse** and the **browse output** show the curation read-only; **Export** writes Markdown or JSON, and JSON re-imports. See `sharedProjectManagement/features/collection.md`.
 
+## 3D modeler and slicer (prototypes)
+
+Tick **3D modeler** or **Slicer** when creating a project. Both are clickable prototypes on a shared desktop-application shell: menus, command tabs, a feature tree or settings sidebar, property panels with OK and Cancel, a viewport with a view toolbar, and a status bar. The **modeler** keeps a real SolidWorks-style feature history (sketches with plane, profile, and size; extrude, revolve, cut, hole, fillet, chamfer, shell, mirror, pattern, plane with parameters; suppress, delete, undo, rebuild; orientations, display styles, section view; mass properties and measure) and draws each extrusion as a projected box in place of a geometry kernel. The **slicer** keeps real Bambu-style printer, filament, process, and plate settings with box objects, slices into a consistent estimate (time, grams, layers, cost), previews layers, and simulates a device. Tools that need real geometry are present but disabled with a note. Read-only model and plate views publish on the output route. See `sharedProjectManagement/features/modeler and slicer.md`.
+
 ## Bundled source projects and scene outputs
 
 Choose **Cosmic Clock** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, documentation, and maintenance scripts, and **View file** opens any of them read-only, with **Copy into** to put a text file in a code project where it can be edited and run — source from the application bundle, served assets from their URL, images as a preview, and very large data files truncated with a link to the whole file; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. This is the **Bundled source project** type in the project form: source that ships with the app, with no files kept in the browser.
@@ -107,6 +111,7 @@ For a bundled source project, Junga manages metadata/configuration and a source 
 - `src/canvas/`: visual canvas document model, geometry, shared SVG rendering, editor, inspector, presenter, export, and draw.io import.
 - `src/document/`: document block model, HTML renderer and parser, block-level DOM edits, editor, reader, Markdown import/export.
 - `src/collection/`: collection graph model, editor, browser, outputs panel.
+- `src/workbench/`: the shared desktop-application shell (menus, command tabs, tree, property panels, viewport, status bar) and isometric projection used by `src/modeler/` and `src/slicer/`.
 - `src/modules/documents.ts` and `src/modules/editors.tsx`: the document-module registry that wires canvas, document, collection (and future modules) into storage, backups, outputs, and the shell.
 - `tests/`: browser acceptance tests.
 - `docs/`: decisions, work log, and current handoff.

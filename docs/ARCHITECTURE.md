@@ -20,22 +20,23 @@ Design/settings.json ──► src/design/registry.ts ──► DesignProvider (
 src/modules/ids.ts ──► src/library.ts (domain, storage) ──► src/App.tsx (shell, routing, drafts)
         │                        │                                │
 src/modules/registry.ts   src/modules/examples.ts        editors: src/graph, src/sheet, src/code, src/linked
-src/modules/documents.ts  src/modules/editors.tsx        document modules: src/canvas, src/document, src/collection
+src/modules/documents.ts  src/modules/editors.tsx        document modules: src/canvas, src/document, src/collection,
+                                                          src/modeler + src/slicer (on src/workbench)
 ```
 
-| Layer           | Files                                                                                  | Responsibility                                                                                                                             |
-| --------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Module ids      | `src/modules/ids.ts`                                                                   | The stable tool identifiers. Also the key of each module's saved document on a project and its route segment.                              |
-| Domain          | `src/library.ts`, `src/backup.ts`                                                      | Projects, collections, lifecycle, validation, local-storage commits, backup/restore. No React.                                             |
-| Module registry | `src/modules/registry.ts`                                                              | Names, icons, copy, routes, and combined views. The shell renders from this.                                                               |
-| Examples        | `src/modules/examples.ts`                                                              | Built-in example projects and where the library offers them.                                                                               |
-| Editors         | `src/graph/`, `src/sheet/`, `src/code/`, `src/canvas/`, `src/document/`, `src/collection/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
-| Shell           | `src/App.tsx`                                                                          | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
-| Design          | `src/design/`                                                                          | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
+| Layer           | Files                                                                                                                                    | Responsibility                                                                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Module ids      | `src/modules/ids.ts`                                                                                                                     | The stable tool identifiers. Also the key of each module's saved document on a project and its route segment.                              |
+| Domain          | `src/library.ts`, `src/backup.ts`                                                                                                        | Projects, collections, lifecycle, validation, local-storage commits, backup/restore. No React.                                             |
+| Module registry | `src/modules/registry.ts`                                                                                                                | Names, icons, copy, routes, and combined views. The shell renders from this.                                                               |
+| Examples        | `src/modules/examples.ts`                                                                                                                | Built-in example projects and where the library offers them.                                                                               |
+| Editors         | `src/graph/`, `src/sheet/`, `src/code/`, `src/canvas/`, `src/document/`, `src/collection/`, `src/modeler/`, `src/slicer/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
+| Shell           | `src/App.tsx`                                                                                                                            | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
+| Design          | `src/design/`                                                                                                                            | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
 
 ## Routing
 
-Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`, `canvas`, `document`, `collection`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
+Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`, `canvas`, `document`, `collection`, `modeler`, `slicer`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
 
 ## Adding a document module (the usual case)
 
@@ -47,7 +48,7 @@ Most new tools are _document modules_: one versioned document on the project, on
 4. **Registry.** Add the module to `ModuleDocuments` and `documentModules` in `src/modules/documents.ts` (validation, empty, output) and to `editorModules` in `src/modules/editors.tsx` (Editor, Outputs panel, output Viewer, design-aware default document, card art). The editor takes `{ title, document, readOnly, unsaved, onBack, onChange }`; the outputs panel takes `{ project, document, onAdd, onRemove }`.
 5. **Design settings, tests, record.** Register the module's adjustable values as a group, add unit and browser tests, and write the feature record.
 
-Storage, validation on read, backup drafts, duplication, the editor route, the outputs panel, the output route, and library-card art all follow from the registry. Canvas, document, and collection are built this way.
+Storage, validation on read, backup drafts, duplication, the editor route, the outputs panel, the output route, and library-card art all follow from the registry. Canvas, document, collection, modeler, and slicer are built this way. Desktop-application-shaped modules (the modeler and slicer) describe their menus, command tabs, and tools as data and render them through `src/workbench/Workbench.tsx`, so a new tool is a spec entry with typed parameters rather than a hand-built panel.
 
 ## Adding a module with its own shell wiring
 

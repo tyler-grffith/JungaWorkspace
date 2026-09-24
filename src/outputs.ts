@@ -38,8 +38,24 @@ export type CollectionBrowseOutput = OutputBase & {
   type: 'collection-browse'
   source: { kind: 'collections'; version: 1; startId: string }
 }
+/** The project's 3D model, shown read-only in the modeler viewport. */
+export type ModelerViewOutput = OutputBase & {
+  type: 'modeler-view'
+  source: { kind: 'model'; version: 1 }
+}
+/** The project's print plate, shown read-only in the slicer viewport. */
+export type SlicerViewOutput = OutputBase & {
+  type: 'slicer-view'
+  source: { kind: 'plate'; version: 1 }
+}
 export type Output =
-  SceneOutput | CodeRunOutput | CanvasShowOutput | DocumentReadOutput | CollectionBrowseOutput
+  | SceneOutput
+  | CodeRunOutput
+  | CanvasShowOutput
+  | DocumentReadOutput
+  | CollectionBrowseOutput
+  | ModelerViewOutput
+  | SlicerViewOutput
 export const isCollectionBrowse = (output: Output): output is CollectionBrowseOutput =>
   output.type === 'collection-browse'
 export const isDocumentRead = (output: Output): output is DocumentReadOutput =>
@@ -107,6 +123,10 @@ export function validOutput(value: unknown): value is Output {
     text(metadata.attribution, 4000) &&
     safeSourceUrl(metadata.sourceUrl)
   if (!shared || !record(source)) return false
+  if (value.type === 'modeler-view')
+    return keys(source, ['kind', 'version']) && source.kind === 'model' && source.version === 1
+  if (value.type === 'slicer-view')
+    return keys(source, ['kind', 'version']) && source.kind === 'plate' && source.version === 1
   if (value.type === 'collection-browse')
     return (
       keys(source, ['kind', 'version', 'startId']) &&
@@ -184,6 +204,29 @@ export function earthClockOutput(): SceneOutput {
         'NASA Blue Marble and Black Marble imagery. Timezone Boundary Builder 2026d, © OpenStreetMap contributors, ODbL 1.0. p5.js (LGPL-2.1), Astronomy Engine (MIT), DM fonts and Instrument Serif (OFL).',
       sourceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
     },
+  }
+}
+
+export function modelerViewOutput(title = 'Model'): ModelerViewOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'modeler-view',
+    title,
+    description: 'Shows this project\u2019s model read-only.',
+    status: 'draft',
+    source: { kind: 'model', version: 1 },
+    metadata: { attribution: '', sourceUrl: '' },
+  }
+}
+export function slicerViewOutput(title = 'Print plate'): SlicerViewOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'slicer-view',
+    title,
+    description: 'Shows this project\u2019s print plate read-only.',
+    status: 'draft',
+    source: { kind: 'plate', version: 1 },
+    metadata: { attribution: '', sourceUrl: '' },
   }
 }
 

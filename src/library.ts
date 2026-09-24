@@ -31,6 +31,8 @@ import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
 import type { CanvasDocument } from './canvas/model'
 import type { TextDocument } from './document/model'
 import type { CollectionDocument } from './collection/model'
+import type { ModelerDocument } from './modeler/model'
+import type { SlicerDocument } from './slicer/model'
 import {
   DOCUMENT_TOOLS,
   documentModules,
@@ -67,6 +69,8 @@ export type Project = {
   canvas?: CanvasDocument
   document?: TextDocument
   collection?: CollectionDocument
+  modeler?: ModelerDocument
+  slicer?: SlicerDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -326,6 +330,8 @@ const initializers: Record<Tool, (library: Library, id: string) => Library> = {
   canvas: (library, id) => initializeModuleDocument(library, id, 'canvas'),
   document: (library, id) => initializeModuleDocument(library, id, 'document'),
   collection: (library, id) => initializeModuleDocument(library, id, 'collection'),
+  modeler: (library, id) => initializeModuleDocument(library, id, 'modeler'),
+  slicer: (library, id) => initializeModuleDocument(library, id, 'slicer'),
 }
 /** Create the saved document for each listed module if the project lacks it. */
 export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {

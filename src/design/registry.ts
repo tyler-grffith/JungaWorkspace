@@ -208,6 +208,19 @@ export const designGroups = {
       ),
     },
   },
+  workbench: {
+    title: 'Modeler and slicer',
+    description: 'Panel widths shared by the 3D modeler and slicer prototypes.',
+    files: 'src/workbench/Workbench.tsx; src/workbench/workbench.css; src/modeler; src/slicer',
+    fields: {
+      treeWidth: number('Feature tree width (px)', 260, 200, 360, {
+        cssVar: '--workbench-tree-width',
+      }),
+      rightWidth: number('Right panel width (px)', 300, 240, 420, {
+        cssVar: '--workbench-right-width',
+      }),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

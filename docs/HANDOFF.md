@@ -1,11 +1,16 @@
 # Current handoff
 
+## 3D modeler and slicer prototypes — branch `codex/canvas-module`, September 24, 2026
+
+Two clickable prototypes built on a shared workbench shell. **3D modeler** (tick **3D modeler**, then **Open modeler**): a SolidWorks-shaped window with File/Edit/View/Insert/Tools/Window/Help menus, Features/Sketch/Evaluate/Appearance command tabs, a FeatureManager tree, and property panels. Draw a sketch from the Sketch tab (plane, profile, size), then Extruded Boss/Base from Features; add cuts, holes, fillets, and patterns; suppress or delete from the Edit menu; change orientation, display style, planes, and section view from the heads-up toolbar; Evaluate gives mass properties and measure. The viewport draws each extrusion as a projected box and each cut as a dashed box; the feature tree and history are real. **Slicer** (tick **Slicer**, then **Open slicer**): a Bambu Studio-shaped window with Prepare/Preview/Device/Project tabs, a settings sidebar (printer, filament, process), a build plate, and an object panel. Add objects, arrange or clone them, change infill or supports, **Slice plate** for an estimate, scrub layers in Preview, **Print plate** to watch the simulated device. Both save as you work and publish read-only views on the output route.
+
+**Validation.** Unit tests cover the modeler's placeholder solids and mass, the slicer's arrange and estimate, the projection helpers, and registry wiring; `tests/workbench.spec.ts` walks both prototypes end to end with accessibility scans. Decisions 43–44; feature record `sharedProjectManagement/features/modeler and slicer.md`.
+
 ## Collection module — branch `codex/canvas-module`, September 24, 2026
 
 `collection` is the sixth module: tick **Collection**, then **Open collection**. The tree on the left starts with one root; **New collection here** offers presets (Music, Movies, Photography, Poems, Books, Ideas, blank) that seed fields, emoji, accent, and layout. The header edits in place; the controls row sets layout, sort, accent, **Fields**, **Also file under** (a collection may live under several parents), and removal. One box adds an item from a typed title or a pasted link (a YouTube Music link becomes a cover); the detail panel edits title, subtitle, link, image, rating, every field, notes, and which collections hold the item. **Browse** and **Add browse output** present the curation read-only; **Export** writes Markdown or JSON, and JSON re-imports under the current collection.
 
 **Validation on the branch.** `npm run check` and the browser suites pass, including `tests/collection.spec.ts`. The same commit introduces the document-module registry (decision 41), which now hosts canvas, document, and collection; the 3D modeler and slicer prototypes are added through it next.
-
 
 ## Document module — branch `codex/canvas-module`, September 24, 2026
 

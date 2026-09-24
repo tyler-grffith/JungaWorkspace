@@ -15,19 +15,27 @@ import {
   canvasShowOutput,
   collectionBrowseOutput,
   documentReadOutput,
+  modelerViewOutput,
+  slicerViewOutput,
   type Output,
 } from '../outputs'
+import { emptyModeler, modelerProblem, validModeler, type ModelerDocument } from '../modeler/model'
+import { emptySlicer, slicerProblem, validSlicer, type SlicerDocument } from '../slicer/model'
 
 export type ModuleDocuments = {
   canvas: CanvasDocument
   document: TextDocument
   collection: CollectionDocument
+  modeler: ModelerDocument
+  slicer: SlicerDocument
 }
 export type DocumentTool = keyof ModuleDocuments
 export const DOCUMENT_TOOLS = [
   'canvas',
   'document',
   'collection',
+  'modeler',
+  'slicer',
 ] as const satisfies readonly DocumentTool[]
 export const isDocumentTool = (value: unknown): value is DocumentTool =>
   DOCUMENT_TOOLS.includes(value as DocumentTool)
@@ -76,6 +84,28 @@ export const documentModules: { [K in DocumentTool]: DocumentModule<ModuleDocume
       type: 'collection-browse',
       make: (title) => collectionBrowseOutput(title),
       addLabel: 'Add browse output',
+    },
+  },
+  modeler: {
+    valid: validModeler,
+    problem: modelerProblem,
+    empty: () => emptyModeler(),
+    noun: 'model',
+    output: {
+      type: 'modeler-view',
+      make: (title) => modelerViewOutput(`${title} model`),
+      addLabel: 'Add model view',
+    },
+  },
+  slicer: {
+    valid: validSlicer,
+    problem: slicerProblem,
+    empty: () => emptySlicer(),
+    noun: 'print project',
+    output: {
+      type: 'slicer-view',
+      make: (title) => slicerViewOutput(`${title} plate`),
+      addLabel: 'Add plate view',
     },
   },
 }

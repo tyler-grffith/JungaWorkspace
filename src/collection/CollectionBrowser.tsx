@@ -6,7 +6,8 @@ import { ChevronRight, ExternalLink, Star, X } from 'lucide-react'
 import {
   collectionById,
   coverFor,
-  deepItemCount,
+  deepItemCounts,
+  isProjectLink,
   itemsOf,
   linkLabel,
   type Collection,
@@ -137,7 +138,12 @@ export function ItemDetail({
       {item.subtitle && <p className="col-subtitle">{item.subtitle}</p>}
       {item.rating > 0 && <Stars value={item.rating} />}
       {item.link && (
-        <a className="button" href={item.link} target="_blank" rel="noopener noreferrer">
+        <a
+          className="button"
+          href={item.link}
+          target={isProjectLink(item.link) ? undefined : '_blank'}
+          rel="noopener noreferrer"
+        >
           <ExternalLink size={14} />
           Open on {linkLabel(item.link)}
         </a>
@@ -175,6 +181,7 @@ export function CollectionTree({
   currentId: string
   onOpen: (id: string) => void
 }) {
+  const counts = useMemo(() => deepItemCounts(doc), [doc])
   const render = (id: string, depth: number, trail: Set<string>): React.ReactNode => {
     const c = collectionById(doc, id)
     if (!c || trail.has(id)) return null
@@ -192,7 +199,7 @@ export function CollectionTree({
             {c.emoji}
           </span>
           <span className="col-tree-name">{c.name}</span>
-          <span className="col-tree-count">{deepItemCount(doc, id)}</span>
+          <span className="col-tree-count">{counts.get(id) ?? 0}</span>
         </button>
         {c.childIds.length > 0 && depth < 8 && (
           <ul>{c.childIds.map((child) => render(child, depth + 1, next))}</ul>
@@ -253,6 +260,7 @@ export default function CollectionBrowser({
   const [openItem, setOpenItem] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const collection = collectionById(doc, currentId) ?? doc.collections[0]
+  const counts = useMemo(() => deepItemCounts(doc), [doc])
   const items = useMemo(
     () => filterItems(itemsOf(doc, collection), collection.fields, query),
     [doc, collection, query],
@@ -324,7 +332,7 @@ export default function CollectionBrowser({
                   </span>
                   <span className="col-child-name">{child.name}</span>
                   <span className="col-child-count">
-                    {deepItemCount(doc, id)} {deepItemCount(doc, id) === 1 ? 'item' : 'items'}
+                    {counts.get(id) ?? 0} {counts.get(id) === 1 ? 'item' : 'items'}
                   </span>
                 </button>
               )

@@ -195,8 +195,12 @@ const keys = (v: Record<string, unknown>, names: readonly string[]) =>
   Object.keys(v).length === names.length && names.every((n) => n in v)
 const ID = /^[A-Za-z0-9_-]{1,40}$/
 const isId = (v: unknown): v is string => typeof v === 'string' && ID.test(v)
+/** A link to another Junga project, so a collection can file the workspace's own work. */
+export const PROJECT_LINK = /^#\/project\/[A-Za-z0-9_-]{1,40}(\/[a-z-]+)*$/
+export const isProjectLink = (link: string) => PROJECT_LINK.test(link)
 export function safeUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2000) return false
+  if (isProjectLink(value)) return true
   try {
     return ['https:', 'http:'].includes(new URL(value).protocol)
   } catch {
@@ -380,10 +384,27 @@ export function itemsOf(doc: CollectionDocument, collection: Collection): Item[]
 }
 /** Count of items in a collection and all of its descendants, each counted once. */
 export function deepItemCount(doc: CollectionDocument, id: string): number {
-  const ids = new Set<string>()
-  for (const cid of descendantIds(doc, id))
-    for (const itemId of collectionById(doc, cid)?.itemIds ?? []) ids.add(itemId)
-  return ids.size
+  return deepItemCounts(doc).get(id) ?? 0
+}
+/** Distinct items under every collection at once, for trees and child grids. */
+export function deepItemCounts(doc: CollectionDocument): Map<string, number> {
+  const byId = new Map(doc.collections.map((c) => [c.id, c]))
+  const items = new Map<string, Set<string>>()
+  const visiting = new Set<string>()
+  const collect = (id: string): Set<string> => {
+    const done = items.get(id)
+    if (done) return done
+    const set = new Set<string>(byId.get(id)?.itemIds)
+    if (!visiting.has(id)) {
+      visiting.add(id)
+      for (const child of byId.get(id)?.childIds ?? [])
+        for (const item of collect(child)) set.add(item)
+      visiting.delete(id)
+    }
+    items.set(id, set)
+    return set
+  }
+  return new Map(doc.collections.map((c) => [c.id, collect(c.id).size]))
 }
 
 // --- Mutations (pure) -----------------------------------------------------------------------
@@ -544,6 +565,7 @@ export function coverFor(item: Item): string {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : ''
 }
 export function linkLabel(link: string): string {
+  if (isProjectLink(link)) return 'Junga'
   try {
     const url = new URL(link)
     const host = url.hostname.replace(/^www\./, '')

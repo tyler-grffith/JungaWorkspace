@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { ArrowLeft, Code2, Layers3 } from 'lucide-react'
 import type { Project } from './library'
 import { isCodeRun, type Output } from './outputs'
@@ -6,7 +6,7 @@ import SceneHost from './interactive-scenes/cosmic-clock/SceneHost'
 import CodeRunner from './code/CodeRunner'
 import { emptyCode } from './code/model'
 import { DOCUMENT_TOOLS, documentModules } from './modules/documents'
-import { editorModules } from './modules/editors'
+import { editorModules, ModuleLoading } from './modules/editors'
 
 /** Read-only boundary: no library object, commit callback, or authoring controls enter this route. */
 export default function OutputPage({ project, output }: { project?: Project; output?: Output }) {
@@ -61,12 +61,14 @@ export default function OutputPage({ project, output }: { project?: Project; out
               entry={output.source.entry}
             />
           ) : moduleTool && viewer ? (
-            <viewer.Viewer
-              key={`${project.id}/${output.id}`}
-              project={project}
-              document={(project[moduleTool] ?? documentModules[moduleTool].empty()) as never}
-              output={output}
-            />
+            <Suspense fallback={<ModuleLoading what="output" />}>
+              <viewer.Viewer
+                key={`${project.id}/${output.id}`}
+                project={project}
+                document={(project[moduleTool] ?? documentModules[moduleTool].empty()) as never}
+                output={output}
+              />
+            </Suspense>
           ) : output.type === 'interactive-scene' ? (
             <SceneHost key={`${project.id}/${output.id}`} output={output} />
           ) : null

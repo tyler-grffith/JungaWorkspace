@@ -909,6 +909,10 @@ export default function CanvasEditor({
   async function addImages(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])]
     event.target.value = ''
+    await insertImageFiles(files)
+  }
+  /** Place image files on the current page, centred and slightly cascaded. */
+  async function insertImageFiles(files: File[]) {
     let offset = 0
     let next = doc
     for (const file of files) {
@@ -953,6 +957,16 @@ export default function CanvasEditor({
       setMessage(error instanceof Error ? error.message : 'That file is not a draw.io diagram.')
     }
   }
+  async function copyAsImage() {
+    setExportMenu(false)
+    try {
+      const blob = await pagePng(doc, page, 2)
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      setMessage(`Copied ${page.name} as an image.`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'The image could not be copied.')
+    }
+  }
   async function exportAs(kind: 'svg' | 'png' | 'png3' | 'pdf') {
     setExportMenu(false)
     const name = `${safeFilename(title)}-${safeFilename(page.name)}`
@@ -965,6 +979,21 @@ export default function CanvasEditor({
       setMessage(error instanceof Error ? error.message : 'The export failed.')
     }
   }
+
+  // --- Clipboard images -----------------------------------------------------------------------
+  useEffect(() => {
+    if (readOnly || presenting) return
+    const pasted = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.isContentEditable || target instanceof HTMLInputElement) return
+      const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
+      if (!files.length) return
+      event.preventDefault()
+      void insertImageFiles(files)
+    }
+    window.addEventListener('paste', pasted)
+    return () => window.removeEventListener('paste', pasted)
+  })
 
   // --- Keyboard -------------------------------------------------------------------------------
   useEffect(() => {
@@ -1140,6 +1169,9 @@ export default function CanvasEditor({
                 </button>
                 <button role="menuitem" onClick={() => exportAs('png3')}>
                   This canvas as PNG (3×)
+                </button>
+                <button role="menuitem" onClick={copyAsImage}>
+                  Copy as image
                 </button>
                 <button role="menuitem" onClick={() => exportAs('pdf')}>
                   All canvases as PDF (print)

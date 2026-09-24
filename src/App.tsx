@@ -4,14 +4,30 @@ import CodeOutputs from './code/CodeOutputs'
 import { emptyCode, type CodeDocument } from './code/model'
 import {
   DOCUMENT_TOOLS,
+  documentModules,
   isDocumentTool,
   type DocumentTool,
   type ModuleDocuments,
   type ModuleDrafts,
 } from './modules/documents'
-import { editorModules, type EditorProps, type OutputsProps } from './modules/editors'
+import {
+  editorModules,
+  ModuleLoading,
+  type EditorProps,
+  type OutputsProps,
+  type RelatedDocuments,
+} from './modules/editors'
+import { useDeferredSave } from './modules/useDeferredSave'
 import OutputPage from './OutputPage'
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import {
   Archive,
   ArrowDownToLine,
@@ -100,6 +116,10 @@ import {
 } from './modules/registry'
 import { examples, type ExampleProject } from './modules/examples'
 
+/** One module edit waiting for the library write. */
+type ModuleSave = {
+  [K in DocumentTool]: { tool: K; project: Project; value: ModuleDocuments[K] }
+}[DocumentTool]
 type ModalState =
   | { kind: 'project'; project?: Project }
   | { kind: 'collection'; collection?: Collection }
@@ -585,6 +605,10 @@ export default function App() {
     (draft): draft is NonNullable<typeof draft> => !!draft,
   )
   const hasModuleDraft = moduleDraftList.length > 0
+  // Module editors report every edit; the library write waits for a pause in typing.
+  const pendingSave = useDeferredSave<ModuleSave>(({ tool, project, value }) =>
+    saveModule(tool, project, value),
+  )
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
   const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
@@ -593,6 +617,7 @@ export default function App() {
   const searchRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const changed = () => {
+      pendingSave.flush()
       if (
         (notesDraft ||
           graphDraft ||
@@ -631,6 +656,7 @@ export default function App() {
     sheetEditing,
     outputEditing,
     route,
+    pendingSave,
   ])
   useEffect(() => {
     if (
@@ -900,9 +926,23 @@ export default function App() {
     tool: K,
     project: Project,
   ): ModuleDocuments[K] {
+    const pending = pendingSave.value
+    if (pending && pending.tool === tool && pending.project.id === project.id)
+      return pending.value as ModuleDocuments[K]
     const draft = moduleDrafts[tool]
     if (draft && draft.id === project.id) return draft.value as ModuleDocuments[K]
     return (project[tool] as ModuleDocuments[K] | undefined) ?? fallbackDocuments[tool]
+  }
+  /** What one module's editor may do with its siblings on the same project. */
+  function relatedDocuments(project: Project): RelatedDocuments {
+    return {
+      tools: DOCUMENT_TOOLS.filter((tool) => project.tools.includes(tool)),
+      get: (tool) => moduleDocumentFor(tool, project),
+      save: (tool, next) => saveModule(tool, project, next),
+      open: (tool) => {
+        window.location.hash = `${projectRoute(project.id)}/${tool}`
+      },
+    }
   }
   /** Save a module document, keeping a draft when the write fails; mirrors the graph/sheet plumbing. */
   function saveModule<K extends DocumentTool>(tool: K, project: Project, next: ModuleDocuments[K]) {
@@ -917,17 +957,25 @@ export default function App() {
       EditorProps<ModuleDocuments[K]>
     >
     return (
-      <Editor
-        key={`${tool}-${project.id}`}
-        title={project.title}
-        document={moduleDocumentFor(tool, project)}
-        readOnly={project.status === 'trashed'}
-        unsaved={moduleDrafts[tool]?.id === project.id}
-        onBack={() => {
-          window.location.hash = projectRoute(project.id)
-        }}
-        onChange={(next) => saveModule(tool, project, next)}
-      />
+      <Suspense fallback={<ModuleLoading />}>
+        <Editor
+          key={`${tool}-${project.id}`}
+          title={project.title}
+          document={moduleDocumentFor(tool, project)}
+          readOnly={project.status === 'trashed'}
+          unsaved={moduleDrafts[tool]?.id === project.id}
+          onBack={() => {
+            window.location.hash = projectRoute(project.id)
+          }}
+          onChange={(next) => {
+            // Editors learn at once whether an edit is storable; the library write follows.
+            if (!documentModules[tool].valid(next)) return false
+            pendingSave.schedule({ tool, project, value: next } as ModuleSave)
+            return true
+          }}
+          related={relatedDocuments(project)}
+        />
+      </Suspense>
     )
   }
   function renderDocumentOutputs<K extends DocumentTool>(tool: K, project: Project) {

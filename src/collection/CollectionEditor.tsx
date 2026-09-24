@@ -31,6 +31,7 @@ import {
   holdersOf,
   itemsOf,
   linkCollection,
+  isProjectLink,
   linkLabel,
   moveItem,
   newItem,
@@ -73,9 +74,11 @@ const safeName = (title: string) =>
     .replace(/\s+/g, '-')
     .toLowerCase() || 'collection'
 const article = (noun: string) => (/^[aeiou]/i.test(noun) ? 'an' : 'a')
-const looksLikeUrl = (value: string) => /^https?:\/\/\S+$/i.test(value.trim())
+const looksLikeUrl = (value: string) =>
+  /^https?:\/\/\S+$/i.test(value.trim()) || isProjectLink(value.trim())
 /** A readable title for a pasted link when nothing else is known. */
 function titleFromUrl(link: string): string {
+  if (isProjectLink(link)) return 'Junga project'
   try {
     const url = new URL(link)
     const host = url.hostname.replace(/^www\./, '')
@@ -644,7 +647,7 @@ export default function CollectionEditor({
                   <a
                     className="button"
                     href={detail.link}
-                    target="_blank"
+                    target={isProjectLink(detail.link) ? undefined : '_blank'}
                     rel="noopener noreferrer"
                   >
                     <ExternalLink size={14} />

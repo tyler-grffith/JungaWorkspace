@@ -1,6 +1,6 @@
 // SVG rendering of canvas pages. The editor, page thumbnails, the presenter, and SVG export all
 // draw through these components, so what you edit is exactly what you present and export.
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, memo, type ReactNode } from 'react'
 import {
   parseMarkup,
   type ArrowHead,
@@ -166,26 +166,44 @@ export function shapePath(shape: ShapeKind, w: number, h: number, radius = 0): s
 
 // --- Text ----------------------------------------------------------------------------------
 let measureContext: CanvasRenderingContext2D | null | undefined
-function textWidth(text: string, style: TextStyle, size: number): number {
+/** Measured word widths by font, so re-rendering a page re-measures nothing. */
+const widthCache = new Map<string, number>()
+const fontFor = (style: TextStyle) =>
+  `${style.italic ? 'italic ' : ''}${style.bold ? '700' : '400'} ${style.fontSize}px ${style.fontFamily}`
+function textWidth(text: string, font: string): number {
+  const key = `${font}|${text}`
+  const cached = widthCache.get(key)
+  if (cached !== undefined) return cached
   if (measureContext === undefined)
     measureContext =
       typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
-  if (!measureContext) return text.length * size * 0.55
-  measureContext.font = `${style.italic ? 'italic ' : ''}${style.bold ? '700' : '400'} ${size}px ${style.fontFamily}`
-  return measureContext.measureText(text).width
+  let width: number
+  if (measureContext) {
+    measureContext.font = font
+    width = measureContext.measureText(text).width
+  } else width = text.length * parseFloat(font.match(/(\d+(?:\.\d+)?)px/)?.[1] ?? '16') * 0.55
+  if (widthCache.size > 20000) widthCache.clear()
+  widthCache.set(key, width)
+  return width
 }
 /** Break text into lines that fit `width`, honoring explicit newlines. */
 export function wrapLines(text: string, style: TextStyle, width: number): string[] {
+  const font = fontFor(style)
+  const space = textWidth(' ', font)
   const lines: string[] = []
   for (const paragraph of text.split('\n')) {
-    const words = paragraph.split(' ')
     let line = ''
-    for (const word of words) {
-      const candidate = line ? `${line} ${word}` : word
-      if (line && textWidth(plain(candidate), style, style.fontSize) > width) {
+    let lineWidth = 0
+    for (const word of paragraph.split(' ')) {
+      const wordWidth = textWidth(plain(word), font)
+      if (line && lineWidth + space + wordWidth > width) {
         lines.push(line)
         line = word
-      } else line = candidate
+        lineWidth = wordWidth
+      } else {
+        lineWidth += line ? space + wordWidth : wordWidth
+        line = line ? `${line} ${word}` : word
+      }
     }
     lines.push(line)
   }
@@ -508,7 +526,7 @@ export function PageContent({
 }
 
 /** A static, non-interactive rendering of one page, used for thumbnails and the presenter. */
-export function PageView({
+export const PageView = memo(function PageView({
   page,
   size,
   scope,
@@ -544,6 +562,6 @@ export function PageView({
       <PageContent page={page} size={size} scope={scope} upTo={upTo} />
     </svg>
   )
-}
+})
 
 export const pageCenter = (size: PageSize) => center({ x: 0, y: 0, ...size })

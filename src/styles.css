@@ -2210,3 +2210,12 @@ button:disabled:hover {
     scroll-behavior: auto !important;
   }
 }
+
+/* Shown while a lazily loaded module's code arrives. */
+.module-loading {
+  display: grid;
+  place-items: center;
+  min-height: 40vh;
+  color: var(--muted, #6b7280);
+  font-size: 0.95rem;
+}

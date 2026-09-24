@@ -1,7 +1,11 @@
 // React half of the document-module registry: the editor, the outputs panel, the output
 // viewer, and the library-card art for each document module. The shell renders from this, so
 // a new module is one entry here and one in `documents.ts`.
-import type { ComponentType, ReactNode } from 'react'
+//
+// Editors and viewers are lazy: the library page loads only the shell, and a module's code
+// arrives the first time one of its projects or outputs is opened. Outputs panels stay eager
+// because they are small and render on the project overview.
+import { lazy, type ComponentType, type ReactNode } from 'react'
 import { Box, FileText, LibraryBig, Printer, Shapes, type LucideIcon } from 'lucide-react'
 import type { Project } from '../library'
 import type { Output } from '../outputs'
@@ -11,21 +15,24 @@ import { emptyDocument } from '../document/model'
 import { emptyCollections } from '../collection/model'
 import { emptyModeler } from '../modeler/model'
 import { emptySlicer, formatDuration } from '../slicer/model'
-import CanvasEditor from '../canvas/CanvasEditor'
 import CanvasOutputs from '../canvas/CanvasOutputs'
-import CanvasPresenter from '../canvas/CanvasPresenter'
-import DocumentEditor from '../document/DocumentEditor'
 import DocumentOutputs from '../document/DocumentOutputs'
-import DocumentReader from '../document/DocumentReader'
-import CollectionEditor from '../collection/CollectionEditor'
 import CollectionOutputs from '../collection/CollectionOutputs'
-import CollectionBrowser from '../collection/CollectionBrowser'
-import ModelerEditor, { ModelerViewport } from '../modeler/ModelerEditor'
-import SlicerEditor, { SlicerViewport } from '../slicer/SlicerEditor'
 import ModuleOutputs from './ModuleOutputs'
 import '../workbench/workbench.css'
 import type { DocumentTool, ModuleDocuments } from './documents'
 
+/** The other document modules on the same project, so editors can hand work to each other. */
+export type RelatedDocuments = {
+  /** Document tools the project has (including the editor's own). */
+  tools: readonly DocumentTool[]
+  /** A sibling module's current document (its default when it was never opened). */
+  get: <K extends DocumentTool>(tool: K) => ModuleDocuments[K]
+  /** Save a sibling module's document at once; returns whether the write succeeded. */
+  save: <K extends DocumentTool>(tool: K, next: ModuleDocuments[K]) => boolean
+  /** Open a sibling module's editor. */
+  open: (tool: DocumentTool) => void
+}
 export type EditorProps<D> = {
   title: string
   document: D
@@ -33,6 +40,7 @@ export type EditorProps<D> = {
   unsaved: boolean
   onBack: () => void
   onChange: (next: D) => boolean
+  related?: RelatedDocuments
 }
 export type OutputsProps<D> = {
   project: Project
@@ -53,6 +61,30 @@ export type EditorModule<D> = {
   outputIcon: LucideIcon
   /** Card artwork for a project whose only tool is this module. */
   art: ReactNode
+}
+
+const CanvasEditor = lazy(() => import('../canvas/CanvasEditor'))
+const CanvasPresenter = lazy(() => import('../canvas/CanvasPresenter'))
+const DocumentEditor = lazy(() => import('../document/DocumentEditor'))
+const DocumentReader = lazy(() => import('../document/DocumentReader'))
+const CollectionEditor = lazy(() => import('../collection/CollectionEditor'))
+const CollectionBrowser = lazy(() => import('../collection/CollectionBrowser'))
+const ModelerEditor = lazy(() => import('../modeler/ModelerEditor'))
+const ModelerViewport = lazy(() =>
+  import('../modeler/ModelerEditor').then((m) => ({ default: m.ModelerViewport })),
+)
+const SlicerEditor = lazy(() => import('../slicer/SlicerEditor'))
+const SlicerViewport = lazy(() =>
+  import('../slicer/SlicerEditor').then((m) => ({ default: m.SlicerViewport })),
+)
+
+/** Shown while a module's code loads the first time it is opened. */
+export function ModuleLoading({ what = 'editor' }: { what?: string }) {
+  return (
+    <div className="module-loading" role="status">
+      Loading the {what}…
+    </div>
+  )
 }
 
 export const editorModules: { [K in DocumentTool]: EditorModule<ModuleDocuments[K]> } = {

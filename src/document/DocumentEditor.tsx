@@ -328,7 +328,10 @@ export default function DocumentEditor({
   async function addImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file) return
+    if (file) await insertImageFile(file)
+  }
+  /** Insert an image file as a figure after the current block. */
+  async function insertImageFile(file: File) {
     try {
       const { src } = await readImageFile(file, 1400)
       const alt = file.name.replace(/\.[^.]+$/, '')
@@ -509,6 +512,12 @@ export default function DocumentEditor({
   }
   function paste(event: ClipboardEvent<HTMLDivElement>) {
     if (readOnly) return
+    const image = [...event.clipboardData.files].find((f) => f.type.startsWith('image/'))
+    if (image) {
+      event.preventDefault()
+      void insertImageFile(image)
+      return
+    }
     const html = event.clipboardData.getData('text/html')
     const text = event.clipboardData.getData('text/plain')
     if (!html && !text) return

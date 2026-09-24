@@ -1,12 +1,15 @@
-// The slicer prototype: a Bambu Studio-shaped workbench (Prepare / Preview / Device / Project
-// tabs, printer-filament-process sidebar, build plate viewport, object panel, slice button) over
-// a real project document. Objects are boxes, slicing is an estimate; the workflow is real.
-import { useMemo, useState, type ReactNode } from 'react'
+// The slicer: a Bambu Studio-shaped workbench (Prepare / Preview / Device / Project tabs,
+// printer-filament-process sidebar, build plate viewport, object panel, slice button) over a
+// project document. Objects are boxes, imported STL meshes, or parts sent from the modeler; the
+// plate is really sliced into toolpaths that Preview draws layer by layer and that export as
+// G-code. The printer on the Device tab is simulated.
+import { forwardRef, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import {
   ArrowLeft,
   Boxes,
   Copy,
   Fan,
+  FileUp,
   Gauge,
   Home,
   LayoutGrid,
@@ -28,25 +31,45 @@ import {
   Waves,
 } from 'lucide-react'
 import Workbench from '../workbench/Workbench'
+import Viewport3D, { gridLines, type SceneItem, type ViewportHandle } from '../workbench/Viewport3D'
 import {
-  Box as IsoBox,
-  Grid,
-  Triad,
-  boxCorners,
-  fitViewBox,
-  type Orientation,
-} from '../workbench/Isometric'
+  compact,
+  decimate,
+  extrude,
+  frames,
+  parseStl,
+  profile,
+  settle,
+  toStl,
+  triangleCount,
+  vec,
+  type Mesh,
+} from '../workbench/geometry'
+import { downloadBlob, safeFilename } from '../canvas/export'
+import { printableMesh } from '../modeler/model'
+import {
+  PATH_COLORS,
+  PATH_LABELS,
+  slicePlate,
+  toGcode,
+  type PathKind,
+  type SlicedPlate,
+} from './slicing'
 import type { Menu, ParamValue, RibbonTab, ToolDef, TreeNode } from '../workbench/types'
 import {
   BED_SIZE,
+  MAX_TRIANGLES,
   OBJECT_COLORS,
   PRINTERS,
   activePlate,
   arrange,
-  estimateSlice,
+  footprint,
   formatDuration,
+  meshObject,
   newObject,
   newPlate,
+  objectMesh,
+  plateMesh,
   validSlicer,
   type PlateObject,
   type Process,
@@ -68,7 +91,7 @@ const RIBBON: RibbonTab[] = [
             id: 'add',
             label: 'Add Object',
             icon: PackagePlus,
-            hint: 'Place a box of the given size on the plate. STL/3MF import arrives with the geometry loader.',
+            hint: 'Place a box of the given size on the plate.',
             params: [
               { id: 'name', label: 'Name', kind: 'text', default: 'Bracket' },
               {
@@ -100,6 +123,12 @@ const RIBBON: RibbonTab[] = [
               },
             ],
           },
+          {
+            id: 'import',
+            label: 'Import STL',
+            icon: FileUp,
+            hint: 'Load a mesh from an STL file onto the plate.',
+          },
           { id: 'clone', label: 'Clone', icon: Copy, hint: 'Duplicate the selected object.' },
           { id: 'delete', label: 'Delete', icon: Trash2 },
           {
@@ -112,7 +141,7 @@ const RIBBON: RibbonTab[] = [
             id: 'orient',
             label: 'Auto Orient',
             icon: Shuffle,
-            hint: 'Orientation is fixed for boxes in this prototype.',
+            hint: 'Turn the selected object so its longer side runs along X.',
           },
         ],
       },
@@ -196,11 +225,13 @@ const MENUS: Menu[] = [
     label: 'File',
     items: [
       { label: 'New Project', shortcut: 'Ctrl+N', command: 'notyet:New Project' },
-      { label: 'Import 3MF/STL…', shortcut: 'Ctrl+I', command: 'notyet:Mesh import' },
+      { label: 'Import STL…', shortcut: 'Ctrl+I', command: 'import' },
+      { label: 'Import from Modeler', command: 'import:modeler' },
       { label: 'Save Project', shortcut: 'Ctrl+S', command: 'save' },
       'separator',
       { label: 'Export Project (JSON)…', command: 'export:json' },
-      { label: 'Export Plate Sliced File…', command: 'notyet:G-code export' },
+      { label: 'Export Plate as G-code…', command: 'export:gcode' },
+      { label: 'Export Plate as STL…', command: 'export:stl' },
     ],
   },
   {
@@ -228,89 +259,94 @@ const MENUS: Menu[] = [
 type History = { past: SlicerDocument[]; future: SlicerDocument[] }
 
 /** The build plate viewport shared by the editor and the read-only output. */
-export function SlicerViewport({
-  document: doc,
-  selected,
-  onPick,
-}: {
-  document: SlicerDocument
-  selected: string | null
-  onPick?: (id: string) => void
-}) {
+export const SlicerViewport = forwardRef<
+  ViewportHandle,
+  {
+    document: SlicerDocument
+    selected: string | null
+    /** Layer toolpaths to draw instead of the objects, when previewing a slice. */
+    sliced?: SlicedPlate | null
+    onPick?: (id: string | null) => void
+    onDrag?: (id: string, delta: { x: number; y: number }) => void
+    onDrop?: (id: string) => void
+  }
+>(function SlicerViewport({ document: doc, selected, sliced, onPick, onDrag, onDrop }, ref) {
   const plate = activePlate(doc)
   const bed = BED_SIZE[doc.printer] ?? 256
-  const orientation: Orientation = doc.view === 'preview' ? 'iso' : 'iso'
-  const viewBox = fitViewBox(
-    boxCorners(
-      -bed / 2,
-      -bed / 2,
-      -2,
-      bed,
-      bed,
-      Math.max(40, ...plate.objects.map((o) => o.height)),
-    ),
-    orientation,
-    24,
-  )
-  const layerHeight = doc.process.layerHeight
+  const previewing = doc.view === 'preview' && sliced && sliced.layers.length > 0
+  const items: SceneItem[] = [
+    {
+      kind: 'lines',
+      polylines: gridLines(bed, bed / 8),
+      stroke: 'rgba(255,255,255,0.12)',
+      layer: 'under',
+    },
+    {
+      kind: 'lines',
+      polylines: [
+        [
+          vec(-bed / 2, -bed / 2, 0),
+          vec(bed / 2, -bed / 2, 0),
+          vec(bed / 2, bed / 2, 0),
+          vec(-bed / 2, bed / 2, 0),
+          vec(-bed / 2, -bed / 2, 0),
+        ],
+      ],
+      stroke: 'rgba(255,255,255,0.45)',
+      width: 1.5,
+      layer: 'under',
+    },
+  ]
+  if (previewing) {
+    const shown = sliced.layers.slice(0, Math.max(1, doc.previewLayer))
+    const byKind = new Map<PathKind, { x: number; y: number; z: number }[][]>()
+    for (const layer of shown)
+      for (const path of layer.paths) {
+        const points = (path.closed ? [...path.points, path.points[0]] : path.points).map((p) =>
+          vec(p.x, p.y, layer.z),
+        )
+        byKind.set(path.kind, [...(byKind.get(path.kind) ?? []), points])
+      }
+    for (const [kind, polylines] of byKind)
+      items.push({
+        kind: 'lines',
+        polylines,
+        stroke: PATH_COLORS[kind],
+        width: kind === 'outer' ? 1.4 : 0.8,
+      })
+  } else
+    for (const o of plate.objects)
+      items.push({
+        kind: 'mesh',
+        id: o.id,
+        mesh: objectMesh(o),
+        fill: o.color,
+        stroke: selected === o.id ? '#3b8beb' : 'rgba(0,0,0,0.35)',
+      })
+  const tallest = Math.max(40, ...plate.objects.map((o) => o.height * (o.scale ?? 1)))
+  const extent = extrude(profile('rectangle', bed, bed), frames.Top(), 0, tallest)
   return (
-    <>
-      <svg
-        viewBox={viewBox}
-        role="img"
-        aria-label={`Build plate with ${plate.objects.length} objects`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <IsoBox
-          x={-bed / 2}
-          y={-bed / 2}
-          z={-2}
-          w={bed}
-          d={bed}
-          h={2}
-          orientation={orientation}
-          fill="#3a4048"
-          stroke="#5b636d"
-        />
-        <Grid size={bed} step={bed / 8} orientation={orientation} color="var(--wb-grid)" />
-        {[...plate.objects]
-          .sort((a, b) => a.y + a.x - (b.y + b.x))
-          .map((o) => {
-            const shownHeight =
-              doc.view === 'preview' && doc.sliced
-                ? Math.min(o.height, Math.max(layerHeight, doc.previewLayer * layerHeight))
-                : o.height
-            return (
-              <g
-                key={o.id}
-                onClick={() => onPick?.(o.id)}
-                style={{ cursor: onPick ? 'pointer' : 'default' }}
-              >
-                <IsoBox
-                  x={o.x - o.width / 2}
-                  y={o.y - o.depth / 2}
-                  z={0}
-                  w={o.width}
-                  d={o.depth}
-                  h={shownHeight}
-                  orientation={orientation}
-                  fill={doc.view === 'preview' ? doc.filament.color : o.color}
-                  stroke={selected === o.id ? '#3b8beb' : 'rgba(0,0,0,0.45)'}
-                />
-              </g>
-            )
-          })}
-      </svg>
-      <Triad orientation={orientation} />
+    <Viewport3D
+      ref={ref}
+      items={items}
+      fitTo={extent}
+      label={`Build plate with ${plate.objects.length} objects`}
+      onPick={onPick ? (id) => onPick(id) : undefined}
+      onDrag={onDrag && !previewing ? onDrag : undefined}
+      onDrop={onDrop}
+    >
       <div className="wb-viewport-note">
         {doc.printer} · {bed} × {bed} mm · {plate.name}
-        {doc.view === 'preview' && doc.sliced
-          ? ` · layer ${doc.previewLayer}/${doc.sliced.layers}`
-          : ''}
-        {!plate.objects.length ? ' · Add an object from the Prepare tab.' : ''}
+        {previewing ? ` · layer ${doc.previewLayer}/${sliced.layers.length}` : ''}
+        {!plate.objects.length ? ' · Add or import an object from the Prepare tab.' : ''}
       </div>
-    </>
+    </Viewport3D>
   )
+})
+
+/** Mesh files become storable objects: decimated to the budget, settled on the bed, rounded. */
+function objectFromMesh(name: string, mesh: Mesh, index: number) {
+  return meshObject(name, compact(settle(decimate(mesh, MAX_TRIANGLES))), index)
 }
 
 export default function SlicerEditor({
@@ -320,8 +356,12 @@ export default function SlicerEditor({
   unsaved,
   onBack,
   onChange,
+  related,
 }: EditorProps<SlicerDocument>) {
   const [tool, setTool] = useState<ToolDef | null>(null)
+  const viewport = useRef<ViewportHandle>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const dragging = useRef(false)
   const [values, setValues] = useState<Record<string, ParamValue>>({})
   const [selected, setSelected] = useState<string | null>(null)
   const [panelTab, setPanelTab] = useState<'settings' | 'objects'>('settings')
@@ -333,6 +373,13 @@ export default function SlicerEditor({
   const plate = activePlate(doc)
   const bed = BED_SIZE[doc.printer] ?? 256
   const selectedObject = plate.objects.find((o) => o.id === selected) ?? null
+  // Toolpaths for Preview and export. Every plate or process change clears `doc.sliced`, so it
+  // is the one dependency that matters; the layer slider and view changes reuse the result.
+  const sliced = useMemo(
+    () => (doc.sliced ? slicePlate(doc) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [doc.sliced],
+  )
 
   const apply = (next: SlicerDocument, record = true) => {
     if (readOnly) return false
@@ -355,7 +402,7 @@ export default function SlicerEditor({
 
   function startTool(t: ToolDef) {
     if (t.id.startsWith('noop:')) {
-      setMessage(t.hint ?? `${t.label} arrives with mesh support.`)
+      setMessage(t.hint ?? `${t.label} is not built yet.`)
       return
     }
     if (t.params) {
@@ -375,14 +422,73 @@ export default function SlicerEditor({
         Number(values.height),
         plate.objects.length,
       )
-      const placed = arrange({ ...plate, objects: [...plate.objects, object] }, bed)
-      if (changePlate(() => placed)) {
-        setSelected(object.id)
-        setPanelTab('objects')
-        setMessage(`${object.name} added to ${plate.name}.`)
-      }
+      addObject(object, `${object.name} added to ${plate.name}.`)
     }
     setTool(null)
+  }
+  /** Add an object to the plate, arranged with the others, and select it. */
+  function addObject(object: PlateObject, note: string) {
+    const placed = arrange({ ...plate, objects: [...plate.objects, object] }, bed)
+    if (changePlate(() => placed)) {
+      setSelected(object.id)
+      setPanelTab('objects')
+      setMessage(note)
+    } else setMessage(`${object.name} would pass the plate\u2019s storage budget.`)
+  }
+  async function importFiles(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])]
+    event.target.value = ''
+    for (const file of files) {
+      try {
+        const mesh = parseStl(await file.arrayBuffer())
+        const object = objectFromMesh(file.name.replace(/\.stl$/i, ''), mesh, plate.objects.length)
+        const before = triangleCount(mesh)
+        const after = triangleCount(object.mesh!)
+        const size = `${object.width} × ${object.depth} × ${object.height} mm`
+        addObject(
+          object,
+          after < before
+            ? `${object.name} imported (${size}); simplified from ${before.toLocaleString()} to ${after.toLocaleString()} triangles.`
+            : `${object.name} imported (${size}, ${after.toLocaleString()} triangles).`,
+        )
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : `${file.name} could not be read.`)
+      }
+    }
+  }
+  function importFromModeler() {
+    if (!related?.tools.includes('modeler')) {
+      setMessage('Add the 3D modeler tool to this project to import its part.')
+      return
+    }
+    const mesh = printableMesh(related.get('modeler'))
+    if (!mesh.length) {
+      setMessage('The modeler part has no solids yet.')
+      return
+    }
+    addObject(
+      objectFromMesh(title, mesh, plate.objects.length),
+      `${title} imported from the modeler.`,
+    )
+  }
+  /** Move an object along the plate while it is dragged in the viewport; one undo step per drag. */
+  function dragObject(id: string, delta: { x: number; y: number }) {
+    if (readOnly) return
+    if (!dragging.current) {
+      dragging.current = true
+      setHistory((h) => ({ past: [...h.past.slice(-49), doc], future: [] }))
+    }
+    const limit = bed / 2
+    const clamp = (n: number) => Math.round(Math.max(-limit, Math.min(limit, n)) * 100) / 100
+    changePlate(
+      (p) => ({
+        ...p,
+        objects: p.objects.map((o) =>
+          o.id === id ? { ...o, x: clamp(o.x + delta.x), y: clamp(o.y + delta.y) } : o,
+        ),
+      }),
+      false,
+    )
   }
   function command(id: string) {
     if (id.startsWith('notyet:')) {
@@ -394,7 +500,11 @@ export default function SlicerEditor({
       return
     }
     if (id.startsWith('scheme:')) {
-      setMessage(`Preview color scheme: ${id.slice(7)} (visual only in this prototype).`)
+      setMessage(
+        id === 'scheme:type'
+          ? 'Preview colours show line type: outer wall, inner wall, sparse infill, solid infill, brim.'
+          : `The ${id.slice(7)} colour scheme is not built yet; line type is shown.`,
+      )
       return
     }
     switch (id) {
@@ -423,7 +533,20 @@ export default function SlicerEditor({
         changePlate((p) => arrange(p, bed))
         break
       case 'orient':
-        setMessage('Boxes are already best oriented; auto-orient arrives with mesh support.')
+        if (!selectedObject) setMessage('Select an object first.')
+        else {
+          const { width, depth } = footprint({ ...selectedObject, rotation: 0 })
+          changeObject(selectedObject.id, (o) => ({ ...o, rotation: depth > width ? 90 : 0 }))
+        }
+        break
+      case 'import':
+        fileInput.current?.click()
+        break
+      case 'import:modeler':
+        importFromModeler()
+        break
+      case 'fit':
+        viewport.current?.fit()
         break
       case 'plate:add': {
         const p = newPlate(doc.plates.length + 1)
@@ -443,9 +566,11 @@ export default function SlicerEditor({
           setMessage('Add an object before slicing.')
           return
         }
-        const result = estimateSlice(doc)
+        const { result } = slicePlate(doc)
         apply({ ...doc, sliced: result, view: 'preview', previewLayer: result.layers }, false)
-        setMessage(`Sliced ${plate.name}: ${formatDuration(result.seconds)}, ${result.grams} g.`)
+        setMessage(
+          `Sliced ${plate.name}: ${result.layers} layers, ${formatDuration(result.seconds)}, ${result.grams} g.`,
+        )
         break
       }
       case 'layer:up':
@@ -498,29 +623,34 @@ export default function SlicerEditor({
             : 'Everything is saved as you work.',
         )
         break
-      case 'export:json': {
-        const url = URL.createObjectURL(
+      case 'export:json':
+        downloadBlob(
           new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }),
+          `${safeFilename(title) || 'project'}.3mf.json`,
         )
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${
-          title
-            .replace(/[^a-z0-9-_ ]/gi, '')
-            .trim()
-            .replace(/\s+/g, '-')
-            .toLowerCase() || 'project'
-        }.3mf.json`
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
         break
-      }
+      case 'export:gcode':
+        if (!sliced) setMessage('Slice the plate first.')
+        else
+          downloadBlob(
+            new Blob([toGcode(sliced, doc, title)], { type: 'text/x-gcode' }),
+            `${safeFilename(title) || 'plate'}-${safeFilename(plate.name)}.gcode`,
+          )
+        break
+      case 'export:stl':
+        if (!plate.objects.length) setMessage('The plate is empty.')
+        else
+          downloadBlob(
+            toStl(plateMesh(plate), title),
+            `${safeFilename(title) || 'plate'}-${safeFilename(plate.name)}.stl`,
+          )
+        break
       case 'notes':
         apply({ ...doc, view: 'project' }, false)
         break
       case 'about':
         setMessage(
-          'A clickable Bambu Studio-style prototype: real settings and plates, estimated slicing.',
+          'A Bambu Studio-shaped slicer: real settings, plates, toolpaths, and G-code. The printer is simulated.',
         )
         break
       default:
@@ -537,7 +667,9 @@ export default function SlicerEditor({
           id: o.id,
           label: o.name,
           icon: Boxes,
-          badge: `${o.width}×${o.depth}×${o.height}`,
+          badge: o.mesh
+            ? `${triangleCount(o.mesh).toLocaleString()} tris`
+            : `${o.width}×${o.depth}×${o.height}`,
         })),
       },
     ],
@@ -916,6 +1048,12 @@ export default function SlicerEditor({
                       min={1}
                       max={dim === 'height' ? 250 : bed}
                       value={selectedObject[dim]}
+                      readOnly={!!selectedObject.mesh}
+                      title={
+                        selectedObject.mesh
+                          ? 'Mesh sizes come from the file; use Scale.'
+                          : undefined
+                      }
                       onChange={(e) =>
                         changeObject(selectedObject.id, (o) => ({
                           ...o,
@@ -925,6 +1063,42 @@ export default function SlicerEditor({
                     />
                   </label>
                 ))}
+              </div>
+              <div className="wb-row">
+                <label className="wb-field">
+                  <span>Rotation (°)</span>
+                  <input
+                    type="number"
+                    min={-360}
+                    max={360}
+                    step={15}
+                    value={selectedObject.rotation}
+                    onChange={(e) =>
+                      changeObject(selectedObject.id, (o) => ({
+                        ...o,
+                        rotation: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </label>
+                {selectedObject.mesh && (
+                  <label className="wb-field">
+                    <span>Scale</span>
+                    <input
+                      type="number"
+                      min={0.01}
+                      max={100}
+                      step={0.1}
+                      value={selectedObject.scale ?? 1}
+                      onChange={(e) =>
+                        changeObject(selectedObject.id, (o) => ({
+                          ...o,
+                          scale: Number(e.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                )}
               </div>
               <label className="wb-field">
                 <span>Color</span>
@@ -984,10 +1158,21 @@ export default function SlicerEditor({
               <button type="button" className="wb-button" onClick={() => command('device:print')}>
                 <Play size={13} /> Print plate
               </button>
+              {doc.view === 'preview' && (
+                <ul className="wb-legend" aria-label="Line types">
+                  {(Object.keys(PATH_COLORS) as PathKind[]).map((kind) => (
+                    <li key={kind}>
+                      <span className="wb-swatch" style={{ background: PATH_COLORS[kind] }} />
+                      {PATH_LABELS[kind]}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
           <p className="wb-hint">
-            Estimates come from object volume and settings, not a real slicer.
+            Time and filament are summed from the toolpaths shown in Preview. Supports are not
+            generated yet.
           </p>
         </>
       )}
@@ -1002,16 +1187,23 @@ export default function SlicerEditor({
             <ArrowLeft size={15} />
             Back to project
           </button>
-          <div className="eyebrow">SLICER · PROTOTYPE</div>
+          <div className="eyebrow">SLICER</div>
           <h1>{title}</h1>
         </div>
         <div className="canvas-heading-actions">
           {unsaved && <span className="unsaved-note">Changes not saved</span>}
-          <span className="unsaved-note">
-            Clickable prototype: real settings and plates, estimated slicing
-          </span>
+          <span className="unsaved-note">Real toolpaths and G-code · simulated printer</span>
         </div>
       </div>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".stl,model/stl"
+        multiple
+        hidden
+        aria-label="Import STL files"
+        onChange={importFiles}
+      />
       <Workbench
         app={{
           name: 'Junga Slicer',
@@ -1044,13 +1236,26 @@ export default function SlicerEditor({
         onTool={startTool}
         onCommand={command}
         viewport={
-          <SlicerViewport document={doc} selected={selected} onPick={(id) => setSelected(id)} />
+          <SlicerViewport
+            ref={viewport}
+            document={doc}
+            selected={selected}
+            sliced={sliced}
+            onPick={setSelected}
+            onDrag={readOnly ? undefined : dragObject}
+            onDrop={() => {
+              dragging.current = false
+            }}
+          />
         }
         rightPanel={rightPanel}
         status={[
           { id: 'printer', text: doc.printer, icon: Printer },
           { id: 'filament', text: `${doc.filament.type} · ${doc.nozzle} mm nozzle` },
-          { id: 'objects', text: `${plate.objects.length} objects on ${plate.name}` },
+          {
+            id: 'objects',
+            text: `${plate.objects.length} objects · ${triangleCount(plateMesh(plate)).toLocaleString()} triangles`,
+          },
           {
             id: 'slice',
             text: estimate

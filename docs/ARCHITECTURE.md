@@ -50,6 +50,10 @@ Most new tools are _document modules_: one versioned document on the project, on
 
 Storage, validation on read, backup drafts, duplication, the editor route, the outputs panel, the output route, and library-card art all follow from the registry. Canvas, document, collection, modeler, and slicer are built this way. Desktop-application-shaped modules (the modeler and slicer) describe their menus, command tabs, and tools as data and render them through `src/workbench/Workbench.tsx`, so a new tool is a spec entry with typed parameters rather than a hand-built panel.
 
+Editors and output viewers in `editors.tsx` are `React.lazy` imports: the library shell loads only itself, and a module's code arrives the first time one of its projects or outputs opens (`ModuleLoading` is the fallback). The host defers library writes: an editor's `onChange` validates synchronously and returns whether the document is storable, while `useDeferredSave` (`src/modules/useDeferredSave.ts`) holds the latest value, shows it as the current document, and commits after a 400 ms pause, flushing before a route change and on `pagehide`. An editor may also receive `related` (`RelatedDocuments`): the project's other document tools with `get`, `save`, and `open`, which is how the modeler places a part on the slicer's plate.
+
+The modeler and slicer share `src/workbench/geometry.ts` (profiles, extrude and revolve on plane frames, mesh transforms, signed volume, STL, plane slicing, polygon offset, hatching) and `src/workbench/Viewport3D.tsx` (an orthographic camera on a canvas: orbit, pan, zoom, fit, standard views, picking, ground-plane dragging, painter's sort with hard-edge drawing). Geometry is derived, never stored, in the modeler (`derive` rebuilds solids from the history); the slicer stores imported meshes inside its document and slices in `src/slicer/slicing.ts`.
+
 ## Adding a module with its own shell wiring
 
 Graph, sheet, and code predate the registry and share state with each other (the linked workspace), so they keep explicit wiring. Follow this only when a module cannot be expressed as one document with one editor.

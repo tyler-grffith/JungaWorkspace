@@ -455,10 +455,36 @@
   overflow: hidden;
   display: grid;
 }
-.wb-viewport > svg:not(.wb-triad) {
+.wb-scene {
+  position: relative;
   width: 100%;
   height: 100%;
+  min-height: 240px;
+  outline: none;
+  touch-action: none;
+  cursor: grab;
+}
+.wb-scene:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--wb-accent, #d9251d);
+}
+.wb-scene:active {
+  cursor: grabbing;
+}
+.wb-scene canvas {
   display: block;
+}
+.wb-legend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+}
+.wb-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .wb-view-toolbar {
   position: absolute;
@@ -499,11 +525,6 @@
   padding: 4px 8px;
   border-radius: 4px;
   max-width: 60%;
-}
-.wb-triad {
-  position: absolute;
-  left: 12px;
-  bottom: 40px;
 }
 /* Status bar */
 .wb-status {

@@ -1,11 +1,24 @@
-// Saved document for the slicer prototype: printer, filament, and process settings in the
-// shape of Bambu Studio, plates of placed objects, and the last slice estimate. Objects are
-// boxes with a footprint and height; slicing is an estimate from volume and settings, so the
-// workflow (prepare, slice, preview, print) is real while geometry is a stand-in.
+// Saved document for the slicer: printer, filament, and process settings in the shape of
+// Bambu Studio, plates of placed objects, and the last slice summary. An object is a box unless
+// it carries a mesh (imported STL or a part sent from the modeler); `slicing.ts` turns the
+// plate's meshes into real layer toolpaths, and the summary stored here comes from those.
+import {
+  bounds,
+  boundsSize,
+  extrude,
+  frames,
+  profile,
+  rotateZ,
+  scaleMesh,
+  translate,
+  vec,
+  type Mesh,
+} from '../workbench/geometry'
+
 export type PlateObject = {
   id: string
   name: string
-  /** Footprint and height in mm. */
+  /** Footprint and height in mm (the mesh's bounds when there is one). */
   width: number
   depth: number
   height: number
@@ -13,6 +26,10 @@ export type PlateObject = {
   y: number
   rotation: number
   color: string
+  /** Triangle soup in object space: footprint centred, resting on z = 0. Boxes have none. */
+  mesh?: Mesh
+  /** Uniform scale applied to the mesh; 1 when absent. */
+  scale?: number
 }
 export type Plate = { id: string; name: string; objects: PlateObject[] }
 export type Filament = {
@@ -77,7 +94,9 @@ export const OBJECT_COLORS = [
   '#e8e8e8',
 ] as const
 export const MAX_OBJECTS = 200
-export const MAX_DOCUMENT_CHARS = 512 * 1024
+/** Imported meshes are decimated to this many triangles so a plate stays storable. */
+export const MAX_TRIANGLES = 4000
+export const MAX_DOCUMENT_CHARS = 2 * 1024 * 1024
 
 export const newId = () => crypto.randomUUID().slice(0, 8)
 export function newObject(
@@ -98,6 +117,12 @@ export function newObject(
     rotation: 0,
     color: OBJECT_COLORS[index % OBJECT_COLORS.length],
   }
+}
+/** An object around a mesh: sized from its bounds, named, coloured like the others. */
+export function meshObject(name: string, mesh: Mesh, index = 0): PlateObject {
+  const size = boundsSize(bounds(mesh) ?? { min: vec(0, 0, 0), max: vec(1, 1, 1) })
+  const round = (n: number) => Math.max(0.1, Math.round(n * 10) / 10)
+  return { ...newObject(name, round(size.x), round(size.y), round(size.z), index), mesh }
 }
 export function newPlate(index: number): Plate {
   return { id: newId(), name: `Plate ${index}`, objects: [] }
@@ -137,8 +162,18 @@ const record = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 const num = (v: unknown, min: number, max: number) =>
   typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
-const keys = (v: Record<string, unknown>, names: readonly string[]) =>
-  Object.keys(v).length === names.length && names.every((n) => n in v)
+const keys = (
+  v: Record<string, unknown>,
+  names: readonly string[],
+  optional: readonly string[] = [],
+) =>
+  names.every((n) => n in v) &&
+  Object.keys(v).every((k) => names.includes(k) || optional.includes(k))
+const validMesh = (v: unknown): v is Mesh =>
+  Array.isArray(v) &&
+  v.length % 9 === 0 &&
+  v.length <= MAX_TRIANGLES * 9 &&
+  v.every((n) => typeof n === 'number' && Number.isFinite(n))
 const ID = /^[A-Za-z0-9_-]{1,40}$/
 const isId = (v: unknown): v is string => typeof v === 'string' && ID.test(v)
 const color = (v: unknown) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
@@ -223,7 +258,11 @@ export function validSlicer(v: unknown): v is SlicerDocument {
     for (const o of p.objects) {
       if (
         !record(o) ||
-        !keys(o, ['id', 'name', 'width', 'depth', 'height', 'x', 'y', 'rotation', 'color']) ||
+        !keys(
+          o,
+          ['id', 'name', 'width', 'depth', 'height', 'x', 'y', 'rotation', 'color'],
+          ['mesh', 'scale'],
+        ) ||
         !isId(o.id) ||
         typeof o.name !== 'string' ||
         !o.name ||
@@ -235,6 +274,8 @@ export function validSlicer(v: unknown): v is SlicerDocument {
         !num(o.y, -1000, 1000) ||
         !num(o.rotation, -360, 360) ||
         !color(o.color) ||
+        !(o.mesh === undefined || validMesh(o.mesh)) ||
+        !(o.scale === undefined || num(o.scale, 0.01, 100)) ||
         ids.has(o.id)
       )
         return false
@@ -263,42 +304,27 @@ export function validSlicer(v: unknown): v is SlicerDocument {
 export const slicerProblem = (doc: SlicerDocument) =>
   validSlicer(doc) ? '' : 'The print project could not be saved. Check its plates and settings.'
 
-// --- Estimates ------------------------------------------------------------------------------
+// --- Geometry ------------------------------------------------------------------------------
 export const activePlate = (doc: SlicerDocument) =>
   doc.plates.find((p) => p.id === doc.activePlate) ?? doc.plates[0]
-/**
- * A slice estimate from box volumes and settings. Not a slicer: a consistent, adjustable model
- * that makes the prepare → slice → preview loop behave, with numbers in plausible ranges.
- */
-export function estimateSlice(doc: SlicerDocument): SliceResult {
-  const plate = activePlate(doc)
-  const p = doc.process
-  const speedFactor = { silent: 1.35, standard: 1, sport: 0.8, ludicrous: 0.65 }[p.speed]
-  let material = 0
-  let tallest = 0
-  for (const o of plate.objects) {
-    const volume = o.width * o.depth * o.height
-    const shell =
-      2 * (o.width * o.depth + o.width * o.height + o.depth * o.height) * p.walls * doc.nozzle
-    const inner = Math.max(0, volume - shell) * (p.infill / 100)
-    material += Math.min(volume, shell + inner)
-    if (p.supports) material += volume * 0.08
-    tallest = Math.max(tallest, o.height)
-  }
-  const density = { PLA: 1.24, PETG: 1.27, ABS: 1.04, TPU: 1.21, 'PLA-CF': 1.3 }[doc.filament.type]
-  const grams = (material / 1000) * density
-  const meters = material / (Math.PI * 0.875 ** 2) / 1000
-  const layers = tallest ? Math.ceil((tallest - p.firstLayerHeight) / p.layerHeight) + 1 : 0
-  const seconds = Math.round(
-    ((material / 12) * speedFactor * (0.2 / p.layerHeight) + layers * 4) *
-      (plate.objects.length ? 1 : 0),
-  )
+/** The object's mesh in plate space: its own mesh or a box, scaled, turned, and placed. */
+export function objectMesh(o: PlateObject): Mesh {
+  const local = o.mesh
+    ? scaleMesh(o.mesh, o.scale ?? 1)
+    : extrude(profile('rectangle', o.width, o.depth), frames.Top(), 0, o.height)
+  return translate(rotateZ(local, o.rotation), vec(o.x, o.y, 0))
+}
+/** Everything on a plate as one mesh, ready to slice. */
+export const plateMesh = (plate: Plate): Mesh => plate.objects.flatMap(objectMesh)
+/** The footprint an object occupies after rotation, for arranging and bed checks. */
+export function footprint(o: PlateObject): { width: number; depth: number } {
+  const t = (o.rotation * Math.PI) / 180
+  const s = o.scale ?? 1
+  const w = o.width * s
+  const d = o.depth * s
   return {
-    seconds,
-    grams: Math.round(grams * 10) / 10,
-    meters: Math.round(meters * 100) / 100,
-    layers,
-    cost: Math.round(grams * 0.025 * 100) / 100,
+    width: Math.abs(w * Math.cos(t)) + Math.abs(d * Math.sin(t)),
+    depth: Math.abs(w * Math.sin(t)) + Math.abs(d * Math.cos(t)),
   }
 }
 export function formatDuration(seconds: number): string {
@@ -306,22 +332,24 @@ export function formatDuration(seconds: number): string {
   const m = Math.round((seconds % 3600) / 60)
   return h ? `${h}h ${m}m` : `${m}m`
 }
-/** Auto-arrange objects on a grid inside the bed. */
+/** Auto-arrange objects in rows inside the bed, keeping each object's rotation. */
 export function arrange(plate: Plate, bed: number): Plate {
   const gap = 8
   let x = -bed / 2 + gap
   let y = -bed / 2 + gap
   let rowDepth = 0
   const objects = plate.objects.map((o) => {
-    if (x + o.width > bed / 2 - gap) {
+    const { width, depth } = footprint(o)
+    if (x + width > bed / 2 - gap) {
       x = -bed / 2 + gap
       y += rowDepth + gap
       rowDepth = 0
     }
-    const placed = { ...o, x: x + o.width / 2, y: y + o.depth / 2, rotation: 0 }
-    x += o.width + gap
-    rowDepth = Math.max(rowDepth, o.depth)
+    const placed = { ...o, x: round(x + width / 2), y: round(y + depth / 2) }
+    x += width + gap
+    rowDepth = Math.max(rowDepth, depth)
     return placed
   })
   return { ...plate, objects }
 }
+const round = (n: number) => Math.round(n * 100) / 100

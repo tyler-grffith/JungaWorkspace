@@ -1,8 +1,9 @@
-// The 3D modeler prototype: a SolidWorks-shaped workbench (menus, CommandManager tabs,
-// FeatureManager tree, PropertyManager panels, heads-up view toolbar, status bar) over a real
-// feature history. Sketches and features are added through their property panels and appear
-// in the tree and, as projected boxes, in the viewport. The geometry kernel is the stand-in.
-import { useMemo, useState, type ReactNode } from 'react'
+// The 3D modeler: a SolidWorks-shaped workbench (menus, CommandManager tabs, FeatureManager
+// tree, PropertyManager panels, heads-up view toolbar, status bar) over a feature history that
+// rebuilds real meshes. Sketches and features are added through their property panels and
+// appear in the tree and in an orbitable viewport; parts export as STL or go straight to the
+// project's slicer. Fillets, chamfers, and shells are recorded but wait for a geometry kernel.
+import { forwardRef, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   ArrowLeft,
   Axis3d,
@@ -28,6 +29,7 @@ import {
   Orbit,
   Palette,
   Pentagon,
+  Printer,
   Radius,
   RectangleHorizontal,
   Rotate3d,
@@ -39,28 +41,32 @@ import {
   Weight,
 } from 'lucide-react'
 import Workbench from '../workbench/Workbench'
-import {
-  Box as IsoBox,
-  Grid,
-  Triad,
-  boxCorners,
-  fitViewBox,
-  project,
-  type Orientation,
-} from '../workbench/Isometric'
+import Viewport3D, {
+  gridLines,
+  type SceneItem,
+  type ViewName,
+  type ViewportHandle,
+} from '../workbench/Viewport3D'
+import { bounds, extrude, frames, profile, toStl, vec, type Mesh } from '../workbench/geometry'
+import { downloadBlob, safeFilename } from '../canvas/export'
+import { BED_SIZE, activePlate, arrange, meshObject } from '../slicer/model'
 import type { Menu, ParamValue, RibbonTab, ToolDef, TreeNode } from '../workbench/types'
 import {
   FEATURE_LABELS,
+  GEOMETRIC,
   MATERIALS,
+  derive,
   massProperties,
   newFeature,
   newSketch,
-  solids,
+  partMesh,
+  printableMesh,
   validModeler,
   type DisplayStyle,
   type Feature,
   type FeatureType,
   type ModelerDocument,
+  type Part,
   type Plane,
   type SketchShape,
 } from './model'
@@ -75,9 +81,21 @@ const sketchTool = (shape: SketchShape, label: string, icon: ToolDef['icon']): T
   icon,
   hint: `Start a sketch with a ${shape} profile on a plane.`,
   params: [
-    { id: 'plane', label: 'Sketch plane', kind: 'select', default: 'Front', options: PLANES },
+    { id: 'plane', label: 'Sketch plane', kind: 'select', default: 'Top', options: PLANES },
     { id: 'width', label: 'Width', kind: 'number', default: 60, unit: 'mm', min: 0.1, max: 5000 },
     { id: 'height', label: 'Height', kind: 'number', default: 40, unit: 'mm', min: 0.1, max: 5000 },
+    {
+      id: 'offset',
+      label: 'Offset from plane',
+      kind: 'number',
+      default: 0,
+      unit: 'mm',
+      min: -5000,
+      max: 5000,
+      help: 'Starts at the top of the material, so a new sketch sits on the last face.',
+    },
+    { id: 'x', label: 'Centre X', kind: 'number', default: 0, unit: 'mm', min: -5000, max: 5000 },
+    { id: 'y', label: 'Centre Y', kind: 'number', default: 0, unit: 'mm', min: -5000, max: 5000 },
   ],
 })
 const featureTool = (
@@ -157,17 +175,9 @@ export const RIBBON: RibbonTab[] = [
                 id: 'axis',
                 label: 'Axis of revolution',
                 kind: 'select',
-                default: 'Sketch line',
-                options: ['Sketch line', 'X axis', 'Y axis', 'Z axis'],
-              },
-              {
-                id: 'depth',
-                label: 'Height (placeholder solid)',
-                kind: 'number',
-                default: 30,
-                unit: 'mm',
-                min: 0.1,
-                max: 5000,
+                default: 'Sketch centreline',
+                options: ['Sketch centreline'],
+                help: 'The profile turns about the vertical line through its centre; a centred rectangle becomes a cylinder, an off-centre one a ring.',
               },
             ],
             'sketch',
@@ -202,7 +212,25 @@ export const RIBBON: RibbonTab[] = [
             ],
             'sketch',
           ),
-          featureTool('hole', Drill, 'Add a standard hole to the top face.', [
+          featureTool('hole', Drill, 'Drill a hole down from the top face.', [
+            {
+              id: 'x',
+              label: 'Centre X',
+              kind: 'number',
+              default: 0,
+              unit: 'mm',
+              min: -5000,
+              max: 5000,
+            },
+            {
+              id: 'y',
+              label: 'Centre Y',
+              kind: 'number',
+              default: 0,
+              unit: 'mm',
+              min: -5000,
+              max: 5000,
+            },
             {
               id: 'standard',
               label: 'Standard',
@@ -227,6 +255,13 @@ export const RIBBON: RibbonTab[] = [
               unit: 'mm',
               min: 0.1,
               max: 5000,
+            },
+            {
+              id: 'end',
+              label: 'End condition',
+              kind: 'select',
+              default: 'Blind',
+              options: ['Blind', 'Through All'],
             },
             { id: 'threaded', label: 'Cosmetic thread', kind: 'toggle', default: false },
           ]),
@@ -299,7 +334,7 @@ export const RIBBON: RibbonTab[] = [
               options: PLANES,
             },
           ]),
-          featureTool('pattern', Copy, 'Repeat the last feature along a direction.', [
+          featureTool('pattern', Copy, 'Repeat the last solid along a direction.', [
             {
               id: 'direction',
               label: 'Direction',
@@ -385,7 +420,7 @@ export const RIBBON: RibbonTab[] = [
             id: 'report:mass',
             label: 'Mass Properties',
             icon: Weight,
-            hint: 'Volume and mass from the placeholder solids and the material.',
+            hint: 'Volume and mass from the part\u2019s solids and its material.',
           },
           {
             id: 'report:measure',
@@ -404,6 +439,23 @@ export const RIBBON: RibbonTab[] = [
             label: 'Interference Detection',
             icon: Combine,
             disabled: true,
+          },
+        ],
+      },
+      {
+        label: 'Output',
+        tools: [
+          {
+            id: 'send:slicer',
+            label: 'Send to Slicer',
+            icon: Printer,
+            hint: 'Place this part on the build plate of the project\u2019s slicer.',
+          },
+          {
+            id: 'export:stl',
+            label: 'Export STL',
+            icon: Box,
+            hint: 'Download the part as a binary STL mesh.',
           },
         ],
       },
@@ -466,6 +518,8 @@ export const MENUS: Menu[] = [
       { label: 'Save', shortcut: 'Ctrl+S', command: 'save' },
       'separator',
       { label: 'Export Part (JSON)…', command: 'export:json' },
+      { label: 'Export STL…', command: 'export:stl' },
+      { label: 'Send to Slicer', command: 'send:slicer' },
       { label: 'Export STEP…', command: 'notyet:STEP export' },
       { label: 'Print…', shortcut: 'Ctrl+P', command: 'notyet:Print' },
     ],
@@ -541,8 +595,8 @@ const VIEW_TOOLS: ToolDef[] = [
   { id: 'style:hidden', label: 'Hidden Lines Visible', icon: EyeOff },
   { id: 'view:section', label: 'Section View', icon: ScanLine },
   { id: 'toggle:planes', label: 'Planes', icon: Eye },
-  { id: 'rotate', label: 'Rotate (cycles orientation)', icon: Rotate3d },
-  { id: 'orbit', label: 'Orbit (placeholder)', icon: Orbit },
+  { id: 'rotate', label: 'Rotate view (cycles the standard views)', icon: Rotate3d },
+  { id: 'orbit', label: 'Orbit (drag in the viewport)', icon: Orbit },
 ]
 const allTools = RIBBON.flatMap((t) => t.groups.flatMap((g) => g.tools))
 const findTool = (id: string) => allTools.find((t) => t.id === id) ?? null
@@ -575,6 +629,7 @@ function featureTree(doc: ModelerDocument, title: string): TreeNode[] {
       label: f.name,
       icon: featureIcon(f.type),
       suppressed: f.suppressed,
+      badge: GEOMETRIC.includes(f.type) ? undefined : 'awaits kernel',
       kind: 'feature',
       children: sketch
         ? [
@@ -605,110 +660,122 @@ const featureIcon = (type: FeatureType) =>
     plane: Square,
   })[type]
 
-/** The viewport: grid, planes, stacked solids, section, and selection highlight. */
-export function ModelerViewport({
-  document: doc,
-  selectedFeature,
-  section,
-  onPick,
-}: {
-  document: ModelerDocument
-  selectedFeature: string | null
-  section: boolean
-  onPick?: (featureId: string) => void
-}) {
-  const orientation = doc.view.orientation as Orientation
-  const boxes = solids(doc)
-  const extent = boxes.length
-    ? boxes.flatMap((b) => boxCorners(b.x, b.y, b.z, b.w, b.d, b.h))
-    : boxCorners(-60, -60, 0, 120, 120, 40)
-  const viewBox = fitViewBox([...extent, ...boxCorners(-70, -70, 0, 140, 140, 0)], orientation, 30)
-  const style = doc.view.style as DisplayStyle
-  const fillFor = (color: string) => (style === 'wireframe' || style === 'hidden' ? 'none' : color)
-  const strokeFor = () =>
-    style === 'shaded'
-      ? 'rgba(0,0,0,0)'
-      : style === 'hidden'
-        ? 'rgba(20,30,40,0.5)'
-        : 'rgba(20,30,40,0.6)'
+const PLANE_COLORS: Record<Plane, string> = { Front: '#3b6fd9', Top: '#2f9e44', Right: '#d97b3b' }
+/** A translucent square on a plane, visible from both sides. */
+function planeItem(plane: Plane, offset: number, size: number, id: string): SceneItem {
+  const half = extrude(profile('rectangle', size, size), frames[plane](offset), 0, 0.001)
+  return {
+    kind: 'mesh',
+    id,
+    mesh: half,
+    fill: PLANE_COLORS[plane],
+    stroke: PLANE_COLORS[plane],
+    opacity: 0.18,
+  }
+}
+/** Drop the half of a mesh in front of the section plane (y > 0). */
+const sectioned = (mesh: Mesh): Mesh => {
+  const out: Mesh = []
+  for (let i = 0; i + 8 < mesh.length; i += 9)
+    if ((mesh[i + 1] + mesh[i + 4] + mesh[i + 7]) / 3 <= 0) out.push(...mesh.slice(i, i + 9))
+  return out
+}
+const DEFAULT_EXTENT = extrude(profile('rectangle', 120, 120), frames.Top(), 0, 40)
+
+/** The viewport: grid, planes, the derived solids, section, and selection highlight. */
+export const ModelerViewport = forwardRef<
+  ViewportHandle,
+  {
+    document: ModelerDocument
+    part?: Part
+    selectedFeature: string | null
+    section: boolean
+    onPick?: (featureId: string | null) => void
+  }
+>(function ModelerViewport({ document: doc, part: given, selectedFeature, section, onPick }, ref) {
+  const part = useMemo(() => given ?? derive(doc), [given, doc])
+  const style = doc.view.style
+  const wire = style === 'wireframe' || style === 'hidden'
+  const bosses = part.solids.filter((s) => !s.cut)
+  const extent = bosses.length ? partMesh({ ...part, solids: bosses }) : DEFAULT_EXTENT
+  const reach =
+    Math.max(
+      120,
+      ...Object.values(bounds(extent) ?? {}).flatMap((v) => [
+        Math.abs(v.x),
+        Math.abs(v.y),
+        Math.abs(v.z),
+      ]),
+    ) * 1.5
+  const items: SceneItem[] = [
+    {
+      kind: 'lines',
+      polylines: gridLines(reach, reach / 8),
+      stroke: 'rgba(90,110,130,0.3)',
+      layer: 'under',
+    },
+  ]
+  if (doc.view.showPlanes)
+    for (const plane of PLANES) items.push(planeItem(plane, 0, reach * 0.6, `plane:${plane}`))
+  for (const plane of part.planes)
+    items.push(planeItem(plane.base, plane.offset, reach * 0.5, `feature:${plane.id}`))
+  for (const solid of part.solids) {
+    const selected = selectedFeature === solid.featureId
+    items.push(
+      solid.cut
+        ? {
+            kind: 'mesh',
+            id: solid.featureId,
+            mesh: solid.mesh,
+            fill: '#ffffff',
+            wire: true,
+            dashed: true,
+            stroke: selected ? '#2f6fed' : 'rgba(200,40,40,0.75)',
+          }
+        : {
+            kind: 'mesh',
+            id: solid.featureId,
+            mesh: section ? sectioned(solid.mesh) : solid.mesh,
+            fill: doc.color,
+            wire,
+            dashed: style === 'hidden',
+            stroke: selected ? '#2f6fed' : style === 'shaded' ? null : 'rgba(20,30,40,0.55)',
+          },
+    )
+  }
+  if (doc.view.showOrigin)
+    items.push({
+      kind: 'lines',
+      polylines: [
+        [vec(-6, 0, 0), vec(6, 0, 0)],
+        [vec(0, -6, 0), vec(0, 6, 0)],
+        [vec(0, 0, -6), vec(0, 0, 6)],
+      ],
+      stroke: '#2f6fed',
+      width: 1.5,
+    })
+  const count = part.solids.length
   return (
-    <>
-      <svg
-        viewBox={viewBox}
-        role="img"
-        aria-label={`Model with ${boxes.length} placeholder solids`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <Grid size={160} step={20} orientation={orientation} color="var(--wb-grid)" />
-        {doc.view.showPlanes && orientation === 'iso' && (
-          <g opacity={0.35}>
-            <IsoBox
-              x={-50}
-              y={0}
-              z={0}
-              w={100}
-              d={0.001}
-              h={50}
-              orientation={orientation}
-              fill="#7fb0ff"
-              stroke="#3b6fd9"
-            />
-            <IsoBox
-              x={0}
-              y={-50}
-              z={0}
-              w={0.001}
-              d={100}
-              h={50}
-              orientation={orientation}
-              fill="#ffb37f"
-              stroke="#d97b3b"
-            />
-          </g>
-        )}
-        {boxes.map((b) => {
-          const selected = selectedFeature === b.id
-          const clipped = section && !b.cut ? { ...b, d: b.d / 2 } : b
-          return (
-            <g
-              key={b.id}
-              onClick={() => onPick?.(b.id)}
-              style={{ cursor: onPick ? 'pointer' : 'default' }}
-            >
-              <IsoBox
-                x={clipped.x}
-                y={clipped.y}
-                z={clipped.z}
-                w={clipped.w}
-                d={clipped.d}
-                h={clipped.h}
-                orientation={orientation}
-                fill={b.cut ? '#ffffff' : fillFor(b.color)}
-                stroke={selected ? '#2f6fed' : b.cut ? 'rgba(200,40,40,0.8)' : strokeFor()}
-                dashed={b.cut || style === 'hidden'}
-                opacity={b.cut ? 0.85 : 1}
-              />
-            </g>
-          )
-        })}
-        {doc.view.showOrigin && (
-          <g>
-            {(() => {
-              const o = project({ x: 0, y: 0, z: 0 }, orientation)
-              return <circle cx={o.x} cy={o.y} r={2} fill="#2f6fed" />
-            })()}
-          </g>
-        )}
-      </svg>
-      <Triad orientation={orientation} />
+    <Viewport3D
+      ref={ref}
+      items={items}
+      fitTo={extent}
+      initialView={doc.view.orientation as ViewName}
+      label={`Model with ${count} ${count === 1 ? 'solid' : 'solids'}`}
+      onPick={
+        onPick
+          ? (id) => onPick(id && !id.startsWith('plane:') && !id.startsWith('feature:') ? id : null)
+          : undefined
+      }
+    >
       <div className="wb-viewport-note">
-        {boxes.length
-          ? `${boxes.length} placeholder ${boxes.length === 1 ? 'solid' : 'solids'} · ${doc.view.style} · ${orientation}`
+        {count
+          ? `${count} ${count === 1 ? 'solid' : 'solids'} · ${doc.view.style} · drag to orbit, wheel to zoom`
           : 'No features yet. Start a sketch, then extrude it.'}
       </div>
-    </>
+    </Viewport3D>
   )
-}
+})
 
 type History = { past: ModelerDocument[]; future: ModelerDocument[] }
 export default function ModelerEditor({
@@ -718,8 +785,11 @@ export default function ModelerEditor({
   unsaved,
   onBack,
   onChange,
+  related,
 }: EditorProps<ModelerDocument>) {
   const [tab, setTab] = useState('features')
+  const viewport = useRef<ViewportHandle>(null)
+  const part = useMemo(() => derive(doc), [doc])
   const [tool, setTool] = useState<ToolDef | null>(null)
   const [values, setValues] = useState<Record<string, ParamValue>>({})
   const [selected, setSelected] = useState<string | null>('part')
@@ -742,18 +812,10 @@ export default function ModelerEditor({
     ? selected.slice(7)
     : (doc.sketches.find((s) => !doc.features.some((f) => f.sketchId === s.id))?.id ?? null)
 
+  /** Tools with parameters open the property panel; the rest run as commands at once. */
   function startTool(t: ToolDef) {
-    if (t.id.startsWith('noop:')) {
-      setMessage(t.hint ?? `${t.label} is a placeholder in this prototype.`)
-      return
-    }
-    if (t.id === 'view:section') {
-      setSection((s) => !s)
-      return
-    }
-    if (t.id.startsWith('report:')) {
-      setReport(t.id === 'report:mass' ? <MassReport doc={doc} /> : <MeasureReport doc={doc} />)
-      setTool(null)
+    if (!t.params) {
+      command(t.id)
       return
     }
     if (t.needs === 'sketch' && !selectedSketch) {
@@ -763,7 +825,16 @@ export default function ModelerEditor({
     }
     setReport(null)
     setTool(t)
-    setValues(Object.fromEntries((t.params ?? []).map((p) => [p.id, p.default])))
+    const defaults = Object.fromEntries((t.params ?? []).map((p) => [p.id, p.default]))
+    // A new sketch starts on top of the material, like sketching on the last face.
+    if (t.id.startsWith('sketch:')) defaults.offset = topAlong(String(defaults.plane) as Plane)
+    setValues(defaults)
+  }
+  /** The material's extent along a base plane's normal. */
+  function topAlong(plane: Plane): number {
+    const b = bounds(partMesh({ ...part, solids: part.solids.filter((s) => !s.cut) }))
+    if (!b) return 0
+    return Math.round({ Top: b.max.z, Front: -b.min.y, Right: b.max.x }[plane] * 100) / 100
   }
   function finishTool() {
     if (!tool) return
@@ -775,6 +846,7 @@ export default function ModelerEditor({
         Number(values.width),
         Number(values.height),
         doc.sketches.length + 1,
+        { offset: Number(values.offset) || 0, x: Number(values.x) || 0, y: Number(values.y) || 0 },
       )
       if (apply({ ...doc, sketches: [...doc.sketches, sketch] })) {
         setSelected(`sketch:${sketch.id}`)
@@ -813,22 +885,21 @@ export default function ModelerEditor({
       return
     }
     if (id.startsWith('notyet:')) {
-      setMessage(`${id.slice(7)} is not part of this prototype yet.`)
+      setMessage(`${id.slice(7)} is not built yet.`)
+      return
+    }
+    if (id.startsWith('noop:')) {
+      setMessage(findTool(id)?.hint ?? 'This tool is not built yet.')
+      return
+    }
+    if (id.startsWith('report:')) {
+      setReport(id === 'report:mass' ? <MassReport doc={doc} /> : <MeasureReport doc={doc} />)
+      setTool(null)
       return
     }
     if (id.startsWith('view:')) {
       if (id === 'view:section') setSection((s) => !s)
-      else
-        apply(
-          {
-            ...doc,
-            view: {
-              ...doc.view,
-              orientation: id.slice(5) as ModelerDocument['view']['orientation'],
-            },
-          },
-          false,
-        )
+      else look(id.slice(5) as ModelerDocument['view']['orientation'])
       return
     }
     if (id.startsWith('style:')) {
@@ -843,24 +914,17 @@ export default function ModelerEditor({
         apply({ ...doc, view: { ...doc.view, showOrigin: !doc.view.showOrigin } }, false)
         break
       case 'fit':
-        setMessage('The view already fits the model in this prototype.')
+        viewport.current?.fit()
         break
-      case 'rotate':
-        apply(
-          {
-            ...doc,
-            view: {
-              ...doc.view,
-              orientation: (['iso', 'front', 'top', 'right'] as const)[
-                (['iso', 'front', 'top', 'right'].indexOf(doc.view.orientation) + 1) % 4
-              ],
-            },
-          },
-          false,
-        )
+      case 'rotate': {
+        const views = ['iso', 'front', 'top', 'right'] as const
+        look(views[(views.indexOf(doc.view.orientation) + 1) % views.length])
         break
+      }
       case 'orbit':
-        setMessage('Orbiting arrives with the 3D renderer; use the orientation buttons meanwhile.')
+        setMessage(
+          'Drag in the viewport to orbit, shift-drag to pan, wheel to zoom, double-click to fit.',
+        )
         break
       case 'undo': {
         const previous = history.past.at(-1)
@@ -878,7 +942,7 @@ export default function ModelerEditor({
       }
       case 'rebuild':
         setMessage(
-          `Rebuild complete: ${doc.features.filter((f) => !f.suppressed).length} features, ${solids(doc).length} solids.`,
+          `Rebuild complete: ${doc.features.filter((f) => !f.suppressed).length} features, ${part.solids.length} solids.`,
         )
         break
       case 'suppress':
@@ -915,31 +979,59 @@ export default function ModelerEditor({
             : 'Everything is saved as you work.',
         )
         break
-      case 'export:json': {
-        const url = URL.createObjectURL(
+      case 'export:json':
+        downloadBlob(
           new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }),
+          `${safeFilename(title) || 'part'}.part.json`,
         )
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${
-          title
-            .replace(/[^a-z0-9-_ ]/gi, '')
-            .trim()
-            .replace(/\s+/g, '-')
-            .toLowerCase() || 'part'
-        }.part.json`
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
         break
-      }
+      case 'export:stl':
+        if (!part.solids.length) setMessage('Extrude something before exporting.')
+        else downloadBlob(toStl(printableMesh(doc), title), `${safeFilename(title) || 'part'}.stl`)
+        break
+      case 'send:slicer':
+        sendToSlicer()
+        break
       case 'about':
         setMessage(
-          'A clickable SolidWorks-style prototype: real feature history, placeholder geometry.',
+          'A SolidWorks-shaped modeler: a real feature history rebuilt into meshes. Fillets, chamfers, and shells await a geometry kernel.',
         )
         break
       default:
         break
     }
+  }
+  /** Turn the camera to a standard view and remember it with the document. */
+  function look(orientation: ModelerDocument['view']['orientation']) {
+    viewport.current?.look(orientation as ViewName)
+    if (orientation !== doc.view.orientation)
+      apply({ ...doc, view: { ...doc.view, orientation } }, false)
+  }
+  /** Put the part on the project's slicer plate; both modules live on the same project. */
+  function sendToSlicer() {
+    if (!related?.tools.includes('slicer')) {
+      setMessage('Add the Slicer tool to this project to send parts to it.')
+      return
+    }
+    if (!part.solids.some((s) => !s.cut)) {
+      setMessage('Extrude something before sending the part to the slicer.')
+      return
+    }
+    const slicer = related.get('slicer')
+    const plate = activePlate(slicer)
+    const object = meshObject(title, printableMesh(doc), plate.objects.length)
+    const placed = arrange(
+      { ...plate, objects: [...plate.objects, object] },
+      BED_SIZE[slicer.printer] ?? 256,
+    )
+    const saved = related.save('slicer', {
+      ...slicer,
+      plates: slicer.plates.map((p) => (p.id === plate.id ? placed : p)),
+      sliced: null,
+      view: 'prepare',
+    })
+    if (saved) related.open('slicer')
+    else setMessage('The part is too detailed for the slicer\u2019s storage budget.')
   }
   const tree = useMemo(() => featureTree(doc, title), [doc, title])
   const mass = massProperties(doc)
@@ -958,14 +1050,12 @@ export default function ModelerEditor({
             <ArrowLeft size={15} />
             Back to project
           </button>
-          <div className="eyebrow">3D MODELER · PROTOTYPE</div>
+          <div className="eyebrow">3D MODELER</div>
           <h1>{title}</h1>
         </div>
         <div className="canvas-heading-actions">
           {unsaved && <span className="unsaved-note">Changes not saved</span>}
-          <span className="unsaved-note">
-            Clickable prototype: real feature tree, placeholder geometry
-          </span>
+          <span className="unsaved-note">Feature history rebuilt into real meshes</span>
         </div>
       </div>
       <Workbench
@@ -998,10 +1088,12 @@ export default function ModelerEditor({
         onCommand={command}
         viewport={
           <ModelerViewport
+            ref={viewport}
             document={doc}
+            part={part}
             selectedFeature={selectedFeature}
             section={section}
-            onPick={(id) => setSelected(`feature:${id}`)}
+            onPick={(id) => setSelected(id ? `feature:${id}` : 'part')}
           />
         }
         viewToolbar={VIEW_TOOLS}
@@ -1045,33 +1137,26 @@ function MassReport({ doc }: { doc: ModelerDocument }) {
       </div>
       <div className="wb-stat">
         <span>Solids</span>
-        <strong>{m.boxes}</strong>
+        <strong>{m.solids}</strong>
       </div>
       <p className="wb-hint">
-        Computed from the placeholder solids; the geometry kernel will replace these numbers.
+        Signed mesh volumes: cuts and holes subtract where they sit inside a boss.
       </p>
     </div>
   )
 }
 function MeasureReport({ doc }: { doc: ModelerDocument }) {
-  const boxes = solids(doc).filter((b) => !b.cut)
-  const w = boxes.length
-    ? Math.max(...boxes.map((b) => b.x + b.w)) - Math.min(...boxes.map((b) => b.x))
-    : 0
-  const d = boxes.length
-    ? Math.max(...boxes.map((b) => b.y + b.d)) - Math.min(...boxes.map((b) => b.y))
-    : 0
-  const h = boxes.length ? Math.max(...boxes.map((b) => b.z + b.h)) : 0
+  const { size } = massProperties(doc)
   return (
     <div>
       <div className="wb-panel-title">Measure</div>
       <div className="wb-stat">
         <span>Bounding box</span>
         <strong>
-          {w.toFixed(1)} × {d.toFixed(1)} × {h.toFixed(1)} {doc.units}
+          {size.x.toFixed(1)} × {size.y.toFixed(1)} × {size.z.toFixed(1)} {doc.units}
         </strong>
       </div>
-      <p className="wb-hint">Select two faces to measure between them once the renderer exists.</p>
+      <p className="wb-hint">Overall extent of the material, cuts excluded.</p>
     </div>
   )
 }

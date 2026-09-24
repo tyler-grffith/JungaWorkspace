@@ -986,7 +986,9 @@ export default function CanvasEditor({
     const pasted = (event: ClipboardEvent) => {
       const target = event.target as HTMLElement | null
       if (target?.isContentEditable || target instanceof HTMLInputElement) return
-      const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
+      const files = [...(event.clipboardData?.files ?? [])].filter((f) =>
+        f.type.startsWith('image/'),
+      )
       if (!files.length) return
       event.preventDefault()
       void insertImageFiles(files)

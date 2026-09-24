@@ -16,11 +16,13 @@ import {
   collectionBrowseOutput,
   documentReadOutput,
   modelerViewOutput,
+  painterViewOutput,
   slicerViewOutput,
   type Output,
 } from '../outputs'
 import { emptyModeler, modelerProblem, validModeler, type ModelerDocument } from '../modeler/model'
 import { emptySlicer, slicerProblem, validSlicer, type SlicerDocument } from '../slicer/model'
+import { emptyPainter, painterProblem, validPainter, type PainterDocument } from '../painter/model'
 
 export type ModuleDocuments = {
   canvas: CanvasDocument
@@ -28,6 +30,7 @@ export type ModuleDocuments = {
   collection: CollectionDocument
   modeler: ModelerDocument
   slicer: SlicerDocument
+  painter: PainterDocument
 }
 export type DocumentTool = keyof ModuleDocuments
 export const DOCUMENT_TOOLS = [
@@ -36,6 +39,7 @@ export const DOCUMENT_TOOLS = [
   'collection',
   'modeler',
   'slicer',
+  'painter',
 ] as const satisfies readonly DocumentTool[]
 export const isDocumentTool = (value: unknown): value is DocumentTool =>
   DOCUMENT_TOOLS.includes(value as DocumentTool)
@@ -106,6 +110,17 @@ export const documentModules: { [K in DocumentTool]: DocumentModule<ModuleDocume
       type: 'slicer-view',
       make: (title) => slicerViewOutput(`${title} plate`),
       addLabel: 'Add plate view',
+    },
+  },
+  painter: {
+    valid: validPainter,
+    problem: painterProblem,
+    empty: () => emptyPainter(),
+    noun: 'painting',
+    output: {
+      type: 'painter-view',
+      make: (title) => painterViewOutput(`${title} print sheet`),
+      addLabel: 'Add print sheet output',
     },
   },
 }

@@ -6,7 +6,7 @@
 // arrives the first time one of its projects or outputs is opened. Outputs panels stay eager
 // because they are small and render on the project overview.
 import { lazy, type ComponentType, type ReactNode } from 'react'
-import { Box, FileText, LibraryBig, Printer, Shapes, type LucideIcon } from 'lucide-react'
+import { Box, Brush, FileText, LibraryBig, Printer, Shapes, type LucideIcon } from 'lucide-react'
 import type { Project } from '../library'
 import type { Output } from '../outputs'
 import type { DesignSettings } from '../design/registry'
@@ -15,6 +15,7 @@ import { emptyDocument } from '../document/model'
 import { emptyCollections } from '../collection/model'
 import { emptyModeler } from '../modeler/model'
 import { emptySlicer, formatDuration } from '../slicer/model'
+import { emptyPainter } from '../painter/model'
 import CanvasOutputs from '../canvas/CanvasOutputs'
 import DocumentOutputs from '../document/DocumentOutputs'
 import CollectionOutputs from '../collection/CollectionOutputs'
@@ -77,6 +78,8 @@ const SlicerEditor = lazy(() => import('../slicer/SlicerEditor'))
 const SlicerViewport = lazy(() =>
   import('../slicer/SlicerEditor').then((m) => ({ default: m.SlicerViewport })),
 )
+const PainterEditor = lazy(() => import('../painter/PainterEditor'))
+const PainterSheet = lazy(() => import('../painter/PainterSheet'))
 
 /** Shown while a module's code loads the first time it is opened. */
 export function ModuleLoading({ what = 'editor' }: { what?: string }) {
@@ -243,6 +246,33 @@ export const editorModules: { [K in DocumentTool]: EditorModule<ModuleDocuments[
         <rect className="art-shape" x="70" y="96" width="180" height="16" rx="4" />
         <rect className="art-shape" x="120" y="46" width="60" height="50" rx="4" />
         <path className="art-line" d="M120 60H180M120 74H180M120 88H180" opacity="0.6" />
+      </svg>
+    ),
+  },
+  painter: {
+    Editor: PainterEditor,
+    Outputs: ({ project, document, onAdd, onRemove }) => (
+      <ModuleOutputs
+        project={project}
+        tool="painter"
+        heading="Print sheet outputs"
+        help="A print sheet shows the painted preview with its layer plan and filament swaps, read-only."
+        summary={`${document.stack.length} filaments · ${document.maxLayers} layers${document.image ? '' : ' · no image yet'}`}
+        onAdd={onAdd}
+        onRemove={onRemove}
+      />
+    ),
+    Viewer: ({ document, output }) => <PainterSheet document={document} title={output.title} />,
+    empty: (design) => emptyPainter(design.painter.defaultWidth, design.painter.defaultLayerHeight),
+    outputLabel: 'Print sheet',
+    outputIcon: Brush,
+    art: (
+      <svg className="painter-art" viewBox="0 0 320 140" fill="none" aria-hidden="true">
+        <rect x="40" y="24" width="240" height="92" rx="8" fill="var(--soft)" />
+        <rect x="64" y="40" width="48" height="60" rx="4" fill="#1f1f1f" />
+        <rect x="120" y="40" width="48" height="60" rx="4" fill="#c8102e" />
+        <rect x="176" y="40" width="48" height="60" rx="4" fill="#ffd23f" />
+        <rect x="232" y="40" width="24" height="60" rx="4" fill="#f2f1ec" />
       </svg>
     ),
   },

@@ -221,6 +221,26 @@ export const designGroups = {
       }),
     },
   },
+  painter: {
+    title: 'PLA Painter',
+    description: 'Panel width and defaults for new filament paintings.',
+    files: 'src/painter/PainterEditor.tsx; src/painter/painter.css; src/painter/model.ts',
+    fields: {
+      panelWidth: number('Settings panel width (px)', 300, 240, 400, {
+        cssVar: '--painter-panel-width',
+      }),
+      defaultWidth: number('Default printed width (mm)', 100, 20, 300, {
+        help: 'Applies to new paintings; each painting keeps its own size.',
+      }),
+      defaultLayerHeight: select('Default layer height (mm)', 0.08, [
+        { value: 0.04, label: '0.04' },
+        { value: 0.06, label: '0.06' },
+        { value: 0.08, label: '0.08' },
+        { value: 0.1, label: '0.10' },
+        { value: 0.12, label: '0.12' },
+      ]),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

@@ -14,7 +14,14 @@ async function createDocumentProject(page: Page, title = 'Field Notes') {
   await page.getByRole('button', { name: 'Open document', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'Document text' })).toBeVisible()
 }
-const saved = (page: Page) => page.evaluate(() => localStorage.getItem('junga.library.v1'))
+/** The library as saved; module edits are written shortly after they are made. */
+const saved = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<string | null>((r) =>
+        setTimeout(() => r(localStorage.getItem('junga.library.v1')), 600),
+      ),
+  )
 
 test('writes, formats, and structures text that survives a reload', async ({ page }) => {
   test.setTimeout(90000)

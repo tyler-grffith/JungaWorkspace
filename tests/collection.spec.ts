@@ -14,7 +14,14 @@ async function createCollectionProject(page: Page, title = 'Curations') {
   await page.getByRole('button', { name: 'Open collection', exact: true }).click()
   await expect(page.getByRole('navigation', { name: 'Collection tree' })).toBeVisible()
 }
-const saved = (page: Page) => page.evaluate(() => localStorage.getItem('junga.library.v1'))
+/** The library as saved; module edits are written shortly after they are made. */
+const saved = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<string | null>((r) =>
+        setTimeout(() => r(localStorage.getItem('junga.library.v1')), 600),
+      ),
+  )
 
 test('curates nested collections with shared items that survive a reload', async ({ page }) => {
   test.setTimeout(90000)

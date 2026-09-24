@@ -3,10 +3,11 @@
 // Editor components and their draft/save plumbing stay explicit in App.tsx because each
 // editor's document type and callbacks differ; see docs/ARCHITECTURE.md.
 import {
+  Box,
+  Brush,
   Code2,
   FileText,
   Layers3,
-  Box,
   LibraryBig,
   Printer,
   Shapes,
@@ -99,7 +100,7 @@ export const modules: readonly ModuleDefinition[] = [
     name: '3D modeler',
     longName: '3D modeler',
     description:
-      'A SolidWorks-style part modeler: sketches, features, and a history tree (prototype).',
+      'A SolidWorks-style part modeler: sketches and features rebuilt into real meshes, STL out.',
     openLabel: 'Open modeler',
     route: 'modeler',
     icon: Box,
@@ -109,11 +110,23 @@ export const modules: readonly ModuleDefinition[] = [
     id: 'slicer',
     name: 'Slicer',
     longName: 'Slicer',
-    description: 'A Bambu Studio-style slicer: printer, filament, process, plates (prototype).',
+    description:
+      'A Bambu Studio-style slicer: settings, plates, real toolpaths, and G-code; simulated printer.',
     openLabel: 'Open slicer',
     route: 'slicer',
     icon: Printer,
     cssClass: 'slicer',
+  },
+  {
+    id: 'painter',
+    name: 'PLA Painter',
+    longName: 'PLA Painter',
+    description:
+      'Paint a picture with layers of filament, like HueForge or Chroma Canvas: image in, relief and swap plan out.',
+    openLabel: 'Open painter',
+    route: 'painter',
+    icon: Brush,
+    cssClass: 'painter',
   },
 ]
 

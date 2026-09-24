@@ -1,5 +1,11 @@
 # Current handoff
 
+## PLA Painter — branch `codex/canvas-module`, September 24, 2026
+
+`painter` is the seventh module: tick **PLA Painter** (and **Slicer**, to hand the result over), then **Open painter**. Drop, paste, or choose a picture; the middle shows how it will print with the current filament stack, and the **Heightmap**, **Original**, and **3D relief** tabs show the other views (the relief orbits like the modeler). The left panel sets the printed width and detail, layer height, base and total layers, brightness and contrast, and the **filament stack** (bottom first): colour, transmission distance (TD, the thickness at which a filament hides what is below), and the layer each spool starts on; **Space evenly** spreads the swaps; the colour ramp under the picture shows the colour reached at every layer with a mark per spool. The **print sheet** on the right gives size, height, grid, an estimate of filament, and the swap plan; **Export STL** writes the stepped relief, **Export print sheet** a text file for the printer, **Export preview PNG** the picture, and **Send to Slicer** places the relief on the project's plate with the plan in the slicer's notes. **Add print sheet output** publishes the sheet read-only.
+
+**Validation.** Unit tests in `src/painter/model.test.ts`; `tests/painter.spec.ts` covers the whole flow with an accessibility scan. Decision 47; feature record `sharedProjectManagement/features/pla painter.md`. Transmission distances in the presets are approximate.
+
 ## Revision pass and real geometry — branch `codex/canvas-module`, September 24, 2026
 
 **What changed for the reviewer.** Editors now load on first use (a brief "Loading the editor…" appears once per module per visit), and typing in a Document or Collection no longer writes the library on each keystroke: the write follows 400 ms after a pause and is flushed when you navigate or close the tab. Images paste straight into a canvas or a document; **Export › Copy as image** puts a canvas on the clipboard; a collection item's link may be a Junga project route such as `#/project/<id>`.

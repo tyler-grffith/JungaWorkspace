@@ -13,7 +13,14 @@ async function createCanvasProject(page: Page, title = 'Mission Diagram') {
   await page.getByRole('heading', { name: title, exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Visual canvas' })).toBeVisible()
 }
-const saved = (page: Page) => page.evaluate(() => localStorage.getItem('junga.library.v1'))
+/** The library as saved; module edits are written shortly after they are made. */
+const saved = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<string | null>((r) =>
+        setTimeout(() => r(localStorage.getItem('junga.library.v1')), 600),
+      ),
+  )
 /** Page coordinates of a point on the canvas, given the stage's transform. */
 async function stagePoint(page: Page, x: number, y: number) {
   const stage = page.locator('.canvas-stage')

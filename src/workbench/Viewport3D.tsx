@@ -40,6 +40,8 @@ export type SceneMesh = {
   id?: string
   mesh: Mesh
   fill: string
+  /** One colour per triangle, overriding `fill` where given. */
+  colors?: string[]
   /** Edge colour; null draws no edges. */
   stroke?: string | null
   dashed?: boolean
@@ -227,7 +229,14 @@ const Viewport3D = forwardRef<ViewportHandle, Viewport3DProps>(function Viewport
     }
     lines('under')
 
-    type Face = { pts: Vec3[]; depth: number; item: SceneMesh; shade: number; edges: number }
+    type Face = {
+      pts: Vec3[]
+      depth: number
+      item: SceneMesh
+      fill: string
+      shade: number
+      edges: number
+    }
     const faces: Face[] = []
     for (const item of items) {
       if (item.kind !== 'mesh') continue
@@ -244,6 +253,7 @@ const Viewport3D = forwardRef<ViewportHandle, Viewport3DProps>(function Viewport
           pts,
           depth: (pts[0].z + pts[1].z + pts[2].z) / 3,
           item,
+          fill: item.colors?.[t] ?? item.fill,
           shade,
           edges: hard[t],
         })
@@ -259,7 +269,7 @@ const Viewport3D = forwardRef<ViewportHandle, Viewport3DProps>(function Viewport
       ctx.lineTo(f.pts[2].x, f.pts[2].y)
       ctx.closePath()
       if (!f.item.wire) {
-        ctx.fillStyle = shadeColor(f.item.fill, f.shade)
+        ctx.fillStyle = shadeColor(f.fill, f.shade)
         ctx.fill()
       }
       // Only edges where the surface actually bends are drawn, so faces look like faces.
@@ -472,6 +482,7 @@ export function shadeColor(color: string, factor: number): string {
   const n = parseInt(m[1], 16)
   const ch = (c: number) => Math.max(0, Math.min(255, Math.round(c * factor)))
   const out = `rgb(${ch((n >> 16) & 255)},${ch((n >> 8) & 255)},${ch(n & 255)})`
+  if (colorCache.size > 20000) colorCache.clear()
   colorCache.set(key, out)
   return out
 }

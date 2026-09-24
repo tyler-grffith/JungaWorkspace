@@ -10,6 +10,7 @@ export const TOOL_IDS = [
   'collection',
   'modeler',
   'slicer',
+  'painter',
 ] as const
 export type Tool = (typeof TOOL_IDS)[number]
 export const isTool = (value: unknown): value is Tool => TOOL_IDS.includes(value as Tool)

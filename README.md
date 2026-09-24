@@ -1,6 +1,6 @@
 # Junga Workspace
 
-A browser workspace for a project library, graphing calculator, spreadsheet, code projects, a visual canvas, documents, curated collections, a 3D modeler, and a slicer.
+A browser workspace for a project library, graphing calculator, spreadsheet, code projects, a visual canvas, documents, curated collections, a 3D modeler, a slicer, and a filament painter.
 
 ## Run locally
 
@@ -91,6 +91,10 @@ Tick **Collection** when creating a project, then **Open collection**. Collectio
 
 Tick **3D modeler** or **Slicer** when creating a project (or both, so parts flow between them). Both run on a shared desktop-application shell: menus, command tabs, a feature tree or settings sidebar, property panels with OK and Cancel, an orbitable viewport with a view toolbar, and a status bar. The **modeler** keeps a SolidWorks-style feature history and rebuilds real meshes from it: sketches (rectangle, circle, slot, hexagon on a plane, with offset and position), extrude, revolve, cut, hole, mirror, linear pattern, and reference planes; fillet, chamfer, and shell are recorded until a geometry kernel exists. Mass properties and measure come from the meshes; **Export STL** and **Send to Slicer** take the part out. The **slicer** keeps Bambu-style printer, filament, process, and plate settings; objects are boxes, imported STL meshes, or parts from the modeler, dragged into place on the plate. **Slice plate** produces real layer toolpaths (walls, infill families, solid surfaces, brim), which Preview draws by line type, which the estimate sums, and which export as G-code. Supports are not generated and the printer is simulated. Read-only model and plate views publish on the output route. See `sharedProjectManagement/features/modeler and slicer.md`.
 
+## PLA Painter
+
+Tick **PLA Painter** when creating a project (add **Slicer** too, to print the result). Drop in a picture and choose a stack of filaments, each with a colour, a transmission distance, and the layer it starts on; the painter computes the colour visible at every layer count, gives each pixel the height whose colour matches it best, and shows the printed preview, the heightmap, and an orbitable 3D relief. The print sheet lists size, height, an estimate of filament, and the layer at which to swap each spool. Export the stepped relief as STL, the sheet as text, the preview as PNG, or **Send to Slicer** to place the relief on the project's build plate with the swap plan in its notes. The same idea as HueForge and Chroma Canvas; the preset transmission distances are approximate. See `sharedProjectManagement/features/pla painter.md`.
+
 ## Bundled source projects and scene outputs
 
 Choose **Cosmic Clock** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, documentation, and maintenance scripts, and **View file** opens any of them read-only, with **Copy into** to put a text file in a code project where it can be edited and run — source from the application bundle, served assets from their URL, images as a preview, and very large data files truncated with a link to the whole file; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. This is the **Bundled source project** type in the project form: source that ships with the app, with no files kept in the browser.
@@ -111,6 +115,7 @@ For a bundled source project, Junga manages metadata/configuration and a source 
 - `src/canvas/`: visual canvas document model, geometry, shared SVG rendering, editor, inspector, presenter, export, and draw.io import.
 - `src/document/`: document block model, HTML renderer and parser, block-level DOM edits, editor, reader, Markdown import/export.
 - `src/collection/`: collection graph model, editor, browser, outputs panel.
+- `src/painter/`: PLA Painter's document, painting engine (colour ramp, per-pixel layers, relief mesh, print sheet), editor, and read-only sheet.
 - `src/workbench/`: the shared desktop-application shell (menus, command tabs, tree, property panels, status bar), the mesh geometry layer (`geometry.ts`), and the orbitable canvas viewport (`Viewport3D.tsx`) used by `src/modeler/` and `src/slicer/`.
 - `src/modules/documents.ts` and `src/modules/editors.tsx`: the document-module registry that wires canvas, document, collection (and future modules) into storage, backups, outputs, and the shell.
 - `tests/`: browser acceptance tests.

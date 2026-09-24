@@ -33,6 +33,7 @@ import type { TextDocument } from './document/model'
 import type { CollectionDocument } from './collection/model'
 import type { ModelerDocument } from './modeler/model'
 import type { SlicerDocument } from './slicer/model'
+import type { PainterDocument } from './painter/model'
 import {
   DOCUMENT_TOOLS,
   documentModules,
@@ -71,6 +72,7 @@ export type Project = {
   collection?: CollectionDocument
   modeler?: ModelerDocument
   slicer?: SlicerDocument
+  painter?: PainterDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -332,6 +334,7 @@ const initializers: Record<Tool, (library: Library, id: string) => Library> = {
   collection: (library, id) => initializeModuleDocument(library, id, 'collection'),
   modeler: (library, id) => initializeModuleDocument(library, id, 'modeler'),
   slicer: (library, id) => initializeModuleDocument(library, id, 'slicer'),
+  painter: (library, id) => initializeModuleDocument(library, id, 'painter'),
 }
 /** Create the saved document for each listed module if the project lacks it. */
 export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {

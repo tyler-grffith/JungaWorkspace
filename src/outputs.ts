@@ -48,6 +48,11 @@ export type SlicerViewOutput = OutputBase & {
   type: 'slicer-view'
   source: { kind: 'plate'; version: 1 }
 }
+/** The project's filament painting with its swap plan, shown read-only. */
+export type PainterViewOutput = OutputBase & {
+  type: 'painter-view'
+  source: { kind: 'painting'; version: 1 }
+}
 export type Output =
   | SceneOutput
   | CodeRunOutput
@@ -56,6 +61,7 @@ export type Output =
   | CollectionBrowseOutput
   | ModelerViewOutput
   | SlicerViewOutput
+  | PainterViewOutput
 export const isCollectionBrowse = (output: Output): output is CollectionBrowseOutput =>
   output.type === 'collection-browse'
 export const isDocumentRead = (output: Output): output is DocumentReadOutput =>
@@ -127,6 +133,8 @@ export function validOutput(value: unknown): value is Output {
     return keys(source, ['kind', 'version']) && source.kind === 'model' && source.version === 1
   if (value.type === 'slicer-view')
     return keys(source, ['kind', 'version']) && source.kind === 'plate' && source.version === 1
+  if (value.type === 'painter-view')
+    return keys(source, ['kind', 'version']) && source.kind === 'painting' && source.version === 1
   if (value.type === 'collection-browse')
     return (
       keys(source, ['kind', 'version', 'startId']) &&
@@ -215,6 +223,17 @@ export function modelerViewOutput(title = 'Model'): ModelerViewOutput {
     description: 'Shows this project\u2019s model read-only.',
     status: 'draft',
     source: { kind: 'model', version: 1 },
+    metadata: { attribution: '', sourceUrl: '' },
+  }
+}
+export function painterViewOutput(title = 'Print sheet'): PainterViewOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'painter-view',
+    title,
+    description: 'Shows this project\u2019s filament painting and swap plan read-only.',
+    status: 'draft',
+    source: { kind: 'painting', version: 1 },
     metadata: { attribution: '', sourceUrl: '' },
   }
 }

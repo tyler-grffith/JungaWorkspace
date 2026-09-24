@@ -98,7 +98,9 @@ test('every example opens its editor with its content, loading bundled material 
   await page.getByRole('link', { name: 'Examples' }).first().click()
   await page.getByRole('link', { name: 'PDR Visuals', exact: true }).click()
   await page.getByRole('button', { name: 'Open visual canvas' }).click()
-  await expect(page.getByText('VISUAL CANVAS')).toBeVisible()
+  // The editor's own eyebrow ("VISUAL CANVAS · <mode>"), not the project page's heading or
+  // button, which are still on screen while the lazy editor chunk loads on a slow runner.
+  await expect(page.getByText(/^VISUAL CANVAS · /)).toBeVisible({ timeout: 20000 })
   await expect(page.getByText('EARTH').first()).toBeVisible({ timeout: 20000 })
   expect((await stored(page)).projects).toEqual([])
   expect(errors).toEqual([])

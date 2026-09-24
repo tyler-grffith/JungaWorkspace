@@ -138,12 +138,17 @@ test('search, tool filters, list view, and collection removal preserve projects'
 
 test('starter stores a working example and exports a complete backup', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Use this example' }).click()
+  await page.getByRole('button', { name: 'Open this example' }).click()
   await expect(page.getByRole('heading', { name: 'LaPlace Intuition' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Project notes' })).toHaveValue(
     /f\(t\) = e\^\(-t\)/,
   )
   await expect(page.getByRole('button', { name: 'Open calculator' })).toBeVisible()
+  // A pristine example is not stored; an edit makes it part of the library and its backup.
+  await page.getByRole('textbox', { name: 'Project notes' }).fill('Backed up with the graph')
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('junga.library.v1')?.length ?? 0))
+    .toBeGreaterThan(100)
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download library backup' }).click()
   const download = await downloading
@@ -153,6 +158,7 @@ test('starter stores a working example and exports a complete backup', async ({ 
   for await (const chunk of stream!) chunks.push(chunk)
   const project = JSON.parse(Buffer.concat(chunks).toString()).projects[0]
   expect(project.title).toBe('LaPlace Intuition')
+  expect(project.notes).toBe('Backed up with the graph')
   expect(project.graph.entries).toHaveLength(8)
 })
 

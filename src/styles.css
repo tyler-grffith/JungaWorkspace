@@ -229,7 +229,7 @@ button:disabled:hover {
   font-size: 11px;
 }
 .nav-item.active .nav-count {
-  color: #5d7650;
+  color: #4f6644;
 }
 .collections-label {
   margin-top: 25px;
@@ -1002,16 +1002,18 @@ button:disabled:hover {
   gap: 7px;
   flex-wrap: wrap;
 }
+/* Tool / medium tags: bold, dark green, so a card's tools can be scanned at a glance. */
 .tool-labels > span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  color: var(--muted);
-  padding: 4px 6px;
-  border: 1px solid #e9edde;
+  font-weight: 650;
+  color: var(--green);
+  padding: 4px 7px;
+  border: 1px solid #d3e0cb;
   border-radius: 4px;
-  background: #fbfcf8;
+  background: #eff5ea;
 }
 .card-footer {
   border-top: 1px solid #edf0e6;
@@ -2218,4 +2220,63 @@ button:disabled:hover {
   min-height: 40vh;
   color: var(--muted, #6b7280);
   font-size: 0.95rem;
+}
+
+/* Built-in examples menu (library heading) and the example badge on cards. */
+.examples-menu {
+  position: relative;
+}
+.examples-menu > .button[aria-expanded='true'] {
+  background: #edf2e6;
+}
+.examples-panel {
+  width: 290px;
+  top: 46px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+}
+.examples-hint {
+  margin: 4px 9px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.examples-panel button {
+  align-items: flex-start;
+  gap: 11px;
+  padding: 9px;
+}
+.examples-panel button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.examples-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 7px;
+  background: #f1f5e9;
+  color: var(--green);
+}
+.examples-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.examples-text strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #1f2a1e);
+}
+.examples-text small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.example-label {
+  color: var(--green) !important;
+  background: #edf5e6 !important;
 }

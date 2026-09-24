@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { compileGraph } from './engine'
-import { emptyGraph, laplaceGraph, newExpression, validGraph, type ParameterEntry } from './model'
+import {
+  emptyGraph,
+  equalAxesFor,
+  laplaceGraph,
+  newExpression,
+  validGraph,
+  type ParameterEntry,
+} from './model'
 import { sampleCurve, zoomView, panView, ticks } from './plot'
 
 function calculate(formulas: string[]) {
@@ -113,5 +120,12 @@ describe('plot sampling and viewport', () => {
     expect(validGraph({ ...graph, viewport: { ...graph.viewport, xMin: Infinity } })).toBe(false)
     expect(validGraph({ ...graph, entries: [{ ...graph.entries[0], step: 0 }] })).toBe(false)
     expect(validGraph({ ...graph, entries: [graph.entries[0], graph.entries[0]] })).toBe(false)
+    // Equal axes is optional and boolean; unset falls back to the geometry-based rule.
+    expect(validGraph({ ...graph, equalAxes: false })).toBe(true)
+    expect(validGraph({ ...graph, equalAxes: 'yes' })).toBe(false)
+    expect(equalAxesFor(graph, true)).toBe(true)
+    expect(equalAxesFor(graph, false)).toBe(false)
+    expect(equalAxesFor({ ...graph, equalAxes: false }, true)).toBe(false)
+    expect(equalAxesFor({ ...graph, equalAxes: true }, false)).toBe(true)
   })
 })

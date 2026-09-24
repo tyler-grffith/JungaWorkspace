@@ -32,6 +32,7 @@ import {
   type GraphDocument,
   type GraphEntry,
   type ParameterEntry,
+  equalAxesFor,
 } from './model'
 import GraphPlot from './GraphPlot'
 import './graph.css'
@@ -828,6 +829,23 @@ export default function GraphCalculator({
                 onChange={(e) => change({ ...graph, showLabels: e.target.checked })}
               />
               Curve labels
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={equalAxesFor(
+                  graph,
+                  !!(
+                    graph.sheetPlots?.some((p) => p.visible) ||
+                    graph.entries.some(
+                      (e) => (e.kind === 'point' || e.kind === 'implicit') && e.visible,
+                    )
+                  ),
+                )}
+                disabled={readOnly}
+                onChange={(e) => change({ ...graph, equalAxes: e.target.checked })}
+              />
+              Equal axes
             </label>
             <span>Formulas · Points · Equations</span>
           </div>

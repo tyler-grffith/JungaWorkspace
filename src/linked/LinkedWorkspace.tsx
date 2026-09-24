@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeft, SlidersHorizontal } from 'lucide-react'
-import type { GraphDocument } from '../graph/model'
+import { equalAxesFor, type GraphDocument } from '../graph/model'
 import { compileGraph } from '../graph/engine'
 import { numberLabel } from '../graph/plot'
 import GraphPlot from '../graph/GraphPlot'
@@ -185,6 +185,23 @@ export default function LinkedWorkspace({
                 onChange={(e) => onGraphChange({ ...graph, showLabels: e.target.checked })}
               />
               Point / curve labels
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={equalAxesFor(
+                  graph,
+                  !!(
+                    graph.sheetPlots?.some((p) => p.visible) ||
+                    graph.entries.some(
+                      (e) => (e.kind === 'point' || e.kind === 'implicit') && e.visible,
+                    )
+                  ),
+                )}
+                disabled={readOnly}
+                onChange={(e) => onGraphChange({ ...graph, equalAxes: e.target.checked })}
+              />
+              Equal axes
             </label>
           </div>
           {graphUnsaved && (

@@ -38,6 +38,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleHelp,
+  Code2,
   Copy,
   ExternalLink,
   Folder,
@@ -55,6 +56,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   SquareFunction,
   Star,
   StickyNote,
@@ -63,7 +65,6 @@ import {
   X,
 } from 'lucide-react'
 import {
-  createCosmicClock,
   addEarthClock,
   saveOutput,
   actOnProject,
@@ -114,7 +115,16 @@ import {
   moduleForRoute,
   modules,
 } from './modules/registry'
-import { examples, type ExampleProject } from './modules/examples'
+import { examples } from './modules/examples'
+import {
+  builtInId,
+  builtInNeedsLoad,
+  loadBuiltInDocuments,
+  mergeBuiltIns,
+  resetBuiltIn,
+  shortcutExamples,
+  stripBuiltIns,
+} from './modules/builtins'
 
 /** One module edit waiting for the library write. */
 type ModuleSave = {
@@ -138,9 +148,23 @@ function ToolIcon({ tool, size = 18 }: { tool: Tool; size?: number }) {
   const Icon = moduleById[tool].icon
   return <Icon size={size} />
 }
-function ToolLabels({ tools, code = false }: { tools: Tool[]; code?: boolean }) {
+function ToolLabels({
+  tools,
+  code = false,
+  example = false,
+}: {
+  tools: Tool[]
+  code?: boolean
+  example?: boolean
+}) {
   return (
     <span className="tool-labels">
+      {example && (
+        <span className="example-label">
+          <Sparkles size={12} />
+          Example
+        </span>
+      )}
       {code && <span>Code project</span>}
       {tools.map((tool) => (
         <span key={tool}>
@@ -445,11 +469,13 @@ function ProjectMenu({
   onAction,
   onEdit,
   onDuplicate,
+  onReset,
 }: {
   project: Project
   onAction: (p: Project, action: ProjectAction) => void
   onEdit: (p: Project) => void
   onDuplicate: (p: Project) => void
+  onReset: (p: Project) => void
 }) {
   const ref = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
@@ -495,24 +521,56 @@ function ProjectMenu({
               <Copy size={16} />
               Duplicate
             </button>
-            <button
-              onClick={() =>
-                run(() => onAction(project, project.status === 'archived' ? 'activate' : 'archive'))
-              }
-            >
-              <Archive size={16} />
-              {project.status === 'archived' ? 'Move to library' : 'Archive'}
-            </button>
-            <div className="menu-rule" />
-            <button className="danger-text" onClick={() => run(() => onAction(project, 'trash'))}>
-              <Trash2 size={16} />
-              Move to trash
-            </button>
+            {project.builtIn ? (
+              <>
+                <div className="menu-rule" />
+                <button className="danger-text" onClick={() => run(() => onReset(project))}>
+                  <RotateCcw size={16} />
+                  Reset to original
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() =>
+                    run(() =>
+                      onAction(project, project.status === 'archived' ? 'activate' : 'archive'),
+                    )
+                  }
+                >
+                  <Archive size={16} />
+                  {project.status === 'archived' ? 'Move to library' : 'Archive'}
+                </button>
+                <div className="menu-rule" />
+                <button
+                  className="danger-text"
+                  onClick={() => run(() => onAction(project, 'trash'))}
+                >
+                  <Trash2 size={16} />
+                  Move to trash
+                </button>
+              </>
+            )}
           </>
         )}
       </div>
     </details>
   )
+}
+
+/** The icon that stands for an example's kind of project. */
+function ExampleIcon({
+  tools,
+  code,
+  size = 18,
+}: {
+  tools: readonly Tool[]
+  code: boolean
+  size?: number
+}) {
+  if (code) return <Code2 size={size} />
+  if (tools.length > 1) return <Layers3 size={size} />
+  return <ToolIcon tool={tools[0]} size={size} />
 }
 
 function ProjectCard({
@@ -522,6 +580,7 @@ function ProjectCard({
   action,
   edit,
   duplicate,
+  reset,
 }: {
   project: Project
   library: Library
@@ -529,6 +588,7 @@ function ProjectCard({
   action: (p: Project, action: ProjectAction) => void
   edit: (p: Project) => void
   duplicate: (p: Project) => void
+  reset: (p: Project) => void
 }) {
   const collection = library.collections.find((c) => c.id === project.collectionId)
   return (
@@ -557,12 +617,22 @@ function ProjectCard({
           >
             {project.title}
           </a>
-          <ProjectMenu project={project} onAction={action} onEdit={edit} onDuplicate={duplicate} />
+          <ProjectMenu
+            project={project}
+            onAction={action}
+            onEdit={edit}
+            onDuplicate={duplicate}
+            onReset={reset}
+          />
         </div>
         <p className="card-description">
           {project.description || 'A little space for your next idea.'}
         </p>
-        <ToolLabels tools={project.tools} code={project.projectType === 'code'} />
+        <ToolLabels
+          tools={project.tools}
+          code={project.projectType === 'code'}
+          example={!!project.exampleId}
+        />
         <div className="card-footer">
           <span className="card-collection">
             <Folder size={13} />
@@ -700,11 +770,13 @@ export default function App() {
     ? `collection:${route.slice(13)}`
     : route === '#/favorites'
       ? 'favorites'
-      : route === '#/archive'
-        ? 'archive'
-        : route === '#/trash'
-          ? 'trash'
-          : 'all'
+      : route === '#/examples'
+        ? 'examples'
+        : route === '#/archive'
+          ? 'archive'
+          : route === '#/trash'
+            ? 'trash'
+            : 'all'
   const projectId = route.startsWith('#/project/') ? route.slice(10).split('/')[0] : null
   const currentProject = library?.projects.find((p) => p.id === projectId)
   const outputRoute = /^#\/project\/[^/]+\/output\/([^/]+)$/.exec(route)
@@ -752,16 +824,27 @@ export default function App() {
   const title =
     view === 'favorites'
       ? 'Favorites'
-      : view === 'archive'
-        ? 'Archive'
-        : view === 'trash'
-          ? 'Trash'
-          : view.startsWith('collection:')
-            ? (currentCollection?.name ?? 'Collection not found')
-            : design.library.title
+      : view === 'examples'
+        ? 'Examples'
+        : view === 'archive'
+          ? 'Archive'
+          : view === 'trash'
+            ? 'Trash'
+            : view.startsWith('collection:')
+              ? (currentCollection?.name ?? 'Collection not found')
+              : design.library.title
   useEffect(() => {
     document.title = `${currentOutput ? currentOutput.title + ' · ' : ''}${currentProject?.title ?? title} · Junga`
   }, [title, currentProject?.title, currentOutput?.title])
+  // A built-in whose example fetches its material on demand loads it the first time it opens.
+  useEffect(() => {
+    if (!currentProject || !builtInNeedsLoad(currentProject)) return
+    loadBuiltInDocuments(currentProject.id).catch((error: unknown) =>
+      setToast({
+        text: error instanceof Error ? error.message : 'This example could not be loaded.',
+      }),
+    )
+  }, [currentProject])
 
   function navigate(view: View) {
     window.location.hash = viewRoute(view)
@@ -771,7 +854,8 @@ export default function App() {
     setModal(value)
   }
   function open(project: Project) {
-    commit((current) => actOnProject(current, project.id, 'open'))
+    // Opening a pristine built-in is not an edit, so it leaves storage alone.
+    if (!project.builtIn) commit((current) => actOnProject(current, project.id, 'open'))
     window.location.hash = projectRoute(project.id)
   }
   function action(project: Project, kind: ProjectAction) {
@@ -808,38 +892,15 @@ export default function App() {
     )
       window.location.hash = `${projectRoute(project.id)}/${segment}`
   }
-  function addCosmicClock() {
-    let id = ''
+  /** Put a built-in example back to its original, discarding the user's changes to it. */
+  function reset(project: Project) {
     if (
-      commit((current) => {
-        const result = createCosmicClock(current, currentCollection?.id ?? null)
-        id = result.project.id
-        return result.library
-      })
+      window.confirm(
+        `Reset ${project.title} to the original? Your changes to this example will be discarded.`,
+      ) &&
+      commit((current) => resetBuiltIn(current, project.id))
     )
-      window.location.hash = projectRoute(id)
-  }
-  function createExample(example: ExampleProject) {
-    let id = ''
-    if (
-      commit((current) => {
-        const documents = example.documents()
-        const result = addProject(
-          current,
-          { ...example.input, collectionId: currentCollection?.id ?? null },
-          example.notes,
-          documents.graph,
-          documents.sheet,
-        )
-        id = result.project.id
-        return result.library
-      })
-    ) {
-      window.location.hash = example.openRoute
-        ? `${projectRoute(id)}/${example.openRoute}`
-        : projectRoute(id)
-      if (example.toast) setToast({ text: example.toast })
-    }
+      setToast({ text: `${project.title} reset to the original.` })
   }
   function duplicate(project: Project) {
     if (commit((current) => duplicateProject(current, project.id).library))
@@ -849,7 +910,7 @@ export default function App() {
     try {
       let base = library
       try {
-        base = parseLibrary(window.localStorage.getItem(STORAGE_KEY))
+        base = mergeBuiltIns(parseLibrary(window.localStorage.getItem(STORAGE_KEY)))
       } catch {
         /* Use the last readable page snapshot to rescue drafts. */
       }
@@ -885,7 +946,8 @@ export default function App() {
         code: codeDraft,
         ...moduleDrafts,
       })
-      downloadData(serializeBackup(snapshot))
+      // Pristine built-ins come with the app, so a backup carries only the ones that changed.
+      downloadData(serializeBackup(stripBuiltIns(snapshot)))
       setToast({
         text:
           notesDraft || graphDraft || pendingSheet || codeDraft || hasModuleDraft
@@ -1079,9 +1141,15 @@ export default function App() {
   const navItems = [
     { id: 'all' as View, name: 'All projects', icon: LibraryIcon },
     { id: 'favorites' as View, name: 'Favorites', icon: Star },
+    { id: 'examples' as View, name: 'Examples', icon: Sparkles },
     { id: 'archive' as View, name: 'Archive', icon: Archive },
     { id: 'trash' as View, name: 'Trash', icon: Trash2 },
   ]
+  // Shortcuts: the built-ins the design names, each linking straight to its project.
+  const shortcuts = shortcutExamples(design.library.shortcuts).flatMap((example) => {
+    const project = library.projects.find((p) => p.id === builtInId(example.id))
+    return project ? [{ example, project }] : []
+  })
 
   return (
     <div className="app-shell">
@@ -1178,6 +1246,25 @@ export default function App() {
             <Plus size={14} />
             Add a collection
           </button>
+        )}
+        {shortcuts.length > 0 && (
+          <>
+            <div className="nav-label">SHORTCUTS</div>
+            <nav aria-label="Shortcuts">
+              {shortcuts.map(({ example, project }) => (
+                <a
+                  key={project.id}
+                  href={`${projectRoute(project.id)}${example.openRoute ? `/${example.openRoute}` : ''}`}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`nav-item ${projectId === project.id ? 'active' : ''}`}
+                  aria-current={projectId === project.id ? 'page' : undefined}
+                >
+                  <ExampleIcon tools={example.tools} code={example.input.projectType === 'code'} />
+                  <span>{project.title}</span>
+                </a>
+              ))}
+            </nav>
+          </>
         )}
         <div className="sidebar-bottom">
           <div className="local-note">
@@ -1297,7 +1384,9 @@ export default function App() {
           )}
           {projectId ? (
             currentProject ? (
-              linkedOpen ? (
+              builtInNeedsLoad(currentProject) ? (
+                <ModuleLoading />
+              ) : linkedOpen ? (
                 <LinkedWorkspace
                   key={currentProject.id}
                   title={currentProject.title}
@@ -1447,6 +1536,7 @@ export default function App() {
                         {currentProject.projectType === 'code'
                           ? 'CODE PROJECT · SOURCE'
                           : 'PROJECT OVERVIEW'}
+                        {currentProject.exampleId ? ' · BUILT-IN EXAMPLE' : ''}
                       </div>
                       <h1>{currentProject.title}</h1>
                     </div>
@@ -1477,6 +1567,7 @@ export default function App() {
                         onAction={action}
                         onEdit={(p) => showModal({ kind: 'project', project: p })}
                         onDuplicate={duplicate}
+                        onReset={reset}
                       />
                     </div>
                   </div>
@@ -1776,30 +1867,14 @@ export default function App() {
                         ? 'Projects stay here until you’re ready to restore them.'
                         : view === 'favorites'
                           ? 'The projects you want to keep close.'
-                          : currentCollection
-                            ? 'A shared home for related projects.'
-                            : design.library.tagline}
+                          : view === 'examples'
+                            ? 'Built into the app, one for every kind of project. Edit freely; Reset to original brings one back.'
+                            : currentCollection
+                              ? 'A shared home for related projects.'
+                              : design.library.tagline}
                   </p>
                 </div>
                 <div className="heading-actions">
-                  {view === 'all' && (
-                    <button className="button secondary" onClick={addCosmicClock}>
-                      Cosmic Clock
-                    </button>
-                  )}
-                  {view === 'all' &&
-                    design.library.showExamples &&
-                    examples
-                      .filter((example) => example.placement === 'toolbar')
-                      .map((example) => (
-                        <button
-                          key={example.id}
-                          className="button secondary"
-                          onClick={() => createExample(example)}
-                        >
-                          {example.buttonLabel}
-                        </button>
-                      ))}
                   {currentCollection && (
                     <button
                       className="icon-button"
@@ -1904,6 +1979,7 @@ export default function App() {
                       action={action}
                       edit={(p) => showModal({ kind: 'project', project: p })}
                       duplicate={duplicate}
+                      reset={reset}
                     />
                   ))}
                 </div>
@@ -1922,7 +1998,9 @@ export default function App() {
                     Clear filters
                   </button>
                 </div>
-              ) : view === 'all' && activeCount === 0 && library.projects.length === 0 ? (
+              ) : view === 'all' &&
+                activeCount === 0 &&
+                library.projects.every((p) => p.builtIn) ? (
                 <>
                   <section className="welcome-panel">
                     <div className="welcome-copy">
@@ -1976,7 +2054,7 @@ export default function App() {
                   </section>
                   {design.library.showExamples &&
                     examples
-                      .filter((example) => example.placement === 'welcome')
+                      .filter((example) => example.welcome)
                       .map((example) => (
                         <section className="starter-strip" key={example.id}>
                           <div className="starter-icon">
@@ -1989,9 +2067,11 @@ export default function App() {
                           </div>
                           <button
                             className="button secondary"
-                            onClick={() => createExample(example)}
+                            onClick={() => {
+                              window.location.hash = projectRoute(builtInId(example.id))
+                            }}
                           >
-                            {example.buttonLabel}
+                            Open this example
                             <ArrowRight size={15} />
                           </button>
                         </section>

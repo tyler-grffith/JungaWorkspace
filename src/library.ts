@@ -64,6 +64,10 @@ export type Project = {
   createdAt: string
   updatedAt: string
   openedAt: string | null
+  /** The built-in example this project was created from. */
+  exampleId?: string
+  /** A project every library holds; set by the built-ins layer, never stored as truth. */
+  builtIn?: boolean
   graph?: GraphDocument
   sheet?: SheetDocument
   code?: CodeDocument
@@ -79,7 +83,7 @@ export type ProjectInput = Pick<
   Project,
   'title' | 'description' | 'tools' | 'collectionId' | 'referenceUrl'
 > & { projectType?: ProjectType }
-export type View = 'all' | 'favorites' | 'archive' | 'trash' | `collection:${string}`
+export type View = 'all' | 'favorites' | 'examples' | 'archive' | 'trash' | `collection:${string}`
 export type Sort = 'updated' | 'name' | 'created'
 export const STORAGE_KEY = 'junga.library.v1'
 export const emptyLibrary = (): Library => ({ version: 1, projects: [], collections: [] })
@@ -193,6 +197,10 @@ export function actOnProject(library: Library, id: string, action: ProjectAction
     }
     if (p.status === 'trashed') return p
     if (action === 'favorite') return { ...p, favorite: !p.favorite, updatedAt: timestamp() }
+    if (p.builtIn)
+      throw new Error(
+        'Built-in examples stay in the library. Duplicate one to make a copy of your own.',
+      )
     if (action === 'trash')
       return { ...p, status: 'trashed', trashedFrom: p.status, updatedAt: timestamp() }
     return { ...p, status: action === 'archive' ? 'archived' : 'active', updatedAt: timestamp() }
@@ -391,9 +399,12 @@ export function selectProjects(
           : view === 'trash'
             ? p.status === 'trashed'
             : p.status === 'active' &&
-              (view === 'all' ||
-                (view === 'favorites' && p.favorite) ||
-                (view.startsWith('collection:') && p.collectionId === view.slice(11)))
+              (view === 'all'
+                ? !p.builtIn
+                : view === 'examples'
+                  ? !!p.builtIn
+                  : (view === 'favorites' && p.favorite) ||
+                    (view.startsWith('collection:') && p.collectionId === view.slice(11)))
       return (
         visible &&
         (tool === 'all' || p.tools.includes(tool)) &&
@@ -479,6 +490,8 @@ export function parseLibrary(raw: string | null): Library {
       if (!valid) return false
       if (p.projectType !== undefined && !['workable', 'code'].includes(p.projectType as string))
         return false
+      if (p.exampleId !== undefined && !validExampleId(p.exampleId)) return false
+      if (p.builtIn !== undefined && typeof p.builtIn !== 'boolean') return false
       if (p.outputs !== undefined && !validOutputs(p.outputs)) return false
       if (p.sourceManifest !== undefined && !validManifest(p.sourceManifest)) return false
       const ownsOutput =
@@ -551,19 +564,63 @@ export const starterInput: ProjectInput = {
 export const starterNotes =
   'Reference for the first graphing prototype.\n\nf(t) = e^(-t) sin(t), for t > 0\nf₂(t) = e^(a t), for t > 0\nfₚ(t) = sin(p t)\nzₜ(t) = f(t) f₂(t) fₚ(t)\nzₚ(t) = f(t) f₂(t)\n\nParameters in the reference: p = 3.8 (0 to 10); a = 1.16 (-0.5 to 2).\n\nOpen the calculator to explore this recreated example with editable functions, sliders, domain restrictions, and graph notes. The original Desmos project remains linked as a reference.'
 
-export function createCosmicClock(library: Library, collectionId: string | null = null) {
-  const result = addProject(library, {
+// --- Built-in examples ----------------------------------------------------------------------
+// An example is a project the app knows how to create. `src/modules/examples.ts` lists them and
+// `src/modules/builtins.ts` merges them into every library; `addExampleProject` makes a copy.
+export type ExampleDocuments = {
+  graph?: GraphDocument
+  sheet?: SheetDocument
+  code?: CodeDocument
+} & Partial<ModuleDocuments>
+export type ExampleSeed = {
+  id: string
+  input: Omit<ProjectInput, 'collectionId'>
+  notes?: string
+  documents?: ExampleDocuments
+  outputs?: Output[]
+  sourceManifest?: SourceManifest
+}
+export const validExampleId = (value: unknown): value is string =>
+  typeof value === 'string' && /^[a-z0-9-]{1,40}$/.test(value)
+
+/** Create a project from an example, tagged with the example it came from. */
+export function addExampleProject(
+  library: Library,
+  seed: ExampleSeed,
+  collectionId: string | null = null,
+): { library: Library; project: Project } {
+  if (!validExampleId(seed.id)) throw new Error('This example has an invalid identifier.')
+  const documents = seed.documents ?? {}
+  const result = addProject(
+    library,
+    { ...seed.input, collectionId },
+    seed.notes ?? '',
+    documents.graph,
+    documents.sheet,
+    documents.code,
+    documents,
+  )
+  result.project.exampleId = seed.id
+  if (seed.sourceManifest) result.project.sourceManifest = structuredClone(seed.sourceManifest)
+  if (seed.outputs) result.project.outputs = structuredClone(seed.outputs)
+  return result
+}
+
+/** The Cosmic Clock code project: bundled source, assets, and the Earth Clock scene output. */
+export const cosmicClockSeed = (): ExampleSeed => ({
+  id: 'cosmic-clock',
+  input: {
     projectType: 'code',
     title: 'Cosmic Clock',
     description: 'Source, assets, and scene defaults for a three-dimensional Earth clock.',
     tools: [],
-    collectionId,
     referenceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
-  })
-  result.project.sourceManifest = { kind: 'cosmic-clock', version: 1 }
-  result.project.outputs = [earthClockOutput()]
-  return result
-}
+  },
+  sourceManifest: { kind: 'cosmic-clock', version: 1 },
+  outputs: [earthClockOutput()],
+})
+export const createCosmicClock = (library: Library, collectionId: string | null = null) =>
+  addExampleProject(library, cosmicClockSeed(), collectionId)
 const isHtml = (path: string) => /\.html?$/i.test(path)
 
 /**

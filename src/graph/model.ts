@@ -61,8 +61,19 @@ export type GraphDocument = {
   viewport: Viewport
   showGrid: boolean
   showLabels: boolean
+  /**
+   * Whether one unit is the same length on both axes. Unset means the old rule: equal when
+   * the graph has points, implicit equations, or linked series, so their geometry keeps its
+   * shape; free otherwise, so a curve with very different x and y ranges can fill the plot.
+   */
+  equalAxes?: boolean
   sheetPlots?: SheetPlot[]
 }
+/** The axis rule a graph uses: its own setting, or the geometry-based default. */
+export const equalAxesFor = (
+  graph: Pick<GraphDocument, 'equalAxes'>,
+  hasGeometry: boolean,
+): boolean => graph.equalAxes ?? hasGeometry
 export const DEFAULT_VIEW: Viewport = { xMin: -10, xMax: 10, yMin: -6, yMax: 6 }
 export const LAPLACE_URL = 'https://www.desmos.com/calculator/2awcmk9fzy'
 export const MAX_ENTRIES = 40
@@ -143,6 +154,7 @@ export function validGraph(value: unknown): value is GraphDocument {
     !validViewport(value.viewport) ||
     typeof value.showGrid !== 'boolean' ||
     typeof value.showLabels !== 'boolean' ||
+    (value.equalAxes !== undefined && typeof value.equalAxes !== 'boolean') ||
     !Array.isArray(value.entries) ||
     value.entries.length > MAX_ENTRIES
   )

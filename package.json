@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "npm run test && npm run build",
-    "deploy": "scripts/deploy.sh"
+    "deploy": "scripts/deploy.sh",
+    "ship": "scripts/ship.sh",
+    "status": "scripts/ship.sh --status"
   },
   "dependencies": {
     "@codemirror/lang-css": "6.3.1",

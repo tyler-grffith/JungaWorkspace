@@ -3,7 +3,13 @@ import AxeBuilder from '@axe-core/playwright'
 
 async function create(page: Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Cosmic Clock', exact: true }).click()
+  // Narrow viewports keep the sidebar, and its shortcuts, behind the navigation button.
+  const navigation = page.getByRole('button', { name: 'Open navigation' })
+  if (await navigation.isVisible()) await navigation.click()
+  await page
+    .getByRole('navigation', { name: 'Shortcuts', exact: true })
+    .getByRole('link', { name: 'Cosmic Clock', exact: true })
+    .click()
   await expect(page.getByRole('heading', { name: 'Cosmic Clock', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Working material' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Outputs', exact: true })).toBeVisible()

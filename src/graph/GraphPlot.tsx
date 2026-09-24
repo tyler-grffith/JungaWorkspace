@@ -7,6 +7,7 @@ import {
   type PlotEntry,
   type GraphDocument,
   type Viewport,
+  equalAxesFor,
 } from './model'
 import type { CompiledGraph } from './engine'
 import type { PointSeries } from '../linked/model'
@@ -64,7 +65,10 @@ export default function GraphPlot({
     null,
   )
   const clipId = useId().replace(/:/g, '')
-  const equalAxes = !!(series.length || compiled.points.length || compiled.implicitCurves.length)
+  const equalAxes = equalAxesFor(
+    graph,
+    !!(series.length || compiled.points.length || compiled.implicitCurves.length),
+  )
   const view = useMemo(
     () =>
       equalAxes
@@ -135,7 +139,7 @@ export default function GraphPlot({
           <span className="status-dot" />
           CARTESIAN PLANE
         </span>
-        <span>{equalAxes ? 'Equal x / y scale' : 'Angles in radians'}</span>
+        <span>{equalAxes ? 'Equal x / y scale' : 'Independent x / y scale'}</span>
       </div>
       <div className={`plot-stage ${dragView ? 'is-panning' : ''}`} ref={stage}>
         <svg
@@ -549,7 +553,8 @@ export default function GraphPlot({
               return (
                 <span key={curve.entry.id}>
                   <i style={{ background: curve.entry.color }} />
-                  {curve.label.split('=')[0].trim()}: {numberLabel(value)}
+                  {curve.label.split('=')[0].trim()}:{' '}
+                  {Number.isFinite(value) ? numberLabel(value) : 'outside its domain'}
                 </span>
               )
             })}

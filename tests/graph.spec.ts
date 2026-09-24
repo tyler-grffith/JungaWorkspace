@@ -5,7 +5,7 @@ import type { Library } from '../src/library'
 
 async function sample(page: Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Use this example' }).click()
+  await page.getByRole('button', { name: 'Open this example' }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()
   await expect(page.getByTestId('curve')).toHaveCount(5)
 }
@@ -150,7 +150,7 @@ test('parameter constants, range validation, bounds, and keyboard or pointer nav
 
 test('duplication and trash preserve independent graphs', async ({ page }) => {
   await sample(page)
-  const original = await graph(page)
+  const original = await page.getByLabel('Formula 3', { exact: true }).inputValue()
   await page.getByRole('button', { name: 'Project overview' }).click()
   await page.getByLabel('Actions for LaPlace Intuition', { exact: true }).click()
   await page.getByRole('button', { name: 'Duplicate', exact: true }).click()
@@ -158,10 +158,12 @@ test('duplication and trash preserve independent graphs', async ({ page }) => {
   await page.getByRole('link', { name: 'LaPlace Intuition (copy)', exact: true }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()
   await page.getByLabel('Formula 3', { exact: true }).fill('f(t) = t^2')
-  expect((await saved(page)).projects.find((p) => p.title === 'LaPlace Intuition')!.graph).toEqual(
-    original,
-  )
-  await page.getByRole('button', { name: 'Project overview' }).click()
+  // The built-in example is untouched by edits to its copy, and stays out of storage.
+  expect((await saved(page)).projects.map((p) => p.title)).toEqual(['LaPlace Intuition (copy)'])
+  await page.goto('/#/project/example-laplace/graph')
+  await expect(page.getByLabel('Formula 3', { exact: true })).toHaveValue(original)
+  await page.goto('/#/all')
+  await page.getByRole('link', { name: 'LaPlace Intuition (copy)', exact: true }).click()
   await page.getByLabel('Actions for LaPlace Intuition (copy)', { exact: true }).click()
   await page.getByRole('button', { name: 'Move to trash', exact: true }).click()
   await page.getByRole('button', { name: 'Open calculator' }).click()

@@ -289,7 +289,7 @@ export const designGroups = {
   library: {
     title: 'Project library',
     description: 'Browsing defaults and the copy on the library pages.',
-    files: 'src/App.tsx; src/library.ts; src/modules/examples.ts',
+    files: 'src/App.tsx; src/library.ts; src/modules/examples.ts; src/modules/builtins.ts',
     fields: {
       gridColumns: select(
         'Grid columns',
@@ -314,7 +314,13 @@ export const designGroups = {
       showExamples: toggle(
         'Offer example projects',
         true,
-        'Shows the built-in example buttons in the library.',
+        'Shows the welcome strip’s example when the library is empty.',
+      ),
+      shortcuts: text(
+        'Shortcut examples',
+        'cosmic-clock, octahedron',
+        200,
+        'Example ids, in order, linked under Shortcuts in the sidebar (see src/modules/examples.ts).',
       ),
       eyebrow: text('Library eyebrow', 'YOUR WORK, TOGETHER', 40),
       title: text('Library title', 'Your library', 40),

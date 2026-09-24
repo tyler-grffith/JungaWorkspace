@@ -18,6 +18,9 @@ import {
   selectProjects,
   STORAGE_KEY,
   starterInput,
+  starterNotes,
+  cosmicClockSeed,
+  addExampleProject,
   type Library,
   type StorageAccess,
 } from './library'
@@ -131,6 +134,52 @@ describe('project lifecycle', () => {
     ).toThrow('https://')
     const library = saveCollection(emptyLibrary(), 'Science')
     expect(() => saveCollection(library, ' science ')).toThrow('already exists')
+  })
+})
+
+describe('built-in examples', () => {
+  it('creates a project from an example, tagged with it, that duplicates as a plain project', () => {
+    const { library, project } = addExampleProject(emptyLibrary(), {
+      id: 'laplace',
+      input: starterInput,
+      notes: starterNotes,
+      documents: { graph: laplaceGraph() },
+    })
+    expect(project.exampleId).toBe('laplace')
+    expect(project.graph?.entries.length).toBe(laplaceGraph().entries.length)
+    const copy = duplicateProject(library, project.id)
+    expect(copy.project.exampleId).toBeUndefined()
+    expect(copy.project.builtIn).toBeUndefined()
+    const stored = parseLibrary(JSON.stringify(copy.library)).projects
+    expect(stored.find((p) => p.id === project.id)?.exampleId).toBe('laplace')
+    expect(() =>
+      parseLibrary(JSON.stringify({ ...library, projects: [{ ...project, exampleId: 'Bad Id' }] })),
+    ).toThrow('unsupported or damaged')
+  })
+  it('keeps built-ins out of the trash and archive, and out of the All projects view', () => {
+    const { library, project } = addExampleProject(emptyLibrary(), {
+      id: 'laplace',
+      input: starterInput,
+      documents: { graph: laplaceGraph() },
+    })
+    const builtIn = {
+      ...library,
+      projects: library.projects.map((p) => ({ ...p, builtIn: true })),
+    }
+    expect(() => actOnProject(builtIn, project.id, 'trash')).toThrow('Built-in examples stay')
+    expect(() => actOnProject(builtIn, project.id, 'archive')).toThrow('Built-in examples stay')
+    const favorite = actOnProject(builtIn, project.id, 'favorite')
+    expect(favorite.projects[0].favorite).toBe(true)
+    expect(selectProjects(favorite, 'all')).toEqual([])
+    expect(selectProjects(favorite, 'examples').map((p) => p.id)).toEqual([project.id])
+    expect(selectProjects(favorite, 'favorites').map((p) => p.id)).toEqual([project.id])
+    expect(parseLibrary(JSON.stringify(favorite)).projects[0].builtIn).toBe(true)
+  })
+  it('creates the Cosmic Clock code project with its manifest and scene output', () => {
+    const { project } = addExampleProject(emptyLibrary(), cosmicClockSeed())
+    expect(project.projectType).toBe('code')
+    expect(project.sourceManifest).toEqual({ kind: 'cosmic-clock', version: 1 })
+    expect(project.outputs[0].type).toBe('interactive-scene')
   })
 })
 

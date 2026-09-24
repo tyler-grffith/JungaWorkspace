@@ -5,7 +5,10 @@ import type { Library } from '../src/library'
 const cell = (page: Page, ref: string) => page.getByRole('gridcell', { name: ref, exact: true })
 async function example(page: Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Create octahedron example', exact: true }).click()
+  await page
+    .getByRole('navigation', { name: 'Shortcuts', exact: true })
+    .getByRole('link', { name: 'Octahedron Sections', exact: true })
+    .click()
   await expect(page.getByTestId('linked-point')).toHaveCount(6)
 }
 async function enter(page: Page, ref: string, value: string) {
@@ -129,16 +132,19 @@ test('linked contents survive independent duplication, trash restoration and bac
   page,
 }) => {
   await example(page)
-  const original = (await saved(page)).projects[0]
+  // The built-in example is not stored until edited; its copy is an ordinary project.
+  expect(await page.evaluate(() => localStorage.getItem('junga.library.v1'))).toBeNull()
   await page.getByRole('button', { name: 'Project overview', exact: true }).click()
-  await page.getByLabel(`Actions for ${original.title}`, { exact: true }).click()
+  await page.getByLabel('Actions for Octahedron Sections', { exact: true }).click()
   await page.getByRole('button', { name: 'Duplicate', exact: true }).click()
-  const copy = (await saved(page)).projects.find((p) => p.id !== original.id)!
+  const copy = (await saved(page)).projects[0]
+  expect(copy.title).toBe('Octahedron Sections (copy)')
   await page.goto(`/#/project/${copy.id}/workspace`)
   await enter(page, 'B2', '10')
-  expect(
-    (await saved(page)).projects.find((p) => p.id === original.id)!.sheet!.cells.B2.input,
-  ).toBe('5')
+  expect((await saved(page)).projects.map((p) => p.id)).toEqual([copy.id])
+  await page.goto('/#/project/example-octahedron/workspace')
+  await expect(cell(page, 'B2')).toHaveText('5')
+  await page.goto(`/#/project/${copy.id}/workspace`)
   await page.getByRole('button', { name: 'Project overview', exact: true }).click()
   await page.getByLabel(`Actions for ${copy.title}`, { exact: true }).click()
   await page.getByRole('button', { name: 'Move to trash', exact: true }).click()
@@ -160,10 +166,11 @@ test('linked contents survive independent duplication, trash restoration and bac
   })
   await page.getByRole('button', { name: 'Restore copies', exact: true }).click()
   const restored = (await saved(page)).projects.find(
-    (p) => p.title === 'Octahedron Sections (restored)',
+    (p) => p.title === 'Octahedron Sections (copy) (restored)',
   )!
   await page.goto(`/#/project/${restored.id}/workspace`)
   await expect(page.getByTestId('linked-point')).toHaveCount(6)
+  await expect(cell(page, 'B2')).toHaveText('10')
   await expect(page.getByRole('slider', { name: 'Slider t', exact: true })).toHaveValue('0.323')
 })
 
@@ -187,10 +194,15 @@ test('failed linked edits retain and back up both drafts, guard navigation and r
     chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(chunk)
   const backup = JSON.parse(Buffer.concat(chunks).toString()) as Library
+  // The unsaved edits to the built-in ride along, over a library that stored nothing yet.
+  expect(backup.projects.map((p) => p.id)).toEqual(['example-octahedron'])
   expect(backup.projects[0].sheet!.cells.B4.input).toBe('0.324')
-  expect(backup.projects[0].graph!.viewport).not.toEqual(
-    (await saved(page)).projects[0].graph!.viewport,
-  )
+  expect(backup.projects[0].graph!.viewport).not.toEqual({
+    xMin: -3.5,
+    xMax: 3.5,
+    yMin: -4,
+    yMax: 3,
+  })
   page.once('dialog', (d) => d.dismiss())
   await page.getByRole('link', { name: 'Spreadsheet only', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Linked graph', exact: true })).toBeVisible()

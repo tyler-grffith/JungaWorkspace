@@ -8,12 +8,18 @@
 # server unless you pass --push / --live, and never runs those as a side
 # effect of anything else.
 #
-# Usage: scripts/deploy.sh [--push] [--live] [--skip-checks] [--allow-unpushed]
+# Usage: scripts/deploy.sh [--push] [--live] [--skip-checks] [--prebuilt] [--allow-unpushed]
 #   (no flags)       check, build, vendor, commit locally in the website repo
 #   --push           also `git push` the website repo
 #   --live           also SSH into the host and `git pull` (implies --push)
 #   --skip-checks    build without running `npm run check` first
+#   --prebuilt       vendor the existing dist/ as is (scripts/ship.sh has
+#                    just checked and built it); implies --skip-checks
 #   --allow-unpushed deploy a commit that is not on origin/main yet
+#
+# scripts/ship.sh is the one-command path (commit, sync, check, push, CI,
+# then this script with --live --prebuilt). Run this directly when you want
+# only the website half.
 #
 # What gets published is whatever is checked out here, so by default this
 # refuses to publish a commit GitHub has never seen: if it is not on
@@ -36,15 +42,17 @@ SSH_DIR="${DEPLOY_SSH_DIR:-tylergriffith.us}"
 PUSH=false
 LIVE=false
 CHECKS=true
+PREBUILT=false
 REQUIRE_PUSHED=true
 for arg in "$@"; do
   case "$arg" in
     --push) PUSH=true ;;
     --live) PUSH=true; LIVE=true ;;
     --skip-checks) CHECKS=false ;;
+    --prebuilt) CHECKS=false; PREBUILT=true ;;
     --allow-unpushed) REQUIRE_PUSHED=false ;;
     *)
-      echo "Unknown flag: $arg (expected --push, --live, --skip-checks or --allow-unpushed)" >&2
+      echo "Unknown flag: $arg (expected --push, --live, --skip-checks, --prebuilt or --allow-unpushed)" >&2
       exit 1
       ;;
   esac
@@ -78,7 +86,10 @@ if $REQUIRE_PUSHED; then
   fi
 fi
 
-if $CHECKS; then
+if $PREBUILT; then
+  [[ -f dist/index.html ]] || { echo "--prebuilt given but dist/index.html does not exist; run npm run build first." >&2; exit 1; }
+  echo "==> Vendoring the existing dist/ @ $APP_SHA (prebuilt)"
+elif $CHECKS; then
   echo "==> Checking Junga Workspace @ $APP_SHA"
   npm run check
 else

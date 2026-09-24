@@ -153,3 +153,22 @@ Weekly addendum: the integrated Junga build is now portable to a personal-site s
 ### September 24 — Merged into `main`
 
 - Full verification (Prettier, 157 unit tests, TypeScript, build, 84 Playwright tests; CI green on both PRs), then `main` fast-forwarded `919f02b..a866d73` and pushed. PR #8 registered as merged; PR #9 shows closed because its base branch was deleted first, with a comment recording the fast-forward. Both feature branches removed. No deployment.
+
+### September 24 follow-up — Built-in examples open, never copy
+
+- At Tyler's request, example shortcuts now open the project they made before instead of creating another copy: `exampleId` on projects, `findExampleProject`/`openExampleProject` in `library.ts` (restore from trash, recognise untagged older instances, copies stay untagged), and one **Examples** menu in the library heading in place of the Cosmic Clock and octahedron buttons. Decision 48.
+- One example per kind of project: XJ-1 Flight Envelope (graph, from the Desmos model), Compressible Flow Calculator (sheet, from the engineering workbook), Orbit Sketch (code files with a run output), PDR Visuals (canvas, imported from the bundled draw.io file), Pre-Development Plan (document, from the Google Doc), Workspace Ideas (collection), Mounting Bracket (modeler + slicer), Sunset Relief (painter + slicer), alongside LaPlace Intuition, Octahedron Sections, and Cosmic Clock. Content lives in `src/examples/`.
+- Verification: unit tests for the open-once rule, restore, legacy recognition, duplication, and every example's stored documents round-tripping through the strict parser; browser tests updated for the menu plus a new suite opening every example and reopening one from the trash; `npm run check`; manual pass in the dev browser.
+
+### September 24 follow-up — Examples as built-ins, shortcuts in the sidebar
+
+- Examples are now merged into every library rather than created on click (`src/modules/builtins.ts`: pristine projects, overlay storage for edits, strip on write, reset, lazy material), listed in an **Examples** sidebar view and kept out of All projects, archive, and trash. **Shortcuts** is a sidebar group driven by the `library.shortcuts` design setting, Cosmic Clock and Octahedron Sections first. Added the graph-only Octahedron Sections example; fixed the XJ-1 viewport and the trace readout's "undefined". Decision 49.
+- Verification: unit tests for merge/strip/reset, refusal to trash, view selection, and every example graph compiling; browser suites updated (shortcuts instead of the menu) plus a rewritten examples suite covering always-present, edit-persists, reset, duplicate, shortcuts, and lazy loading; `npm run check`; manual pass in the dev browser.
+- Follow-up: **Equal axes** is a per-graph checkbox (`equalAxes` on the graph document, default unchanged); the XJ-1 example turns it off so its 10³ × 10⁷ ranges scale independently. Decision 50.
+- Follow-up: the tool / medium tags on project cards are bold and dark green (`.tool-labels > span`), so a card's tools scan at a glance.
+
+### September 24 follow-up — One-command ship
+
+- Added `scripts/ship.sh` (`npm run ship`, `npm run status`): commit, fast-forward or rebase, check, push, wait for CI, deploy live, verify the live bundle. `deploy.sh` gained `--prebuilt` so the build is not repeated. `docs/RELEASING.md` now describes the one-branch flow first and the PR path as the review option.
+- Verification: `--status` and `--dry-run` exercised against the pending tree; `bash -n` on both scripts; `npm run check` green (162 tests).
+- Next: first real run of `ship` is Tyler's call; `AGENTS.md` still describes the branch-and-PR handoff and should be brought in line with the one-branch practice.

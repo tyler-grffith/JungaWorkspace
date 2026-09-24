@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
-import { ArrowLeft, Code2, Layers3 } from 'lucide-react'
+import { ArrowLeft, Code2, Layers3, Shapes } from 'lucide-react'
 import type { Project } from './library'
-import { isCodeRun, type Output } from './outputs'
+import { isCanvasShow, isCodeRun, type Output } from './outputs'
 import SceneHost from './interactive-scenes/cosmic-clock/SceneHost'
 import CodeRunner from './code/CodeRunner'
 import { emptyCode } from './code/model'
+import { emptyCanvas } from './canvas/model'
+import CanvasPresenter from './canvas/CanvasPresenter'
 
 /** Read-only boundary: no library object, commit callback, or authoring controls enter this route. */
 export default function OutputPage({ project, output }: { project?: Project; output?: Output }) {
@@ -14,6 +16,7 @@ export default function OutputPage({ project, output }: { project?: Project; out
   }, [project?.id, output?.id])
   const available = project && project.status !== 'trashed' && output
   const codeRun = output ? isCodeRun(output) : false
+  const canvasShow = output ? isCanvasShow(output) : false
   return (
     <div className="output-page">
       <a
@@ -32,8 +35,14 @@ export default function OutputPage({ project, output }: { project?: Project; out
           {project ? `Back to ${project.title}` : 'Back to library'}
         </a>
         <span>
-          {codeRun ? <Code2 size={16} /> : <Layers3 size={16} />}
-          Junga · {codeRun ? 'Code output' : 'Interactive scene'}
+          {codeRun ? (
+            <Code2 size={16} />
+          ) : canvasShow ? (
+            <Shapes size={16} />
+          ) : (
+            <Layers3 size={16} />
+          )}
+          Junga · {codeRun ? 'Code output' : canvasShow ? 'Canvas output' : 'Interactive scene'}
           {project ? ` · Made by ${project.title}` : ''}
         </span>
       </header>
@@ -45,6 +54,14 @@ export default function OutputPage({ project, output }: { project?: Project; out
               key={`${project.id}/${output.id}`}
               files={(project.code ?? emptyCode()).files}
               entry={output.source.entry}
+            />
+          ) : isCanvasShow(output) ? (
+            <CanvasPresenter
+              key={`${project.id}/${output.id}`}
+              document={project.canvas ?? emptyCanvas()}
+              title={output.title}
+              startPage={output.source.startPage}
+              loop={output.source.loop}
             />
           ) : (
             <SceneHost key={`${project.id}/${output.id}`} output={output} />

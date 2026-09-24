@@ -2,6 +2,9 @@ import CodeProjectOverview from './CodeProjectOverview'
 import CodeEditor from './code/CodeEditor'
 import CodeOutputs from './code/CodeOutputs'
 import { emptyCode, type CodeDocument } from './code/model'
+import CanvasEditor from './canvas/CanvasEditor'
+import CanvasOutputs from './canvas/CanvasOutputs'
+import { emptyCanvas, type CanvasDocument } from './canvas/model'
 import OutputPage from './OutputPage'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
@@ -53,6 +56,8 @@ import {
   saveSheet,
   initializeTools,
   saveCode,
+  saveCanvas,
+  addCanvasOutput,
   addCodeFile,
   createCodeProjectWithFile,
   addCodeOutput,
@@ -133,7 +138,7 @@ function ProjectArt({
 }) {
   return (
     <div
-      className={`project-art ${code ? 'code-art' : tools.length === 2 ? 'mixed-art' : tools[0]} ${large ? 'large-art' : ''}`}
+      className={`project-art ${code ? 'code-art' : tools.length > 1 ? 'mixed-art' : tools[0]} ${large ? 'large-art' : ''}`}
       aria-hidden="true"
     >
       {code && <span>{'</>'}</span>}
@@ -151,6 +156,18 @@ function ProjectArt({
           <circle cx="107" cy="32" r="4" className="art-dot" />
         </svg>
       )}
+      {!code &&
+        tools.includes('canvas') &&
+        !tools.includes('graph') &&
+        !tools.includes('sheet') && (
+          <svg className="canvas-art" viewBox="0 0 320 140" fill="none" aria-hidden="true">
+            <rect className="art-shape" x="24" y="30" width="96" height="60" rx="8" />
+            <circle className="art-shape" cx="250" cy="60" r="34" />
+            <path className="art-line" d="M120 60H206" />
+            <path className="art-line" d="M196 50L208 60L196 70" />
+            <path className="art-shape" d="M60 112L90 140H30Z" transform="translate(90 -20)" />
+          </svg>
+        )}
       {!code && tools.includes('sheet') && (
         <div className="sheet-art">
           <div className="sheet-ruler">
@@ -568,6 +585,7 @@ export default function App() {
   const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
   const [sheetDraft, setSheetDraft] = useState<{ id: string; value: SheetDocument } | null>(null)
   const [codeDraft, setCodeDraft] = useState<{ id: string; value: CodeDocument } | null>(null)
+  const [canvasDraft, setCanvasDraft] = useState<{ id: string; value: CanvasDocument } | null>(null)
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
   const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
@@ -577,7 +595,13 @@ export default function App() {
   useEffect(() => {
     const changed = () => {
       if (
-        (notesDraft || graphDraft || sheetDraft || codeDraft || sheetEditing || outputEditing) &&
+        (notesDraft ||
+          graphDraft ||
+          sheetDraft ||
+          codeDraft ||
+          canvasDraft ||
+          sheetEditing ||
+          outputEditing) &&
         readRoute() !== route
       ) {
         if (
@@ -592,15 +616,33 @@ export default function App() {
         setGraphDraft(null)
         setSheetDraft(null)
         setCodeDraft(null)
+        setCanvasDraft(null)
         setSheetEditing(null)
       }
       setRoute(readRoute())
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
-  }, [notesDraft, graphDraft, sheetDraft, codeDraft, sheetEditing, outputEditing, route])
+  }, [
+    notesDraft,
+    graphDraft,
+    sheetDraft,
+    codeDraft,
+    canvasDraft,
+    sheetEditing,
+    outputEditing,
+    route,
+  ])
   useEffect(() => {
-    if (!notesDraft && !graphDraft && !sheetDraft && !codeDraft && !sheetEditing && !outputEditing)
+    if (
+      !notesDraft &&
+      !graphDraft &&
+      !sheetDraft &&
+      !codeDraft &&
+      !canvasDraft &&
+      !sheetEditing &&
+      !outputEditing
+    )
       return
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
@@ -608,7 +650,7 @@ export default function App() {
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [notesDraft, graphDraft, sheetDraft, codeDraft, sheetEditing, outputEditing])
+  }, [notesDraft, graphDraft, sheetDraft, codeDraft, canvasDraft, sheetEditing, outputEditing])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -649,10 +691,15 @@ export default function App() {
   const graphOpen = openModule?.id === 'graph'
   const sheetOpen = openModule?.id === 'sheet'
   const codeOpen = openModule?.id === 'code'
+  const canvasOpen = openModule?.id === 'canvas'
   const linkedOpen = openView?.id === 'workspace'
   const projectViews = availableViews(projectTools)
   const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
   const fallbackCode = useMemo(() => emptyCode(), [currentProject?.id])
+  const fallbackCanvas = useMemo(
+    () => emptyCanvas('deck', design.canvas.gridSize),
+    [currentProject?.id],
+  ) // eslint-disable-line react-hooks/exhaustive-deps
   const fallbackGraph = useMemo(
     () => (currentProject?.referenceUrl === LAPLACE_URL ? laplaceGraph() : emptyGraph()),
     [currentProject?.id, currentProject?.referenceUrl],
@@ -781,6 +828,8 @@ export default function App() {
         notesDraft?.id,
         graphDraft?.id,
         sheetDraft?.id,
+        codeDraft?.id,
+        canvasDraft?.id,
         sheetEditing ? projectId : null,
       ].filter(Boolean)
       if (!base || ids.some((id) => !base!.projects.some((p) => p.id === id)))
@@ -805,11 +854,12 @@ export default function App() {
         graph: graphDraft,
         sheet: pendingSheet,
         code: codeDraft,
+        canvas: canvasDraft,
       })
       downloadData(serializeBackup(snapshot))
       setToast({
         text:
-          notesDraft || graphDraft || pendingSheet || codeDraft
+          notesDraft || graphDraft || pendingSheet || codeDraft || canvasDraft
             ? 'Backup downloaded, including unsaved project edits. This does not save them in the browser.'
             : 'Library backup downloaded.',
       })
@@ -847,6 +897,7 @@ export default function App() {
     graphDraft ||
     sheetDraft ||
     codeDraft ||
+    canvasDraft ||
     sheetEditing ||
     outputEditing
   )
@@ -865,6 +916,7 @@ export default function App() {
           setNotesDraft(null)
           setGraphDraft(null)
           setSheetDraft(null)
+          setCanvasDraft(null)
           setSheetEditing(null)
           setModal(null)
           setQuery('')
@@ -1080,7 +1132,13 @@ export default function App() {
             <DesignerSwitch />
             <button className="save-indicator" onClick={() => showModal({ kind: 'storage' })}>
               <span className="status-dot" />
-              {saveError || notesDraft || graphDraft || sheetDraft || codeDraft || outputEditing
+              {saveError ||
+              notesDraft ||
+              graphDraft ||
+              sheetDraft ||
+              codeDraft ||
+              canvasDraft ||
+              outputEditing
                 ? 'Changes not saved'
                 : sheetEditing
                   ? 'Editing cell'
@@ -1222,6 +1280,29 @@ export default function App() {
                     setGraphDraft({ id: currentProject.id, value: graph })
                     const saved = commit((current) => saveGraph(current, currentProject.id, graph))
                     if (saved) setGraphDraft(null)
+                    return saved
+                  }}
+                />
+              ) : canvasOpen ? (
+                <CanvasEditor
+                  key={currentProject.id}
+                  title={currentProject.title}
+                  canvas={
+                    canvasDraft?.id === currentProject.id
+                      ? canvasDraft.value
+                      : (currentProject.canvas ?? fallbackCanvas)
+                  }
+                  readOnly={currentProject.status === 'trashed'}
+                  unsaved={canvasDraft?.id === currentProject.id}
+                  onBack={() => {
+                    window.location.hash = projectRoute(currentProject.id)
+                  }}
+                  onChange={(canvas) => {
+                    setCanvasDraft({ id: currentProject.id, value: canvas })
+                    const saved = commit((current) =>
+                      saveCanvas(current, currentProject.id, canvas),
+                    )
+                    if (saved) setCanvasDraft(null)
                     return saved
                   }}
                 />
@@ -1472,6 +1553,30 @@ export default function App() {
                               commit((current) => {
                                 const ready = initializeTools(current, currentProject.id, ['code'])
                                 return addCodeOutput(ready, currentProject.id)
+                              })
+                            }
+                            onRemove={(outputId) =>
+                              commit((current) =>
+                                removeOutput(current, currentProject.id, outputId),
+                              )
+                            }
+                          />
+                        )}
+                        {currentProject.tools.includes('canvas') && (
+                          <CanvasOutputs
+                            key={`canvas-${currentProject.id}`}
+                            project={currentProject}
+                            canvas={
+                              canvasDraft?.id === currentProject.id
+                                ? canvasDraft.value
+                                : (currentProject.canvas ?? fallbackCanvas)
+                            }
+                            onAdd={() =>
+                              commit((current) => {
+                                const ready = initializeTools(current, currentProject.id, [
+                                  'canvas',
+                                ])
+                                return addCanvasOutput(ready, currentProject.id)
                               })
                             }
                             onRemove={(outputId) =>

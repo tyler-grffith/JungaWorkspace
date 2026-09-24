@@ -23,7 +23,14 @@ export type CodeRunOutput = OutputBase & {
   type: 'code-run'
   source: { kind: 'project-files'; version: 1; entry: string }
 }
-export type Output = SceneOutput | CodeRunOutput
+/** The project's canvas pages, presented read-only with keyboard navigation. */
+export type CanvasShowOutput = OutputBase & {
+  type: 'canvas-show'
+  source: { kind: 'canvas-pages'; version: 1; startPage: string; loop: boolean }
+}
+export type Output = SceneOutput | CodeRunOutput | CanvasShowOutput
+export const isCanvasShow = (output: Output): output is CanvasShowOutput =>
+  output.type === 'canvas-show'
 export const isCodeRun = (output: Output): output is CodeRunOutput => output.type === 'code-run'
 export type SourceManifest = { kind: 'cosmic-clock'; version: 1 }
 export const MIN_SCENE_DATE = Date.UTC(1970, 0, 1)
@@ -85,6 +92,15 @@ export function validOutput(value: unknown): value is Output {
     text(metadata.attribution, 4000) &&
     safeSourceUrl(metadata.sourceUrl)
   if (!shared || !record(source)) return false
+  if (value.type === 'canvas-show')
+    return (
+      keys(source, ['kind', 'version', 'startPage', 'loop']) &&
+      source.kind === 'canvas-pages' &&
+      source.version === 1 &&
+      typeof source.startPage === 'string' &&
+      /^[A-Za-z0-9_-]{0,40}$/.test(source.startPage) &&
+      typeof source.loop === 'boolean'
+    )
   if (value.type === 'code-run')
     return (
       keys(source, ['kind', 'version', 'entry']) &&
@@ -138,6 +154,19 @@ export function earthClockOutput(): SceneOutput {
         'NASA Blue Marble and Black Marble imagery. Timezone Boundary Builder 2026d, © OpenStreetMap contributors, ODbL 1.0. p5.js (LGPL-2.1), Astronomy Engine (MIT), DM fonts and Instrument Serif (OFL).',
       sourceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
     },
+  }
+}
+
+/** A new output that presents the project's canvas pages from the first page. */
+export function canvasShowOutput(title = 'Presentation'): CanvasShowOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'canvas-show',
+    title,
+    description: 'Presents this project\u2019s canvas pages full screen.',
+    status: 'draft',
+    source: { kind: 'canvas-pages', version: 1, startPage: '', loop: false },
+    metadata: { attribution: '', sourceUrl: '' },
   }
 }
 

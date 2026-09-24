@@ -137,6 +137,26 @@ export const designGroups = {
       }),
     },
   },
+  canvas: {
+    title: 'Visual canvas',
+    description: 'Panels, grid, and defaults for new canvas elements. Open a canvas to preview.',
+    files: 'src/canvas/CanvasEditor.tsx; src/canvas/canvas.css; src/canvas/model.ts',
+    fields: {
+      pageStripWidth: number('Page strip width (px)', 168, 120, 260, {
+        cssVar: '--canvas-strip-width',
+      }),
+      inspectorWidth: number('Inspector width (px)', 264, 200, 360, {
+        cssVar: '--canvas-inspector-width',
+      }),
+      gridSize: number('Default grid size (px)', 10, 2, 100, {
+        help: 'Applies to new canvases; each canvas keeps its own grid setting.',
+      }),
+      defaultFill: color('Default shape fill', '#eef3e9', '--canvas-default-fill'),
+      defaultStroke: color('Default shape stroke', '#285f4b', '--canvas-default-stroke'),
+      handleColor: color('Selection color', '#2f6fed', '--canvas-handle-color'),
+      showRulers: toggle('Show rulers', true, 'Pixel rulers along the top and left of the stage.'),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

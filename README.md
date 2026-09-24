@@ -1,6 +1,6 @@
 # Junga Workspace
 
-A browser workspace for a project library, graphing calculator, and spreadsheet.
+A browser workspace for a project library, graphing calculator, spreadsheet, code projects, and a visual canvas.
 
 ## Run locally
 
@@ -69,6 +69,14 @@ Tick **Code** when creating a project to get a file workspace. **Open files** li
 
 Running needs no server and no build step. Every file but the entry becomes a `data:` URL and an import map resolves the project's own relative imports, so `import './lib/util.js'` works across several files. The page runs in a sandboxed frame without `allow-same-origin`, so it cannot read your saved library or the page around it; it _can_ reach the network, so a CDN library works. The console panel shows the running page's logs, warnings and errors. Not supported: JSX or TypeScript compilation, bare npm imports without a CDN URL, and navigating between HTML files inside one output.
 
+## Visual canvas
+
+Tick **Visual canvas** when creating a project, then **Open visual canvas**. A canvas document is a set of pages of shapes, text, images, and connectors, plus a **mode** that says how the pages are used: a **presentation deck** (slides with build steps and transitions), an **interactive mockup** (screens linked by clickable elements), a **diagram board** (unbounded canvases), or a **simple animation** (elements move between keyframes). The drawing is the same in every mode; only naming, the inspector's extra sections, and playback change.
+
+Draw with the toolbar or keys (V select, H pan, R rectangle, O ellipse, T text, L connector); drag to size a shape, double-click to edit text (`x_{1}` and `x^{2}` give sub- and superscripts), and drag a connector from one shape to another to attach it. Snapping uses the grid and other elements' edges; hold Alt to disable. Select several with Shift or a marquee; Ctrl+G groups, [ and ] change order, Ctrl+D duplicates, Ctrl+Z undoes. The inspector edits every property, including paints (`none`, a color, or a two-stop gradient), fonts, arrowheads, build steps, links, and keyframes. Pages are added, duplicated, reordered, and deleted in the strip.
+
+**Present** plays the canvases by mode; **Add canvas output** on the overview publishes the same playback on the read-only output route. **Export** writes this canvas as SVG or PNG (2× or 3×) and all canvases as a PDF through the print dialog, and imports `.drawio` files (compressed or not) as canvases. Images are stored inside the document after downscaling, up to 600 KB each and 2.5 MB per canvas; PPTX and GIF export are planned. See `sharedProjectManagement/features/visual canvas.md`.
+
 ## Bundled source projects and scene outputs
 
 Choose **Cosmic Clock** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, documentation, and maintenance scripts, and **View file** opens any of them read-only, with **Copy into** to put a text file in a code project where it can be edited and run — source from the application bundle, served assets from their URL, images as a preview, and very large data files truncated with a link to the whole file; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. This is the **Bundled source project** type in the project form: source that ships with the app, with no files kept in the browser.
@@ -86,6 +94,7 @@ For a bundled source project, Junga manages metadata/configuration and a source 
 - `src/graph/`: graph document, numeric parser/evaluator, sampling, editor, and plot.
 - `src/sheet/`: spreadsheet document, bounded formula engine, clipboard/fill operations, and editor.
 - `src/linked/`: combined workspace, cell/point link settings, and the native octahedron example.
+- `src/canvas/`: visual canvas document model, geometry, shared SVG rendering, editor, inspector, presenter, export, and draw.io import.
 - `tests/`: browser acceptance tests.
 - `docs/`: decisions, work log, and current handoff.
 - `sharedProjectManagement/taskList.md`: shared priorities and follow-ups.

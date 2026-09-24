@@ -1,4 +1,5 @@
 import {
+  canvasShowOutput,
   codeRunOutput,
   earthClockOutput,
   validOutput,
@@ -28,6 +29,7 @@ import {
   type GraphDocument,
 } from './graph/model'
 import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
+import { emptyCanvas, validCanvas, canvasProblem, type CanvasDocument } from './canvas/model'
 import { TOOL_IDS, isTool, type Tool } from './modules/ids'
 
 export type { Tool } from './modules/ids'
@@ -54,6 +56,7 @@ export type Project = {
   graph?: GraphDocument
   sheet?: SheetDocument
   code?: CodeDocument
+  canvas?: CanvasDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -113,6 +116,7 @@ export function addProject(
   graph?: GraphDocument,
   sheet?: SheetDocument,
   code?: CodeDocument,
+  canvas?: CanvasDocument,
 ): { library: Library; project: Project } {
   const now = timestamp()
   const project: Project = {
@@ -129,6 +133,7 @@ export function addProject(
     ...(graph ? { graph: structuredClone(graph) } : {}),
     ...(sheet ? { sheet: structuredClone(sheet) } : {}),
     ...(code ? { code: structuredClone(code) } : {}),
+    ...(canvas ? { canvas: structuredClone(canvas) } : {}),
   }
   return { library: { ...library, projects: [project, ...library.projects] }, project }
 }
@@ -148,7 +153,9 @@ export function editProject(library: Library, id: string, input: ProjectInput): 
   return changeProject(library, id, (p) => {
     if (p.status === 'trashed') throw new Error('Restore this project before editing it.')
     if (!ownsOutputs({ projectType: fields.projectType, tools: fields.tools }) && p.outputs.length)
-      throw new Error('This project owns code outputs. Keep its code tool or Code project type.')
+      throw new Error(
+        'This project owns code or canvas outputs. Keep its code or canvas tool, or Code project type.',
+      )
     if (fields.projectType !== 'code' && p.sourceManifest)
       throw new Error(
         'This project owns code material bundled with the app. Keep its Code project type.',
@@ -196,6 +203,7 @@ export function duplicateProject(library: Library, id: string) {
     original.graph,
     original.sheet,
     original.code,
+    original.canvas,
   )
   result.project.outputs = structuredClone(original.outputs).map((output) => ({
     ...output,
@@ -262,10 +270,27 @@ export function initializeCode(library: Library, id: string): Library {
   if (!project) throw new Error('This project is no longer available.')
   return project.code ? library : saveCode(library, id, emptyCode())
 }
+export function saveCanvas(library: Library, id: string, canvas: CanvasDocument): Library {
+  if (!validCanvas(canvas)) throw new Error(canvasProblem(canvas))
+  return changeProject(library, id, (project) => {
+    if (project.status === 'trashed')
+      throw new Error('Restore this project before editing its canvas.')
+    if (!project.tools.includes('canvas'))
+      throw new Error('Add the canvas tool to this project before drawing on it.')
+    return { ...project, canvas, updatedAt: timestamp() }
+  })
+}
+
+export function initializeCanvas(library: Library, id: string): Library {
+  const project = library.projects.find((p) => p.id === id)
+  if (!project) throw new Error('This project is no longer available.')
+  return project.canvas ? library : saveCanvas(library, id, emptyCanvas())
+}
 const initializers: Record<Tool, (library: Library, id: string) => Library> = {
   graph: initializeGraph,
   sheet: initializeSheet,
   code: initializeCode,
+  canvas: initializeCanvas,
 }
 /** Create the saved document for each listed module if the project lacks it. */
 export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {
@@ -412,12 +437,16 @@ export function parseLibrary(raw: string | null): Library {
         return false
       if (p.outputs !== undefined && !validOutputs(p.outputs)) return false
       if (p.sourceManifest !== undefined && !validManifest(p.sourceManifest)) return false
-      const ownsOutput = p.projectType === 'code' || (p.tools as unknown[]).includes('code')
+      const ownsOutput =
+        p.projectType === 'code' ||
+        (p.tools as unknown[]).includes('code') ||
+        (p.tools as unknown[]).includes('canvas')
       if (!ownsOutput && Array.isArray(p.outputs) && p.outputs.length) return false
       if (p.projectType !== 'code' && p.sourceManifest) return false
       if (p.graph !== undefined && !validGraph(p.graph)) return false
       if (p.sheet !== undefined && !validSheet(p.sheet)) return false
       if (p.code !== undefined && !validCode(p.code)) return false
+      if (p.canvas !== undefined && !validCanvas(p.canvas)) return false
       if (p.referenceUrl) {
         try {
           if (!['http:', 'https:'].includes(new URL(p.referenceUrl as string).protocol))
@@ -553,9 +582,25 @@ export function createCodeProjectWithFile(
   )
 }
 
-/** Cosmic Clock projects and projects holding the code tool are the two output owners. */
+/** Cosmic Clock projects and projects holding the code or canvas tool own outputs. */
 export const ownsOutputs = (project: Pick<Project, 'projectType' | 'tools'>) =>
-  project.projectType === 'code' || project.tools.includes('code')
+  project.projectType === 'code' ||
+  project.tools.includes('code') ||
+  project.tools.includes('canvas')
+
+/** A presentation output that plays the project's canvas pages. */
+export function addCanvasOutput(library: Library, projectId: string, title?: string): Library {
+  return changeProject(library, projectId, (project) => {
+    if (!project.tools.includes('canvas') || project.status === 'trashed')
+      throw new Error('Add the canvas tool to this project outside the trash.')
+    if (project.outputs.length >= 20) throw new Error('A project can contain up to 20 outputs.')
+    return {
+      ...project,
+      outputs: [...project.outputs, canvasShowOutput(title || `${project.title} presentation`)],
+      updatedAt: timestamp(),
+    }
+  })
+}
 
 export function addCodeOutput(library: Library, projectId: string, title?: string): Library {
   return changeProject(library, projectId, (project) => {

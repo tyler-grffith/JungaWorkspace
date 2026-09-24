@@ -15,7 +15,8 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 - [x] **Integrate Cosmic Clock as a code project with an Interactive scene output.** Source inventory and explicit defaults/metadata editor; separate temporary viewer sessions; lifecycle/migration/backups preserved.
 - [ ] **Review Cosmic Clock source/output separation.** Create the template, edit output defaults, open Earth Clock, change its date/camera, return and reopen. Confirm Working material vs Outputs, ownership, mobile controls, and that ordinary viewing never saves. Repository source editing, filesystem synchronization and additional scene kinds remain future decisions.
 - [ ] **Try the expanded designer areas.** Spreadsheet sizing, shared appearance colors and fonts, workspace shell dimensions and text, and library defaults/copy are now adjustable. Note which fixed details are still missing; each is one registry line.
-- [ ] **Choose the first new module.** Tyler names modules one at a time. Candidates from the owner's list: text, diagram, presentation, photos. Follow the checklist in `docs/ARCHITECTURE.md`.
+- [x] **Choose the first new module.** Tyler chose the visual canvas (slides, diagrams, mockups, simple animation in one module) on September 23. Built on `codex/canvas-module`; see the increment below. Remaining candidates from the owner's list: text, photos.
+- [ ] **Review the visual canvas.** Create a project with the Visual canvas tool, draw shapes and text, connect two shapes, switch modes, add a slide, present it, add a canvas output, export SVG/PNG/PDF, and import one of the draw.io files from Drive. Note which gesture, control, or default feels wrong first; the shape library, snapping threshold, presenter frame, and defaults are all cheap to change.
 - [ ] **Shape portfolio and blog.** Both in-app views and exports, hosting undecided. First step: a per-module presentation render (static graph SVG, static sheet table) that both can reuse.
 - [x] **Publish the GitHub collaboration baseline.** Merged into `main` via [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1), with contribution/agent guidance, templates, PR CI, and main-branch protection. `bobjunga` has a pending write invitation.
 - [ ] **Review designer access.** Switch User mode → Designer mode in the top bar. Try the label preview, typed/dropdown angle controls, layout settings, and Save/Revert. Try copying a one-sentence refinement request. Implemented on `codex/designer-mode`; [workflow](../docs/REFINEMENTS.md).
@@ -31,6 +32,10 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 The owner requested graphing, then the spreadsheet and backup recovery, on September 18. All three MVP components now have working first versions, with a complete manual backup/restore workflow. Next priorities are hands-on product review and the first remote PR/CI cycle. Merges and deployments still require the product owner's decision.
 
 ## Come back to
+
+- [ ] **Canvas storage for images.** Images are stored inside the canvas document as downscaled data URLs, bounded at 600 KB each and 2.5 MB per document, because the library shares one local-storage key. Tyler's Deimos diagram alone carries 3.4 MB of images. Decide on an IndexedDB asset store (shared with code-project binary assets) and extend the backup format to carry it.
+- [ ] **Canvas export formats.** SVG, PNG (2×/3×), and PDF (print dialog) exist. PPTX and GIF export need a zip writer and a GIF encoder; choose between hand-written minimal implementations and a dependency, then add "export every canvas" for PNG/SVG and Figma-style scale choices.
+- [ ] **Canvas editing depth from actual use.** Candidates: mixed text styles within one element, master layouts and themes for decks, reusable components for mockups, freehand/path editing, distribute spacing, keyboard-driven duplication along a direction, per-page zoom memory, and drag reordering in the page strip.
 
 - [ ] **Extend designer controls from actual use.** Adding a control is one registry line; add them as Tyler asks. Consider preset comparisons, per-module groups for new modules, and a hosted designer role when accounts/hosting exist.
 - [ ] **Revisit recovery as storage evolves.** Manual full-library backups and restoration are implemented. Selective project recovery, scheduled backups, persistent version history, and coordinated simultaneous editing remain future decisions alongside server storage.
@@ -119,6 +124,15 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] 114 unit tests, TypeScript and build pass; 69 browser tests pass (65 chromium including 4 new code-project tests, 4 designer). Branch `codex/code-project-module`; no merge or deployment.
 - [ ] Awaiting Tyler: binary assets (images, fonts, data files) need storage beyond the shared local-storage key. A build step for JSX/TypeScript or bare npm imports, and navigation between HTML files inside one output, are also undecided.
 - [ ] Revisit the sandbox's network access when user accounts arrive; running someone else's project then means running untrusted code for other people.
+
+## Visual canvas module — September 23, 2026
+
+- [x] `canvas` added as the fourth module beside Graphing, Spreadsheet, and Code: one document of pages and elements with a mode (presentation deck, interactive mockup, diagram board, simple animation) that shapes naming, inspector sections, and playback without changing the drawing.
+- [x] Editor: SVG stage with pan/zoom, rulers, grid and element snapping with guides; 22 shapes, text with sub/superscript markup, images (downscaled data URLs), and connectors with attachable endpoints, waypoints, routing, and arrowheads; select/marquee/move/resize/rotate/group/align/z-order; in-place text editing; 50-step undo; page strip with add/duplicate/reorder/delete; an inspector for every property; a designer-mode group.
+- [x] Presenter for all four modes on the existing output route (`canvas-show`) and from the editor's Present button; build steps and transitions for decks, click-through links for mockups, pan/zoom for boards, keyframe playback with a scrubber for animation.
+- [x] Export as SVG, PNG (2×/3×), and PDF via the print dialog; import of `.drawio` files including compressed diagrams, groups, embedded images, and edge waypoints.
+- [x] 133 unit tests, TypeScript, and the production build pass; 4 new Chromium tests pass with the existing suites. Branch `codex/canvas-module`, based on `codex/deploy-hygiene` (PR #8); no merge or deployment.
+- [ ] Awaiting Tyler: hands-on review; storage decision for images; PPTX/GIF export priority.
 
 ## Viewing bundled material — September 21, 2026
 

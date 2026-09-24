@@ -1,5 +1,12 @@
 # Current handoff
 
+## Collection module — branch `codex/canvas-module`, September 24, 2026
+
+`collection` is the sixth module: tick **Collection**, then **Open collection**. The tree on the left starts with one root; **New collection here** offers presets (Music, Movies, Photography, Poems, Books, Ideas, blank) that seed fields, emoji, accent, and layout. The header edits in place; the controls row sets layout, sort, accent, **Fields**, **Also file under** (a collection may live under several parents), and removal. One box adds an item from a typed title or a pasted link (a YouTube Music link becomes a cover); the detail panel edits title, subtitle, link, image, rating, every field, notes, and which collections hold the item. **Browse** and **Add browse output** present the curation read-only; **Export** writes Markdown or JSON, and JSON re-imports under the current collection.
+
+**Validation on the branch.** `npm run check` and the browser suites pass, including `tests/collection.spec.ts`. The same commit introduces the document-module registry (decision 41), which now hosts canvas, document, and collection; the 3D modeler and slicer prototypes are added through it next.
+
+
 ## Document module — branch `codex/canvas-module`, September 24, 2026
 
 `document` is the fifth module: tick **Document** when creating a project, then **Open document**. The page is edited like Docs: type, select, Ctrl+B/I/U, Ctrl+K for a link, `# `/`## `/`### ` for headings, `- ` or `1. ` for lists (Tab nests, Enter on an empty item leaves), `> ` for a quote, "```" for code. The toolbar has text style, marks, links, alignment, lists, indent, image, divider, font, size, and a **Page** menu (size, margin, line spacing). Headings appear in the outline on the left; the footer counts words and estimates pages. **Preview** opens the reading view; **Add reading output** on the overview publishes it on the read-only output route. **Export** offers PDF (print), Markdown, HTML, plain text, and **Import** brings in Markdown, HTML, or text.

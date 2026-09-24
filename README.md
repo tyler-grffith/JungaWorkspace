@@ -1,6 +1,6 @@
 # Junga Workspace
 
-A browser workspace for a project library, graphing calculator, spreadsheet, code projects, a visual canvas, and documents.
+A browser workspace for a project library, graphing calculator, spreadsheet, code projects, a visual canvas, documents, and curated collections.
 
 ## Run locally
 
@@ -83,6 +83,10 @@ Tick **Document** when creating a project, then **Open document**. The page edit
 
 The document is saved as blocks of styled runs, validated like every other module document. **Preview** and the **reading output** present it read-only with an outline and a print button. **Export** writes PDF (through the print dialog), Markdown, HTML, or plain text; **Import** reads Markdown, HTML, or text files. Images are stored inside the document after downscaling, under the same 2.5 MB bound as the canvas. See `sharedProjectManagement/features/document.md`.
 
+## Collections
+
+Tick **Collection** when creating a project, then **Open collection**. Collections nest as a graph: a collection or an item can be filed under several parents without copying, and loops are refused. Start a collection from a preset (Music, Movies, Photography, Poems, Books, Ideas, or blank), which seeds its fields, emoji, accent color, and layout; everything edits in place afterwards, and **Fields** changes what items show. Add an item by typing a title or pasting a link into the one box; a YouTube or YouTube Music link produces the cover from its video id. The detail panel edits title, subtitle, link, image (link or downscaled upload), rating, fields, notes, and which collections hold the item. Layouts are grid, list, and gallery; **Browse** and the **browse output** show the curation read-only; **Export** writes Markdown or JSON, and JSON re-imports. See `sharedProjectManagement/features/collection.md`.
+
 ## Bundled source projects and scene outputs
 
 Choose **Cosmic Clock** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, documentation, and maintenance scripts, and **View file** opens any of them read-only, with **Copy into** to put a text file in a code project where it can be edited and run — source from the application bundle, served assets from their URL, images as a preview, and very large data files truncated with a link to the whole file; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. This is the **Bundled source project** type in the project form: source that ships with the app, with no files kept in the browser.
@@ -102,6 +106,8 @@ For a bundled source project, Junga manages metadata/configuration and a source 
 - `src/linked/`: combined workspace, cell/point link settings, and the native octahedron example.
 - `src/canvas/`: visual canvas document model, geometry, shared SVG rendering, editor, inspector, presenter, export, and draw.io import.
 - `src/document/`: document block model, HTML renderer and parser, block-level DOM edits, editor, reader, Markdown import/export.
+- `src/collection/`: collection graph model, editor, browser, outputs panel.
+- `src/modules/documents.ts` and `src/modules/editors.tsx`: the document-module registry that wires canvas, document, collection (and future modules) into storage, backups, outputs, and the shell.
 - `tests/`: browser acceptance tests.
 - `docs/`: decisions, work log, and current handoff.
 - `sharedProjectManagement/taskList.md`: shared priorities and follow-ups.

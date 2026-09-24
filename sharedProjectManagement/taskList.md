@@ -16,6 +16,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 - [ ] **Review Cosmic Clock source/output separation.** Create the template, edit output defaults, open Earth Clock, change its date/camera, return and reopen. Confirm Working material vs Outputs, ownership, mobile controls, and that ordinary viewing never saves. Repository source editing, filesystem synchronization and additional scene kinds remain future decisions.
 - [ ] **Try the expanded designer areas.** Spreadsheet sizing, shared appearance colors and fonts, workspace shell dimensions and text, and library defaults/copy are now adjustable. Note which fixed details are still missing; each is one registry line.
 - [x] **Choose the first new module.** Tyler chose the visual canvas (slides, diagrams, mockups, simple animation in one module) on September 23. Built on `codex/canvas-module`; see the increment below. Remaining candidates from the owner's list: text, photos.
+- [ ] **Review the collection.** Create a project with the Collection tool, start a Music collection from the preset, paste a YouTube Music link, fill in artist and rating, add an Albums sub-collection and file the song in it too, switch layouts, open Browse and a browse output, export Markdown. Say which step felt like a barrier; the presets, fields, and card design are all one edit each.
 - [ ] **Review the document.** Create a project with the Document tool, type with the `# `, `- `, `> ` shortcuts, bold and link some text, nest a list with Tab, insert an image, open Preview and a reading output, export Markdown and PDF, and import one of your Markdown files. Note the first formatting or keyboard behaviour that differs from Docs in a way that matters.
 - [ ] **Review the visual canvas.** Create a project with the Visual canvas tool, draw shapes and text, connect two shapes, switch modes, add a slide, present it, add a canvas output, export SVG/PNG/PDF, and import one of the draw.io files from Drive. Note which gesture, control, or default feels wrong first; the shape library, snapping threshold, presenter frame, and defaults are all cheap to change.
 - [ ] **Shape portfolio and blog.** Both in-app views and exports, hosting undecided. First step: a per-module presentation render (static graph SVG, static sheet table) that both can reuse.
@@ -125,6 +126,13 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] 114 unit tests, TypeScript and build pass; 69 browser tests pass (65 chromium including 4 new code-project tests, 4 designer). Branch `codex/code-project-module`; no merge or deployment.
 - [ ] Awaiting Tyler: binary assets (images, fonts, data files) need storage beyond the shared local-storage key. A build step for JSX/TypeScript or bare npm imports, and navigation between HTML files inside one output, are also undecided.
 - [ ] Revisit the sandbox's network access when user accounts arrive; running someone else's project then means running untrusted code for other people.
+
+## Collection module and shared editor host — September 24, 2026
+
+- [x] `collection` added as the sixth module: a graph of nested collections over a shared item pool (children and items may have several parents; loops refused), per-collection fields with presets, quick add from a title or link with YouTube covers, in-place editing, grid/list/gallery layouts, search, a browse output, Markdown/JSON export and JSON import, a designer-mode group.
+- [x] Document-module registry (`src/modules/documents.ts`, `src/modules/editors.tsx`) replaces per-module wiring in the shell; canvas and document moved onto it. New modules of this shape are two registry entries plus their folder.
+- [x] Unit tests for the model and library wiring; two Chromium tests. Same branch `codex/canvas-module`; no merge or deployment.
+- [ ] Awaiting Tyler: drag-and-drop filing, CSV/Spotify import, and link metadata fetching (needs a server) are the natural next steps.
 
 ## Document module — September 24, 2026
 

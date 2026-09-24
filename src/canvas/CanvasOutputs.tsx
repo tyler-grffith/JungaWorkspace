@@ -8,12 +8,12 @@ import './canvas.css'
 
 export default function CanvasOutputs({
   project,
-  canvas,
+  document: canvas,
   onAdd,
   onRemove,
 }: {
   project: Project
-  canvas: CanvasDocument
+  document: CanvasDocument
   onAdd: () => boolean
   onRemove: (outputId: string) => boolean
 }) {

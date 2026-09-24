@@ -33,7 +33,15 @@ export type DocumentReadOutput = OutputBase & {
   type: 'document-read'
   source: { kind: 'document'; version: 1; showOutline: boolean }
 }
-export type Output = SceneOutput | CodeRunOutput | CanvasShowOutput | DocumentReadOutput
+/** The project's collections, browsed read-only from a starting collection. */
+export type CollectionBrowseOutput = OutputBase & {
+  type: 'collection-browse'
+  source: { kind: 'collections'; version: 1; startId: string }
+}
+export type Output =
+  SceneOutput | CodeRunOutput | CanvasShowOutput | DocumentReadOutput | CollectionBrowseOutput
+export const isCollectionBrowse = (output: Output): output is CollectionBrowseOutput =>
+  output.type === 'collection-browse'
 export const isDocumentRead = (output: Output): output is DocumentReadOutput =>
   output.type === 'document-read'
 export const isCanvasShow = (output: Output): output is CanvasShowOutput =>
@@ -99,6 +107,14 @@ export function validOutput(value: unknown): value is Output {
     text(metadata.attribution, 4000) &&
     safeSourceUrl(metadata.sourceUrl)
   if (!shared || !record(source)) return false
+  if (value.type === 'collection-browse')
+    return (
+      keys(source, ['kind', 'version', 'startId']) &&
+      source.kind === 'collections' &&
+      source.version === 1 &&
+      typeof source.startId === 'string' &&
+      /^[A-Za-z0-9_-]{0,40}$/.test(source.startId)
+    )
   if (value.type === 'document-read')
     return (
       keys(source, ['kind', 'version', 'showOutline']) &&
@@ -168,6 +184,19 @@ export function earthClockOutput(): SceneOutput {
         'NASA Blue Marble and Black Marble imagery. Timezone Boundary Builder 2026d, © OpenStreetMap contributors, ODbL 1.0. p5.js (LGPL-2.1), Astronomy Engine (MIT), DM fonts and Instrument Serif (OFL).',
       sourceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
     },
+  }
+}
+
+/** A new output that presents the project's collections as a browsing page. */
+export function collectionBrowseOutput(title = 'Collections'): CollectionBrowseOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'collection-browse',
+    title,
+    description: 'Presents this project\u2019s collections to browse.',
+    status: 'draft',
+    source: { kind: 'collections', version: 1, startId: '' },
+    metadata: { attribution: '', sourceUrl: '' },
   }
 }
 

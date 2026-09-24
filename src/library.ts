@@ -1,7 +1,5 @@
 import {
-  canvasShowOutput,
   codeRunOutput,
-  documentReadOutput,
   earthClockOutput,
   validOutput,
   validOutputs,
@@ -30,8 +28,16 @@ import {
   type GraphDocument,
 } from './graph/model'
 import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
-import { emptyCanvas, validCanvas, canvasProblem, type CanvasDocument } from './canvas/model'
-import { emptyDocument, validDocument, documentProblem, type TextDocument } from './document/model'
+import type { CanvasDocument } from './canvas/model'
+import type { TextDocument } from './document/model'
+import type { CollectionDocument } from './collection/model'
+import {
+  DOCUMENT_TOOLS,
+  documentModules,
+  isDocumentTool,
+  type DocumentTool,
+  type ModuleDocuments,
+} from './modules/documents'
 import { TOOL_IDS, isTool, type Tool } from './modules/ids'
 
 export type { Tool } from './modules/ids'
@@ -60,6 +66,7 @@ export type Project = {
   code?: CodeDocument
   canvas?: CanvasDocument
   document?: TextDocument
+  collection?: CollectionDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -119,8 +126,7 @@ export function addProject(
   graph?: GraphDocument,
   sheet?: SheetDocument,
   code?: CodeDocument,
-  canvas?: CanvasDocument,
-  text?: TextDocument,
+  documents: Partial<ModuleDocuments> = {},
 ): { library: Library; project: Project } {
   const now = timestamp()
   const project: Project = {
@@ -137,8 +143,10 @@ export function addProject(
     ...(graph ? { graph: structuredClone(graph) } : {}),
     ...(sheet ? { sheet: structuredClone(sheet) } : {}),
     ...(code ? { code: structuredClone(code) } : {}),
-    ...(canvas ? { canvas: structuredClone(canvas) } : {}),
-    ...(text ? { document: structuredClone(text) } : {}),
+  }
+  for (const tool of DOCUMENT_TOOLS) {
+    const document = documents[tool]
+    if (document) (project as Record<string, unknown>)[tool] = structuredClone(document)
   }
   return { library: { ...library, projects: [project, ...library.projects] }, project }
 }
@@ -208,8 +216,7 @@ export function duplicateProject(library: Library, id: string) {
     original.graph,
     original.sheet,
     original.code,
-    original.canvas,
-    original.document,
+    Object.fromEntries(DOCUMENT_TOOLS.map((tool) => [tool, original[tool]])),
   )
   result.project.outputs = structuredClone(original.outputs).map((output) => ({
     ...output,
@@ -276,44 +283,49 @@ export function initializeCode(library: Library, id: string): Library {
   if (!project) throw new Error('This project is no longer available.')
   return project.code ? library : saveCode(library, id, emptyCode())
 }
-export function saveCanvas(library: Library, id: string, canvas: CanvasDocument): Library {
-  if (!validCanvas(canvas)) throw new Error(canvasProblem(canvas))
+/** Save one document module's document after validating it against the module registry. */
+export function saveModuleDocument<K extends DocumentTool>(
+  library: Library,
+  id: string,
+  tool: K,
+  document: ModuleDocuments[K],
+): Library {
+  const module = documentModules[tool]
+  if (!module.valid(document)) throw new Error(module.problem(document))
   return changeProject(library, id, (project) => {
     if (project.status === 'trashed')
-      throw new Error('Restore this project before editing its canvas.')
-    if (!project.tools.includes('canvas'))
-      throw new Error('Add the canvas tool to this project before drawing on it.')
-    return { ...project, canvas, updatedAt: timestamp() }
+      throw new Error(`Restore this project before editing its ${module.noun}.`)
+    if (!project.tools.includes(tool))
+      throw new Error(`Add the ${moduleName(tool)} tool to this project before editing it.`)
+    return { ...project, [tool]: document, updatedAt: timestamp() }
   })
 }
-
-export function initializeCanvas(library: Library, id: string): Library {
+const moduleName = (tool: Tool) => (tool === 'document' ? 'document' : tool)
+export function initializeModuleDocument(
+  library: Library,
+  id: string,
+  tool: DocumentTool,
+): Library {
   const project = library.projects.find((p) => p.id === id)
   if (!project) throw new Error('This project is no longer available.')
-  return project.canvas ? library : saveCanvas(library, id, emptyCanvas())
+  return project[tool]
+    ? library
+    : saveModuleDocument(library, id, tool, documentModules[tool].empty())
 }
-export function saveDocument(library: Library, id: string, text: TextDocument): Library {
-  if (!validDocument(text)) throw new Error(documentProblem(text))
-  return changeProject(library, id, (project) => {
-    if (project.status === 'trashed')
-      throw new Error('Restore this project before editing its document.')
-    if (!project.tools.includes('document'))
-      throw new Error('Add the document tool to this project before writing in it.')
-    return { ...project, document: text, updatedAt: timestamp() }
-  })
-}
-
-export function initializeDocument(library: Library, id: string): Library {
-  const project = library.projects.find((p) => p.id === id)
-  if (!project) throw new Error('This project is no longer available.')
-  return project.document ? library : saveDocument(library, id, emptyDocument())
-}
+// Named wrappers keep call sites and tests readable.
+export const saveCanvas = (library: Library, id: string, canvas: CanvasDocument) =>
+  saveModuleDocument(library, id, 'canvas', canvas)
+export const saveDocument = (library: Library, id: string, text: TextDocument) =>
+  saveModuleDocument(library, id, 'document', text)
+export const saveCollections = (library: Library, id: string, collection: CollectionDocument) =>
+  saveModuleDocument(library, id, 'collection', collection)
 const initializers: Record<Tool, (library: Library, id: string) => Library> = {
   graph: initializeGraph,
   sheet: initializeSheet,
   code: initializeCode,
-  canvas: initializeCanvas,
-  document: initializeDocument,
+  canvas: (library, id) => initializeModuleDocument(library, id, 'canvas'),
+  document: (library, id) => initializeModuleDocument(library, id, 'document'),
+  collection: (library, id) => initializeModuleDocument(library, id, 'collection'),
 }
 /** Create the saved document for each listed module if the project lacks it. */
 export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {
@@ -463,15 +475,14 @@ export function parseLibrary(raw: string | null): Library {
       const ownsOutput =
         p.projectType === 'code' ||
         (p.tools as unknown[]).includes('code') ||
-        (p.tools as unknown[]).includes('canvas') ||
-        (p.tools as unknown[]).includes('document')
+        (p.tools as unknown[]).some(isDocumentTool)
       if (!ownsOutput && Array.isArray(p.outputs) && p.outputs.length) return false
       if (p.projectType !== 'code' && p.sourceManifest) return false
       if (p.graph !== undefined && !validGraph(p.graph)) return false
       if (p.sheet !== undefined && !validSheet(p.sheet)) return false
       if (p.code !== undefined && !validCode(p.code)) return false
-      if (p.canvas !== undefined && !validCanvas(p.canvas)) return false
-      if (p.document !== undefined && !validDocument(p.document)) return false
+      for (const tool of DOCUMENT_TOOLS)
+        if (p[tool] !== undefined && !documentModules[tool].valid(p[tool])) return false
       if (p.referenceUrl) {
         try {
           if (!['http:', 'https:'].includes(new URL(p.referenceUrl as string).protocol))
@@ -607,41 +618,30 @@ export function createCodeProjectWithFile(
   )
 }
 
-/** Cosmic Clock projects and projects holding the code or canvas tool own outputs. */
+/** Cosmic Clock projects and projects holding the code tool or any document module own outputs. */
 export const ownsOutputs = (project: Pick<Project, 'projectType' | 'tools'>) =>
   project.projectType === 'code' ||
   project.tools.includes('code') ||
-  project.tools.includes('canvas') ||
-  project.tools.includes('document')
+  project.tools.some(isDocumentTool)
 
-/** A reading output that presents the project's document read-only. */
-export function addDocumentOutput(library: Library, projectId: string, title?: string): Library {
+/** Add a document module's read-only output (presentation, reading page, browse page). */
+export function addModuleOutput(
+  library: Library,
+  projectId: string,
+  tool: DocumentTool,
+  title?: string,
+): Library {
   return changeProject(library, projectId, (project) => {
-    if (!project.tools.includes('document') || project.status === 'trashed')
-      throw new Error('Add the document tool to this project outside the trash.')
+    if (!project.tools.includes(tool) || project.status === 'trashed')
+      throw new Error(`Add the ${moduleName(tool)} tool to this project outside the trash.`)
     if (project.outputs.length >= 20) throw new Error('A project can contain up to 20 outputs.')
     return {
       ...project,
-      outputs: [...project.outputs, documentReadOutput(title || project.title)],
+      outputs: [...project.outputs, documentModules[tool].output.make(title || project.title)],
       updatedAt: timestamp(),
     }
   })
 }
-
-/** A presentation output that plays the project's canvas pages. */
-export function addCanvasOutput(library: Library, projectId: string, title?: string): Library {
-  return changeProject(library, projectId, (project) => {
-    if (!project.tools.includes('canvas') || project.status === 'trashed')
-      throw new Error('Add the canvas tool to this project outside the trash.')
-    if (project.outputs.length >= 20) throw new Error('A project can contain up to 20 outputs.')
-    return {
-      ...project,
-      outputs: [...project.outputs, canvasShowOutput(title || `${project.title} presentation`)],
-      updatedAt: timestamp(),
-    }
-  })
-}
-
 export function addCodeOutput(library: Library, projectId: string, title?: string): Library {
   return changeProject(library, projectId, (project) => {
     if (!project.tools.includes('code') || project.status === 'trashed')
@@ -658,6 +658,12 @@ export function addCodeOutput(library: Library, projectId: string, title?: strin
     }
   })
 }
+export const addCanvasOutput = (library: Library, projectId: string, title?: string) =>
+  addModuleOutput(library, projectId, 'canvas', title)
+export const addDocumentOutput = (library: Library, projectId: string, title?: string) =>
+  addModuleOutput(library, projectId, 'document', title)
+export const addCollectionOutput = (library: Library, projectId: string, title?: string) =>
+  addModuleOutput(library, projectId, 'collection', title)
 
 export function removeOutput(library: Library, projectId: string, outputId: string): Library {
   return changeProject(library, projectId, (project) => {

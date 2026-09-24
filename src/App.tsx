@@ -2,12 +2,14 @@ import CodeProjectOverview from './CodeProjectOverview'
 import CodeEditor from './code/CodeEditor'
 import CodeOutputs from './code/CodeOutputs'
 import { emptyCode, type CodeDocument } from './code/model'
-import CanvasEditor from './canvas/CanvasEditor'
-import CanvasOutputs from './canvas/CanvasOutputs'
-import { emptyCanvas, type CanvasDocument } from './canvas/model'
-import DocumentEditor from './document/DocumentEditor'
-import DocumentOutputs from './document/DocumentOutputs'
-import { emptyDocument, type TextDocument } from './document/model'
+import {
+  DOCUMENT_TOOLS,
+  isDocumentTool,
+  type DocumentTool,
+  type ModuleDocuments,
+  type ModuleDrafts,
+} from './modules/documents'
+import { editorModules, type EditorProps, type OutputsProps } from './modules/editors'
 import OutputPage from './OutputPage'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
@@ -59,10 +61,8 @@ import {
   saveSheet,
   initializeTools,
   saveCode,
-  saveCanvas,
-  addCanvasOutput,
-  saveDocument,
-  addDocumentOutput,
+  saveModuleDocument,
+  addModuleOutput,
   addCodeFile,
   createCodeProjectWithFile,
   addCodeOutput,
@@ -161,24 +161,7 @@ function ProjectArt({
           <circle cx="107" cy="32" r="4" className="art-dot" />
         </svg>
       )}
-      {!code &&
-        tools.includes('canvas') &&
-        !tools.includes('graph') &&
-        !tools.includes('sheet') && (
-          <svg className="canvas-art" viewBox="0 0 320 140" fill="none" aria-hidden="true">
-            <rect className="art-shape" x="24" y="30" width="96" height="60" rx="8" />
-            <circle className="art-shape" cx="250" cy="60" r="34" />
-            <path className="art-line" d="M120 60H206" />
-            <path className="art-line" d="M196 50L208 60L196 70" />
-            <path className="art-shape" d="M60 112L90 140H30Z" transform="translate(90 -20)" />
-          </svg>
-        )}
-      {!code && tools.includes('document') && tools.length === 1 && (
-        <svg className="document-art" viewBox="0 0 320 140" fill="none" aria-hidden="true">
-          <rect className="art-page" x="96" y="8" width="128" height="150" rx="6" />
-          <path className="art-text" d="M116 36H176M116 54H204M116 72H204M116 90H190M116 108H204" />
-        </svg>
-      )}
+      {!code && tools.length === 1 && isDocumentTool(tools[0]) && editorModules[tools[0]].art}
       {!code && tools.includes('sheet') && (
         <div className="sheet-art">
           <div className="sheet-ruler">
@@ -596,8 +579,12 @@ export default function App() {
   const [graphDraft, setGraphDraft] = useState<{ id: string; value: GraphDocument } | null>(null)
   const [sheetDraft, setSheetDraft] = useState<{ id: string; value: SheetDocument } | null>(null)
   const [codeDraft, setCodeDraft] = useState<{ id: string; value: CodeDocument } | null>(null)
-  const [canvasDraft, setCanvasDraft] = useState<{ id: string; value: CanvasDocument } | null>(null)
-  const [textDraft, setTextDraft] = useState<{ id: string; value: TextDocument } | null>(null)
+  // Drafts of document-module documents that failed to save, keyed by tool.
+  const [moduleDrafts, setModuleDrafts] = useState<ModuleDrafts>({})
+  const moduleDraftList = DOCUMENT_TOOLS.map((tool) => moduleDrafts[tool]).filter(
+    (draft): draft is NonNullable<typeof draft> => !!draft,
+  )
+  const hasModuleDraft = moduleDraftList.length > 0
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
   const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
@@ -611,8 +598,7 @@ export default function App() {
           graphDraft ||
           sheetDraft ||
           codeDraft ||
-          canvasDraft ||
-          textDraft ||
+          hasModuleDraft ||
           sheetEditing ||
           outputEditing) &&
         readRoute() !== route
@@ -629,8 +615,7 @@ export default function App() {
         setGraphDraft(null)
         setSheetDraft(null)
         setCodeDraft(null)
-        setCanvasDraft(null)
-        setTextDraft(null)
+        setModuleDrafts({})
         setSheetEditing(null)
       }
       setRoute(readRoute())
@@ -642,8 +627,7 @@ export default function App() {
     graphDraft,
     sheetDraft,
     codeDraft,
-    canvasDraft,
-    textDraft,
+    hasModuleDraft,
     sheetEditing,
     outputEditing,
     route,
@@ -654,8 +638,7 @@ export default function App() {
       !graphDraft &&
       !sheetDraft &&
       !codeDraft &&
-      !canvasDraft &&
-      !textDraft &&
+      !hasModuleDraft &&
       !sheetEditing &&
       !outputEditing
     )
@@ -666,16 +649,7 @@ export default function App() {
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [
-    notesDraft,
-    graphDraft,
-    sheetDraft,
-    codeDraft,
-    canvasDraft,
-    textDraft,
-    sheetEditing,
-    outputEditing,
-  ])
+  }, [notesDraft, graphDraft, sheetDraft, codeDraft, hasModuleDraft, sheetEditing, outputEditing])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -716,22 +690,17 @@ export default function App() {
   const graphOpen = openModule?.id === 'graph'
   const sheetOpen = openModule?.id === 'sheet'
   const codeOpen = openModule?.id === 'code'
-  const canvasOpen = openModule?.id === 'canvas'
-  const textOpen = openModule?.id === 'document'
+  const openDocumentTool = openModule && isDocumentTool(openModule.id) ? openModule.id : null
   const linkedOpen = openView?.id === 'workspace'
   const projectViews = availableViews(projectTools)
   const fallbackSheet = useMemo(() => emptySheet(), [currentProject?.id])
   const fallbackCode = useMemo(() => emptyCode(), [currentProject?.id])
-  const fallbackCanvas = useMemo(
-    () => emptyCanvas('deck', design.canvas.gridSize),
-    [currentProject?.id],
-  ) // eslint-disable-line react-hooks/exhaustive-deps
-  const fallbackText = useMemo(
+  // Documents a project starts with the first time a document module opens, per the design.
+  const fallbackDocuments = useMemo(
     () =>
-      emptyDocument(
-        { fontFamily: design.document.defaultFont, fontSize: design.document.defaultFontSize },
-        { margin: design.document.defaultMargin },
-      ),
+      Object.fromEntries(
+        DOCUMENT_TOOLS.map((tool) => [tool, editorModules[tool].empty(design)]),
+      ) as ModuleDocuments,
     [currentProject?.id], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const fallbackGraph = useMemo(
@@ -863,8 +832,7 @@ export default function App() {
         graphDraft?.id,
         sheetDraft?.id,
         codeDraft?.id,
-        canvasDraft?.id,
-        textDraft?.id,
+        ...moduleDraftList.map((draft) => draft.id),
         sheetEditing ? projectId : null,
       ].filter(Boolean)
       if (!base || ids.some((id) => !base!.projects.some((p) => p.id === id)))
@@ -889,13 +857,12 @@ export default function App() {
         graph: graphDraft,
         sheet: pendingSheet,
         code: codeDraft,
-        canvas: canvasDraft,
-        document: textDraft,
+        ...moduleDrafts,
       })
       downloadData(serializeBackup(snapshot))
       setToast({
         text:
-          notesDraft || graphDraft || pendingSheet || codeDraft || canvasDraft || textDraft
+          notesDraft || graphDraft || pendingSheet || codeDraft || hasModuleDraft
             ? 'Backup downloaded, including unsaved project edits. This does not save them in the browser.'
             : 'Library backup downloaded.',
       })
@@ -928,13 +895,65 @@ export default function App() {
       })
     }
   }
+  /** The document a module editor shows: an unsaved draft first, then the saved one, then a fresh one. */
+  function moduleDocumentFor<K extends DocumentTool>(
+    tool: K,
+    project: Project,
+  ): ModuleDocuments[K] {
+    const draft = moduleDrafts[tool]
+    if (draft && draft.id === project.id) return draft.value as ModuleDocuments[K]
+    return (project[tool] as ModuleDocuments[K] | undefined) ?? fallbackDocuments[tool]
+  }
+  /** Save a module document, keeping a draft when the write fails; mirrors the graph/sheet plumbing. */
+  function saveModule<K extends DocumentTool>(tool: K, project: Project, next: ModuleDocuments[K]) {
+    setModuleDrafts((drafts) => ({ ...drafts, [tool]: { id: project.id, value: next } }))
+    const saved = commit((current) => saveModuleDocument(current, project.id, tool, next))
+    if (saved) setModuleDrafts((drafts) => ({ ...drafts, [tool]: null }))
+    return saved
+  }
+  function renderDocumentEditor<K extends DocumentTool>(tool: K, project: Project) {
+    // The registry is heterogeneous; inside the host each module is handled by its own type.
+    const Editor = editorModules[tool].Editor as React.ComponentType<
+      EditorProps<ModuleDocuments[K]>
+    >
+    return (
+      <Editor
+        key={`${tool}-${project.id}`}
+        title={project.title}
+        document={moduleDocumentFor(tool, project)}
+        readOnly={project.status === 'trashed'}
+        unsaved={moduleDrafts[tool]?.id === project.id}
+        onBack={() => {
+          window.location.hash = projectRoute(project.id)
+        }}
+        onChange={(next) => saveModule(tool, project, next)}
+      />
+    )
+  }
+  function renderDocumentOutputs<K extends DocumentTool>(tool: K, project: Project) {
+    const Outputs = editorModules[tool].Outputs as React.ComponentType<
+      OutputsProps<ModuleDocuments[K]>
+    >
+    return (
+      <Outputs
+        key={`${tool}-outputs-${project.id}`}
+        project={project}
+        document={moduleDocumentFor(tool, project)}
+        onAdd={() =>
+          commit((current) =>
+            addModuleOutput(initializeTools(current, project.id, [tool]), project.id, tool),
+          )
+        }
+        onRemove={(outputId) => commit((current) => removeOutput(current, project.id, outputId))}
+      />
+    )
+  }
   const hasDrafts = !!(
     notesDraft ||
     graphDraft ||
     sheetDraft ||
     codeDraft ||
-    canvasDraft ||
-    textDraft ||
+    hasModuleDraft ||
     sheetEditing ||
     outputEditing
   )
@@ -953,8 +972,7 @@ export default function App() {
           setNotesDraft(null)
           setGraphDraft(null)
           setSheetDraft(null)
-          setCanvasDraft(null)
-          setTextDraft(null)
+          setModuleDrafts({})
           setSheetEditing(null)
           setModal(null)
           setQuery('')
@@ -1175,8 +1193,7 @@ export default function App() {
               graphDraft ||
               sheetDraft ||
               codeDraft ||
-              canvasDraft ||
-              textDraft ||
+              hasModuleDraft ||
               outputEditing
                 ? 'Changes not saved'
                 : sheetEditing
@@ -1322,52 +1339,8 @@ export default function App() {
                     return saved
                   }}
                 />
-              ) : textOpen ? (
-                <DocumentEditor
-                  key={currentProject.id}
-                  title={currentProject.title}
-                  document={
-                    textDraft?.id === currentProject.id
-                      ? textDraft.value
-                      : (currentProject.document ?? fallbackText)
-                  }
-                  readOnly={currentProject.status === 'trashed'}
-                  unsaved={textDraft?.id === currentProject.id}
-                  onBack={() => {
-                    window.location.hash = projectRoute(currentProject.id)
-                  }}
-                  onChange={(text) => {
-                    setTextDraft({ id: currentProject.id, value: text })
-                    const saved = commit((current) =>
-                      saveDocument(current, currentProject.id, text),
-                    )
-                    if (saved) setTextDraft(null)
-                    return saved
-                  }}
-                />
-              ) : canvasOpen ? (
-                <CanvasEditor
-                  key={currentProject.id}
-                  title={currentProject.title}
-                  canvas={
-                    canvasDraft?.id === currentProject.id
-                      ? canvasDraft.value
-                      : (currentProject.canvas ?? fallbackCanvas)
-                  }
-                  readOnly={currentProject.status === 'trashed'}
-                  unsaved={canvasDraft?.id === currentProject.id}
-                  onBack={() => {
-                    window.location.hash = projectRoute(currentProject.id)
-                  }}
-                  onChange={(canvas) => {
-                    setCanvasDraft({ id: currentProject.id, value: canvas })
-                    const saved = commit((current) =>
-                      saveCanvas(current, currentProject.id, canvas),
-                    )
-                    if (saved) setCanvasDraft(null)
-                    return saved
-                  }}
-                />
+              ) : openDocumentTool ? (
+                renderDocumentEditor(openDocumentTool, currentProject)
               ) : codeOpen ? (
                 <CodeEditor
                   key={currentProject.id}
@@ -1624,53 +1597,8 @@ export default function App() {
                             }
                           />
                         )}
-                        {currentProject.tools.includes('document') && (
-                          <DocumentOutputs
-                            key={`document-${currentProject.id}`}
-                            project={currentProject}
-                            document={
-                              textDraft?.id === currentProject.id
-                                ? textDraft.value
-                                : (currentProject.document ?? fallbackText)
-                            }
-                            onAdd={() =>
-                              commit((current) => {
-                                const ready = initializeTools(current, currentProject.id, [
-                                  'document',
-                                ])
-                                return addDocumentOutput(ready, currentProject.id)
-                              })
-                            }
-                            onRemove={(outputId) =>
-                              commit((current) =>
-                                removeOutput(current, currentProject.id, outputId),
-                              )
-                            }
-                          />
-                        )}
-                        {currentProject.tools.includes('canvas') && (
-                          <CanvasOutputs
-                            key={`canvas-${currentProject.id}`}
-                            project={currentProject}
-                            canvas={
-                              canvasDraft?.id === currentProject.id
-                                ? canvasDraft.value
-                                : (currentProject.canvas ?? fallbackCanvas)
-                            }
-                            onAdd={() =>
-                              commit((current) => {
-                                const ready = initializeTools(current, currentProject.id, [
-                                  'canvas',
-                                ])
-                                return addCanvasOutput(ready, currentProject.id)
-                              })
-                            }
-                            onRemove={(outputId) =>
-                              commit((current) =>
-                                removeOutput(current, currentProject.id, outputId),
-                              )
-                            }
-                          />
+                        {DOCUMENT_TOOLS.filter((tool) => currentProject.tools.includes(tool)).map(
+                          (tool) => renderDocumentOutputs(tool, currentProject),
                         )}
                         <div className="section-heading notes-heading">
                           <h2>

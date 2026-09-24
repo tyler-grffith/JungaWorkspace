@@ -145,14 +145,14 @@ const SHAPE_LABELS: Record<ShapeKind, string> = {
 
 export default function CanvasEditor({
   title,
-  canvas,
+  document: canvas,
   readOnly,
   unsaved,
   onBack,
   onChange,
 }: {
   title: string
-  canvas: CanvasDocument
+  document: CanvasDocument
   readOnly: boolean
   unsaved: boolean
   onBack: () => void

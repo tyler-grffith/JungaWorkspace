@@ -6,6 +6,7 @@ import {
   Code2,
   FileText,
   Layers3,
+  LibraryBig,
   Shapes,
   SquareFunction,
   Table2,
@@ -80,6 +81,16 @@ export const modules: readonly ModuleDefinition[] = [
     route: 'document',
     icon: FileText,
     cssClass: 'document',
+  },
+  {
+    id: 'collection',
+    name: 'Collection',
+    longName: 'Collection',
+    description: 'Curate nested collections of music, movies, photos, poems, or anything else.',
+    openLabel: 'Open collection',
+    route: 'collection',
+    icon: LibraryBig,
+    cssClass: 'collection',
   },
 ]
 

@@ -183,6 +183,31 @@ export const designGroups = {
       pageShadow: toggle('Page shadow', true, 'Draw the page as a sheet on a grey desk.'),
     },
   },
+  collection: {
+    title: 'Collection',
+    description: 'Panel widths and card sizing for collections. Open a collection to preview.',
+    files: 'src/collection/CollectionEditor.tsx; src/collection/collection.css',
+    fields: {
+      treeWidth: number('Tree width (px)', 240, 180, 340, { cssVar: '--collection-tree-width' }),
+      detailWidth: number('Detail panel width (px)', 320, 240, 440, {
+        cssVar: '--collection-detail-width',
+      }),
+      cardWidth: number('Card minimum width (px)', 180, 120, 320, {
+        cssVar: '--collection-card-width',
+      }),
+      coverRatio: select(
+        'Cover shape',
+        '1',
+        [
+          { value: '1', label: 'Square' },
+          { value: '4 / 3', label: 'Landscape 4:3' },
+          { value: '2 / 3', label: 'Portrait 2:3' },
+          { value: '16 / 9', label: 'Wide 16:9' },
+        ],
+        { cssVar: '--collection-cover-ratio' },
+      ),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

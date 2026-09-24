@@ -8,8 +8,7 @@ import {
 import type { GraphDocument } from './graph/model'
 import type { SheetDocument } from './sheet/model'
 import type { CodeDocument } from './code/model'
-import type { CanvasDocument } from './canvas/model'
-import type { TextDocument } from './document/model'
+import { DOCUMENT_TOOLS, type ModuleDrafts } from './modules/documents'
 
 export const MAX_BACKUP_BYTES = 10 * 1024 * 1024
 export type RestoreMode = 'copies' | 'replace'
@@ -19,9 +18,7 @@ export type Drafts = {
   graph?: { id: string; value: GraphDocument } | null
   sheet?: { id: string; value: SheetDocument } | null
   code?: { id: string; value: CodeDocument } | null
-  canvas?: { id: string; value: CanvasDocument } | null
-  document?: { id: string; value: TextDocument } | null
-}
+} & ModuleDrafts
 
 export function parseBackup(raw: string): Backup {
   if (new Blob([raw]).size > MAX_BACKUP_BYTES)
@@ -131,7 +128,7 @@ export function restoreBackup(
 // Overlay failed-save drafts on a readable snapshot without writing to browser storage.
 export function libraryWithDrafts(library: Library, drafts: Drafts): Library {
   const next = structuredClone(library)
-  for (const key of ['notes', 'graph', 'sheet', 'code', 'canvas', 'document'] as const) {
+  for (const key of ['notes', 'graph', 'sheet', 'code', ...DOCUMENT_TOOLS] as const) {
     const draft = drafts[key]
     if (!draft) continue
     const project = next.projects.find((p) => p.id === draft.id)
@@ -143,8 +140,8 @@ export function libraryWithDrafts(library: Library, drafts: Drafts): Library {
     if (key === 'graph') project.graph = structuredClone(drafts.graph!.value)
     if (key === 'sheet') project.sheet = structuredClone(drafts.sheet!.value)
     if (key === 'code') project.code = structuredClone(drafts.code!.value)
-    if (key === 'canvas') project.canvas = structuredClone(drafts.canvas!.value)
-    if (key === 'document') project.document = structuredClone(drafts.document!.value)
+    if (key !== 'notes' && key !== 'graph' && key !== 'sheet' && key !== 'code')
+      (project as Record<string, unknown>)[key] = structuredClone(draft.value)
     project.updatedAt = new Date().toISOString()
   }
   return parseLibrary(JSON.stringify(next))

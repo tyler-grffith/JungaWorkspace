@@ -16,6 +16,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 - [ ] **Review Cosmic Clock source/output separation.** Create the template, edit output defaults, open Earth Clock, change its date/camera, return and reopen. Confirm Working material vs Outputs, ownership, mobile controls, and that ordinary viewing never saves. Repository source editing, filesystem synchronization and additional scene kinds remain future decisions.
 - [ ] **Try the expanded designer areas.** Spreadsheet sizing, shared appearance colors and fonts, workspace shell dimensions and text, and library defaults/copy are now adjustable. Note which fixed details are still missing; each is one registry line.
 - [x] **Choose the first new module.** Tyler chose the visual canvas (slides, diagrams, mockups, simple animation in one module) on September 23. Built on `codex/canvas-module`; see the increment below. Remaining candidates from the owner's list: text, photos.
+- [ ] **Review the document.** Create a project with the Document tool, type with the `# `, `- `, `> ` shortcuts, bold and link some text, nest a list with Tab, insert an image, open Preview and a reading output, export Markdown and PDF, and import one of your Markdown files. Note the first formatting or keyboard behaviour that differs from Docs in a way that matters.
 - [ ] **Review the visual canvas.** Create a project with the Visual canvas tool, draw shapes and text, connect two shapes, switch modes, add a slide, present it, add a canvas output, export SVG/PNG/PDF, and import one of the draw.io files from Drive. Note which gesture, control, or default feels wrong first; the shape library, snapping threshold, presenter frame, and defaults are all cheap to change.
 - [ ] **Shape portfolio and blog.** Both in-app views and exports, hosting undecided. First step: a per-module presentation render (static graph SVG, static sheet table) that both can reuse.
 - [x] **Publish the GitHub collaboration baseline.** Merged into `main` via [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1), with contribution/agent guidance, templates, PR CI, and main-branch protection. `bobjunga` has a pending write invitation.
@@ -124,6 +125,14 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] 114 unit tests, TypeScript and build pass; 69 browser tests pass (65 chromium including 4 new code-project tests, 4 designer). Branch `codex/code-project-module`; no merge or deployment.
 - [ ] Awaiting Tyler: binary assets (images, fonts, data files) need storage beyond the shared local-storage key. A build step for JSX/TypeScript or bare npm imports, and navigation between HTML files inside one output, are also undecided.
 - [ ] Revisit the sandbox's network access when user accounts arrive; running someone else's project then means running untrusted code for other people.
+
+## Document module — September 24, 2026
+
+- [x] `document` added as the fifth module: a Docs-style page edited natively and saved as blocks of styled runs, with title/heading/list/quote/code/divider/image blocks, per-block alignment, document-wide font/size/spacing, Letter/A4 pages with margins, an outline, counts, and a designer-mode group.
+- [x] Docs shortcuts (`# `, `- `, `1. `, `> `, "```", Tab/Shift+Tab, Enter/Backspace list and heading behaviour, Ctrl+K), inline formatting, links, images with width control, clean paste.
+- [x] Reading output (`document-read`) on the output route and Preview in the editor; export to Markdown, HTML, plain text, and PDF (print); import of Markdown, HTML, and text files.
+- [x] Unit tests for the model, Markdown round trip, and library wiring; two Chromium tests. Same branch `codex/canvas-module`; no merge or deployment.
+- [ ] Awaiting Tyler: hands-on review; whether per-run fonts/colors, tables, real pagination, or DOCX export come next.
 
 ## Visual canvas module — September 23, 2026
 

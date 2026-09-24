@@ -19,22 +19,22 @@ Design/settings.json ──► src/design/registry.ts ──► DesignProvider (
                                                             │
 src/modules/ids.ts ──► src/library.ts (domain, storage) ──► src/App.tsx (shell, routing, drafts)
         │                        │                                │
-src/modules/registry.ts   src/modules/examples.ts        editors: src/graph, src/sheet, src/code, src/canvas, src/linked
+src/modules/registry.ts   src/modules/examples.ts        editors: src/graph, src/sheet, src/code, src/canvas, src/document, src/linked
 ```
 
-| Layer           | Files                                                                 | Responsibility                                                                                                                             |
-| --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Module ids      | `src/modules/ids.ts`                                                  | The stable tool identifiers. Also the key of each module's saved document on a project and its route segment.                              |
-| Domain          | `src/library.ts`, `src/backup.ts`                                     | Projects, collections, lifecycle, validation, local-storage commits, backup/restore. No React.                                             |
-| Module registry | `src/modules/registry.ts`                                             | Names, icons, copy, routes, and combined views. The shell renders from this.                                                               |
-| Examples        | `src/modules/examples.ts`                                             | Built-in example projects and where the library offers them.                                                                               |
-| Editors         | `src/graph/`, `src/sheet/`, `src/code/`, `src/canvas/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
-| Shell           | `src/App.tsx`                                                         | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
-| Design          | `src/design/`                                                         | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
+| Layer           | Files                                                                                  | Responsibility                                                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Module ids      | `src/modules/ids.ts`                                                                   | The stable tool identifiers. Also the key of each module's saved document on a project and its route segment.                              |
+| Domain          | `src/library.ts`, `src/backup.ts`                                                      | Projects, collections, lifecycle, validation, local-storage commits, backup/restore. No React.                                             |
+| Module registry | `src/modules/registry.ts`                                                              | Names, icons, copy, routes, and combined views. The shell renders from this.                                                               |
+| Examples        | `src/modules/examples.ts`                                                              | Built-in example projects and where the library offers them.                                                                               |
+| Editors         | `src/graph/`, `src/sheet/`, `src/code/`, `src/canvas/`, `src/document/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
+| Shell           | `src/App.tsx`                                                                          | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
+| Design          | `src/design/`                                                                          | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
 
 ## Routing
 
-Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`, `canvas`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
+Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`, `canvas`, `document`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
 
 ## Adding a module
 
@@ -73,7 +73,7 @@ These are both in-app views and exported outputs, with no hosting target chosen 
 
 ## What is deliberately not abstracted
 
-- Editor props and draft/save plumbing in `App.tsx`. Four editors now share the same shape of draft state, render branch, and backup overlay; the next module should extract a generic editor host rather than add a fifth copy.
+- Editor props and draft/save plumbing in `App.tsx`. Five editors now share the same shape of draft state, render branch, and backup overlay; the next module should extract a generic editor host rather than add another copy.
 - Storage. One local-storage key holds the whole library, which is why code projects are bounded to text files and a few hundred KB; binary assets need a storage decision first. Accounts, sync, and server storage are future decisions and are isolated behind `useLibrary`/`commitLibrary`.
 - The engines. Each module owns its parser and evaluator. Sharing between them happens through explicit links (`src/linked/`), not a shared expression language.
 

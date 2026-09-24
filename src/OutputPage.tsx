@@ -1,12 +1,14 @@
 import { useEffect } from 'react'
-import { ArrowLeft, Code2, Layers3, Shapes } from 'lucide-react'
+import { ArrowLeft, Code2, FileText, Layers3, Shapes } from 'lucide-react'
 import type { Project } from './library'
-import { isCanvasShow, isCodeRun, type Output } from './outputs'
+import { isCanvasShow, isCodeRun, isDocumentRead, type Output } from './outputs'
 import SceneHost from './interactive-scenes/cosmic-clock/SceneHost'
 import CodeRunner from './code/CodeRunner'
 import { emptyCode } from './code/model'
 import { emptyCanvas } from './canvas/model'
 import CanvasPresenter from './canvas/CanvasPresenter'
+import { emptyDocument } from './document/model'
+import DocumentReader from './document/DocumentReader'
 
 /** Read-only boundary: no library object, commit callback, or authoring controls enter this route. */
 export default function OutputPage({ project, output }: { project?: Project; output?: Output }) {
@@ -17,6 +19,7 @@ export default function OutputPage({ project, output }: { project?: Project; out
   const available = project && project.status !== 'trashed' && output
   const codeRun = output ? isCodeRun(output) : false
   const canvasShow = output ? isCanvasShow(output) : false
+  const documentRead = output ? isDocumentRead(output) : false
   return (
     <div className="output-page">
       <a
@@ -39,10 +42,19 @@ export default function OutputPage({ project, output }: { project?: Project; out
             <Code2 size={16} />
           ) : canvasShow ? (
             <Shapes size={16} />
+          ) : documentRead ? (
+            <FileText size={16} />
           ) : (
             <Layers3 size={16} />
           )}
-          Junga · {codeRun ? 'Code output' : canvasShow ? 'Canvas output' : 'Interactive scene'}
+          Junga ·{' '}
+          {codeRun
+            ? 'Code output'
+            : canvasShow
+              ? 'Canvas output'
+              : documentRead
+                ? 'Document'
+                : 'Interactive scene'}
           {project ? ` · Made by ${project.title}` : ''}
         </span>
       </header>
@@ -54,6 +66,13 @@ export default function OutputPage({ project, output }: { project?: Project; out
               key={`${project.id}/${output.id}`}
               files={(project.code ?? emptyCode()).files}
               entry={output.source.entry}
+            />
+          ) : isDocumentRead(output) ? (
+            <DocumentReader
+              key={`${project.id}/${output.id}`}
+              document={project.document ?? emptyDocument()}
+              title={output.title}
+              showOutline={output.source.showOutline}
             />
           ) : isCanvasShow(output) ? (
             <CanvasPresenter

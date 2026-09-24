@@ -1,6 +1,7 @@
 import {
   canvasShowOutput,
   codeRunOutput,
+  documentReadOutput,
   earthClockOutput,
   validOutput,
   validOutputs,
@@ -30,6 +31,7 @@ import {
 } from './graph/model'
 import { emptySheet, validSheet, type SheetDocument } from './sheet/model'
 import { emptyCanvas, validCanvas, canvasProblem, type CanvasDocument } from './canvas/model'
+import { emptyDocument, validDocument, documentProblem, type TextDocument } from './document/model'
 import { TOOL_IDS, isTool, type Tool } from './modules/ids'
 
 export type { Tool } from './modules/ids'
@@ -57,6 +59,7 @@ export type Project = {
   sheet?: SheetDocument
   code?: CodeDocument
   canvas?: CanvasDocument
+  document?: TextDocument
 }
 export type Library = { version: 1; projects: Project[]; collections: Collection[] }
 export type ProjectInput = Pick<
@@ -117,6 +120,7 @@ export function addProject(
   sheet?: SheetDocument,
   code?: CodeDocument,
   canvas?: CanvasDocument,
+  text?: TextDocument,
 ): { library: Library; project: Project } {
   const now = timestamp()
   const project: Project = {
@@ -134,6 +138,7 @@ export function addProject(
     ...(sheet ? { sheet: structuredClone(sheet) } : {}),
     ...(code ? { code: structuredClone(code) } : {}),
     ...(canvas ? { canvas: structuredClone(canvas) } : {}),
+    ...(text ? { document: structuredClone(text) } : {}),
   }
   return { library: { ...library, projects: [project, ...library.projects] }, project }
 }
@@ -204,6 +209,7 @@ export function duplicateProject(library: Library, id: string) {
     original.sheet,
     original.code,
     original.canvas,
+    original.document,
   )
   result.project.outputs = structuredClone(original.outputs).map((output) => ({
     ...output,
@@ -286,11 +292,28 @@ export function initializeCanvas(library: Library, id: string): Library {
   if (!project) throw new Error('This project is no longer available.')
   return project.canvas ? library : saveCanvas(library, id, emptyCanvas())
 }
+export function saveDocument(library: Library, id: string, text: TextDocument): Library {
+  if (!validDocument(text)) throw new Error(documentProblem(text))
+  return changeProject(library, id, (project) => {
+    if (project.status === 'trashed')
+      throw new Error('Restore this project before editing its document.')
+    if (!project.tools.includes('document'))
+      throw new Error('Add the document tool to this project before writing in it.')
+    return { ...project, document: text, updatedAt: timestamp() }
+  })
+}
+
+export function initializeDocument(library: Library, id: string): Library {
+  const project = library.projects.find((p) => p.id === id)
+  if (!project) throw new Error('This project is no longer available.')
+  return project.document ? library : saveDocument(library, id, emptyDocument())
+}
 const initializers: Record<Tool, (library: Library, id: string) => Library> = {
   graph: initializeGraph,
   sheet: initializeSheet,
   code: initializeCode,
   canvas: initializeCanvas,
+  document: initializeDocument,
 }
 /** Create the saved document for each listed module if the project lacks it. */
 export function initializeTools(library: Library, id: string, tools: readonly Tool[]): Library {
@@ -440,13 +463,15 @@ export function parseLibrary(raw: string | null): Library {
       const ownsOutput =
         p.projectType === 'code' ||
         (p.tools as unknown[]).includes('code') ||
-        (p.tools as unknown[]).includes('canvas')
+        (p.tools as unknown[]).includes('canvas') ||
+        (p.tools as unknown[]).includes('document')
       if (!ownsOutput && Array.isArray(p.outputs) && p.outputs.length) return false
       if (p.projectType !== 'code' && p.sourceManifest) return false
       if (p.graph !== undefined && !validGraph(p.graph)) return false
       if (p.sheet !== undefined && !validSheet(p.sheet)) return false
       if (p.code !== undefined && !validCode(p.code)) return false
       if (p.canvas !== undefined && !validCanvas(p.canvas)) return false
+      if (p.document !== undefined && !validDocument(p.document)) return false
       if (p.referenceUrl) {
         try {
           if (!['http:', 'https:'].includes(new URL(p.referenceUrl as string).protocol))
@@ -586,7 +611,22 @@ export function createCodeProjectWithFile(
 export const ownsOutputs = (project: Pick<Project, 'projectType' | 'tools'>) =>
   project.projectType === 'code' ||
   project.tools.includes('code') ||
-  project.tools.includes('canvas')
+  project.tools.includes('canvas') ||
+  project.tools.includes('document')
+
+/** A reading output that presents the project's document read-only. */
+export function addDocumentOutput(library: Library, projectId: string, title?: string): Library {
+  return changeProject(library, projectId, (project) => {
+    if (!project.tools.includes('document') || project.status === 'trashed')
+      throw new Error('Add the document tool to this project outside the trash.')
+    if (project.outputs.length >= 20) throw new Error('A project can contain up to 20 outputs.')
+    return {
+      ...project,
+      outputs: [...project.outputs, documentReadOutput(title || project.title)],
+      updatedAt: timestamp(),
+    }
+  })
+}
 
 /** A presentation output that plays the project's canvas pages. */
 export function addCanvasOutput(library: Library, projectId: string, title?: string): Library {

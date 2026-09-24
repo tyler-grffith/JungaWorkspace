@@ -4,6 +4,7 @@ import { laplaceGraph, type GraphDocument } from '../graph/model'
 import type { SheetDocument } from '../sheet/model'
 import type { CodeDocument } from '../code/model'
 import type { CanvasDocument } from '../canvas/model'
+import type { TextDocument } from '../document/model'
 import { octahedronExample, OCTAHEDRON_URL } from '../linked/model'
 import { starterInput, starterNotes, type ProjectInput } from '../library'
 import type { Tool } from './ids'
@@ -23,6 +24,7 @@ export type ExampleProject = {
     sheet?: SheetDocument
     code?: CodeDocument
     canvas?: CanvasDocument
+    document?: TextDocument
   }
   /** Where to go after creation: the overview or one combined/module route segment. */
   openRoute: string

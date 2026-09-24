@@ -157,6 +157,32 @@ export const designGroups = {
       showRulers: toggle('Show rulers', true, 'Pixel rulers along the top and left of the stage.'),
     },
   },
+  document: {
+    title: 'Document',
+    description: 'Page, type, and panel defaults for new documents. Open a document to preview.',
+    files: 'src/document/DocumentEditor.tsx; src/document/document.css; src/document/model.ts',
+    fields: {
+      outlineWidth: number('Outline width (px)', 220, 160, 320, {
+        cssVar: '--document-outline-width',
+      }),
+      defaultFont: select(
+        'Default font',
+        "'DM Sans Variable', 'Segoe UI', sans-serif",
+        [
+          { value: "'DM Sans Variable', 'Segoe UI', sans-serif", label: 'DM Sans' },
+          { value: "'Manrope Variable', 'Segoe UI', sans-serif", label: 'Manrope' },
+          { value: "'Instrument Serif', Georgia, serif", label: 'Instrument Serif' },
+          { value: "Georgia, 'Times New Roman', serif", label: 'Georgia' },
+          { value: "'Times New Roman', Times, serif", label: 'Times New Roman' },
+          { value: 'Arial, Helvetica, sans-serif', label: 'Arial' },
+        ],
+        { help: 'Applies to new documents; each document keeps its own font.' },
+      ),
+      defaultFontSize: number('Default text size (pt)', 12, 8, 24),
+      defaultMargin: number('Default page margin (in)', 1, 0.25, 2),
+      pageShadow: toggle('Page shadow', true, 'Draw the page as a sheet on a grey desk.'),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

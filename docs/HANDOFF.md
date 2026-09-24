@@ -1,5 +1,11 @@
 # Current handoff
 
+## Document module — branch `codex/canvas-module`, September 24, 2026
+
+`document` is the fifth module: tick **Document** when creating a project, then **Open document**. The page is edited like Docs: type, select, Ctrl+B/I/U, Ctrl+K for a link, `# `/`## `/`### ` for headings, `- ` or `1. ` for lists (Tab nests, Enter on an empty item leaves), `> ` for a quote, "```" for code. The toolbar has text style, marks, links, alignment, lists, indent, image, divider, font, size, and a **Page** menu (size, margin, line spacing). Headings appear in the outline on the left; the footer counts words and estimates pages. **Preview** opens the reading view; **Add reading output** on the overview publishes it on the read-only output route. **Export** offers PDF (print), Markdown, HTML, plain text, and **Import** brings in Markdown, HTML, or text.
+
+**Validation on the branch.** `npm run check` passes (unit tests including the Markdown round trip; TypeScript; build). `tests/document.spec.ts` covers writing, shortcuts, bold, nested lists, reload persistence, links, Markdown export, and the reading output with accessibility scans, alongside the existing suites. Decision 40 and `sharedProjectManagement/features/document.md` hold the rationale and limits (document-wide font, no tables or real pagination, images bounded as in the canvas).
+
 ## Visual canvas module — branch `codex/canvas-module`, September 23, 2026
 
 `canvas` is the fourth module: tick **Visual canvas** when creating a project, then **Open visual canvas**. One document holds pages ("canvases") of shapes, text, images, and connectors, plus a **mode** that says how the canvases are organized and used afterwards: **Presentation deck** (slides with build steps and transitions), **Interactive mockup** (screens linked by clickable elements, previewed in a device frame), **Diagram board** (unbounded canvases to pan and zoom), or **Simple animation** (elements move between keyframes over each scene's duration). Switching mode never changes a drawing.

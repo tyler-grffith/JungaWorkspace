@@ -28,7 +28,14 @@ export type CanvasShowOutput = OutputBase & {
   type: 'canvas-show'
   source: { kind: 'canvas-pages'; version: 1; startPage: string; loop: boolean }
 }
-export type Output = SceneOutput | CodeRunOutput | CanvasShowOutput
+/** The project's document, presented read-only as a reading page. */
+export type DocumentReadOutput = OutputBase & {
+  type: 'document-read'
+  source: { kind: 'document'; version: 1; showOutline: boolean }
+}
+export type Output = SceneOutput | CodeRunOutput | CanvasShowOutput | DocumentReadOutput
+export const isDocumentRead = (output: Output): output is DocumentReadOutput =>
+  output.type === 'document-read'
 export const isCanvasShow = (output: Output): output is CanvasShowOutput =>
   output.type === 'canvas-show'
 export const isCodeRun = (output: Output): output is CodeRunOutput => output.type === 'code-run'
@@ -92,6 +99,13 @@ export function validOutput(value: unknown): value is Output {
     text(metadata.attribution, 4000) &&
     safeSourceUrl(metadata.sourceUrl)
   if (!shared || !record(source)) return false
+  if (value.type === 'document-read')
+    return (
+      keys(source, ['kind', 'version', 'showOutline']) &&
+      source.kind === 'document' &&
+      source.version === 1 &&
+      typeof source.showOutline === 'boolean'
+    )
   if (value.type === 'canvas-show')
     return (
       keys(source, ['kind', 'version', 'startPage', 'loop']) &&
@@ -154,6 +168,19 @@ export function earthClockOutput(): SceneOutput {
         'NASA Blue Marble and Black Marble imagery. Timezone Boundary Builder 2026d, © OpenStreetMap contributors, ODbL 1.0. p5.js (LGPL-2.1), Astronomy Engine (MIT), DM fonts and Instrument Serif (OFL).',
       sourceUrl: 'https://www.figma.com/design/RYHxY6TlREXHVtGa6GwZSa/Clock-Mockup',
     },
+  }
+}
+
+/** A new output that presents the project's document as a reading page. */
+export function documentReadOutput(title = 'Document'): DocumentReadOutput {
+  return {
+    id: crypto.randomUUID(),
+    type: 'document-read',
+    title,
+    description: 'Presents this project\u2019s document as a reading page.',
+    status: 'draft',
+    source: { kind: 'document', version: 1, showOutline: true },
+    metadata: { attribution: '', sourceUrl: '' },
   }
 }
 

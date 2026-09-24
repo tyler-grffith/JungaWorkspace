@@ -149,3 +149,7 @@ Weekly addendum: the integrated Junga build is now portable to a personal-site s
 
 - Built `painter` as the seventh module at Tyler's request ("analogous to Chroma Canvas and HueForge"): image in, filament stack with transmission distances, colour ramp, per-pixel layer heights, printed preview, heightmap, painted 3D relief, swap plan, print sheet, STL and PNG export, and **Send to Slicer** (relief on the plate, swap plan in the notes). Decision 47.
 - Verification: unit tests for validation, stack normalisation, even spacing, the ramp, painting, the relief mesh's closedness and volume, downsampling, and the print sheet; two Chromium tests (import → paint → recipe edits → stack edits → exports → send to slicer with an accessibility scan; the print sheet output) alongside the existing suites; manual pass in the dev browser.
+
+### September 24 — Merged into `main`
+
+- Full verification (Prettier, 157 unit tests, TypeScript, build, 84 Playwright tests; CI green on both PRs), then `main` fast-forwarded `919f02b..a866d73` and pushed. PR #8 registered as merged; PR #9 shows closed because its base branch was deleted first, with a comment recording the fast-forward. Both feature branches removed. No deployment.

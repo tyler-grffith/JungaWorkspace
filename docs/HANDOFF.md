@@ -1,5 +1,9 @@
 # Current handoff
 
+## Everything merged into `main` — September 24, 2026
+
+At Tyler's direction, after the full check passed (Prettier, 157 unit tests, TypeScript, production build, 84 browser tests), `main` was fast-forwarded from `919f02b` to `a866d73`: the two deploy-hygiene commits ([PR #8](https://github.com/tyler-grffith/JungaWorkspace/pull/8)) and the six-module branch ([PR #9](https://github.com/tyler-grffith/JungaWorkspace/pull/9): visual canvas, document, collection, 3D modeler, slicer, PLA Painter, plus the revision pass and real geometry). Both feature branches were deleted; there is one branch, `main`. Nothing was deployed: `npm run deploy` remains Tyler's step.
+
 ## PLA Painter — branch `codex/canvas-module`, September 24, 2026
 
 `painter` is the seventh module: tick **PLA Painter** (and **Slicer**, to hand the result over), then **Open painter**. Drop, paste, or choose a picture; the middle shows how it will print with the current filament stack, and the **Heightmap**, **Original**, and **3D relief** tabs show the other views (the relief orbits like the modeler). The left panel sets the printed width and detail, layer height, base and total layers, brightness and contrast, and the **filament stack** (bottom first): colour, transmission distance (TD, the thickness at which a filament hides what is below), and the layer each spool starts on; **Space evenly** spreads the swaps; the colour ramp under the picture shows the colour reached at every layer with a mark per spool. The **print sheet** on the right gives size, height, grid, an estimate of filament, and the swap plan; **Export STL** writes the stepped relief, **Export print sheet** a text file for the printer, **Export preview PNG** the picture, and **Send to Slicer** places the relief on the project's plate with the plan in the slicer's notes. **Add print sheet output** publishes the sheet read-only.

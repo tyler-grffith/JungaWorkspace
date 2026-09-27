@@ -3,6 +3,7 @@
 // back into blocks, accepting only the tags the renderer writes (plus the aliases browsers
 // produce while editing) so nothing else can enter the saved document.
 import {
+  isProjectLink,
   newBlock,
   normalizeRuns,
   safeLink,
@@ -23,7 +24,11 @@ function runHtml(r: Run): string {
   if (r.marks.includes('italic')) html = `<em>${html}</em>`
   if (r.marks.includes('underline')) html = `<u>${html}</u>`
   if (r.marks.includes('strike')) html = `<s>${html}</s>`
-  if (r.link) html = `<a href="${escape(r.link)}" target="_blank" rel="noopener">${html}</a>`
+  // Links to other projects open in place; everything else opens a new tab.
+  if (r.link)
+    html = isProjectLink(r.link)
+      ? `<a href="${escape(r.link)}">${html}</a>`
+      : `<a href="${escape(r.link)}" target="_blank" rel="noopener">${html}</a>`
   return html
 }
 const TAGS: Record<BlockType, string> = {

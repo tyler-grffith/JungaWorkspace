@@ -319,7 +319,9 @@ export default function DocumentEditor({
     const url = linkValue.trim()
     setLinkOpen(false)
     if (!safeLink(url)) {
-      setMessage('Links must start with https://, http://, or mailto:.')
+      setMessage(
+        'Links must start with https://, http://, or mailto:, or be a project link (#/project/…).',
+      )
       return
     }
     command('createLink', url)
@@ -914,7 +916,9 @@ export default function DocumentEditor({
           <label htmlFor="doc-link-url">Link address</label>
           <input
             id="doc-link-url"
-            type="url"
+            type="text"
+            inputMode="url"
+            placeholder="https://… or #/project/…"
             autoFocus
             value={linkValue}
             onChange={(e) => setLinkValue(e.target.value)}

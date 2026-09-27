@@ -1398,6 +1398,110 @@ button:disabled:hover {
   gap: 8px;
   color: var(--muted);
 }
+/* Related projects and backlinks on the overview's context column. */
+.context-subheading {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+  margin: 26px 0 12px;
+}
+.context-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 6px;
+}
+.related-list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.related-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.related-list a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 550;
+  color: #4d6051;
+}
+.related-list a:hover {
+  border-color: #a6bb94;
+  color: var(--green);
+}
+.related-list a > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.related-list small {
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.related-list .icon-button {
+  width: 26px;
+  height: 26px;
+}
+.link-form .search-box {
+  max-width: none;
+  margin-bottom: 12px;
+}
+.link-candidates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+}
+.link-candidates li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.link-candidates li.link-empty {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding: 14px;
+}
+.link-candidates .button {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+.link-candidates .button:disabled {
+  opacity: 1;
+  color: var(--muted);
+}
+
 .context-tip {
   margin-top: 27px;
   padding: 22px 0;

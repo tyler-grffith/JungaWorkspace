@@ -113,8 +113,12 @@ const num = (v: unknown, min: number, max: number) =>
 const keys = (v: Record<string, unknown>, names: readonly string[]) =>
   Object.keys(v).length === names.length && names.every((n) => n in v)
 const ID = /^[A-Za-z0-9_-]{1,40}$/
+/** A link to another Junga project, so a document can refer to the workspace's own work. */
+export const PROJECT_LINK = /^#\/project\/[A-Za-z0-9_-]{1,40}(\/[a-z-]+)*$/
+export const isProjectLink = (link: string) => PROJECT_LINK.test(link)
 export function safeLink(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2000) return false
+  if (isProjectLink(value)) return true
   try {
     return ['https:', 'http:', 'mailto:'].includes(new URL(value).protocol)
   } catch {

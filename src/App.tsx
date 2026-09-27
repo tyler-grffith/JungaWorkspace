@@ -20,6 +20,7 @@ import {
 import { useDeferredSave } from './modules/useDeferredSave'
 import OutputPage from './OutputPage'
 import { validPortfolio, type Portfolio } from './portfolio/model'
+import { absoluteProjectLink, backlinks, relatedProjects } from './linking'
 import {
   lazy,
   Suspense,
@@ -37,6 +38,7 @@ import {
   ArrowRight,
   Briefcase,
   Check,
+  Link2,
   CheckCheck,
   ChevronDown,
   ChevronRight,
@@ -76,6 +78,8 @@ import {
   addProjectToPortfolio,
   removePortfolio,
   savePortfolio,
+  linkProjects,
+  unlinkProjects,
   duplicateProject,
   editProject,
   removeCollection,
@@ -146,6 +150,7 @@ type ModalState =
   | { kind: 'removeCollection'; collection: Collection }
   | { kind: 'portfolio' }
   | { kind: 'addToPortfolio'; project: Project }
+  | { kind: 'link'; project: Project }
   | { kind: 'storage' }
   | { kind: 'backup' }
   | null
@@ -636,6 +641,87 @@ function AddToPortfolioForm({
   )
 }
 
+/** Pick projects to relate to one; each pick links at once, so several can be added in a row. */
+function LinkProjectForm({
+  project,
+  library,
+  error,
+  onLink,
+  onClose,
+}: {
+  project: Project
+  library: Library
+  error: string
+  onLink: (target: Project) => boolean
+  onClose: () => void
+}) {
+  const [query, setQuery] = useState('')
+  const linked = new Set(project.relatedIds ?? [])
+  const search = query.trim().toLocaleLowerCase()
+  const candidates = library.projects
+    .filter((p) => p.id !== project.id && p.status !== 'trashed')
+    .filter((p) => !search || `${p.title} ${p.description}`.toLocaleLowerCase().includes(search))
+    .sort(
+      (a, b) =>
+        Number(linked.has(b.id)) - Number(linked.has(a.id)) ||
+        b.updatedAt.localeCompare(a.updatedAt),
+    )
+  return (
+    <div className="link-form">
+      <div className="search-box">
+        <Search size={16} />
+        <input
+          type="search"
+          autoFocus
+          aria-label="Search projects to link"
+          placeholder="Search projects…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      <ul className="link-candidates" aria-label="Projects">
+        {candidates.slice(0, 40).map((p) => (
+          <li key={p.id}>
+            <span className="examples-icon" aria-hidden="true">
+              <ExampleIcon tools={p.tools} code={p.projectType === 'code'} size={16} />
+            </span>
+            <span className="examples-text">
+              <strong>{p.title}</strong>
+              <small>
+                {p.projectType === 'code'
+                  ? 'Code project'
+                  : p.tools.map((t) => moduleById[t].name).join(', ')}
+                {p.builtIn ? ' · Example' : p.status === 'archived' ? ' · Archived' : ''}
+              </small>
+            </span>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={linked.has(p.id)}
+              aria-label={linked.has(p.id) ? `${p.title} is linked` : `Link ${p.title}`}
+              onClick={() => onLink(p)}
+            >
+              {linked.has(p.id) ? <Check size={14} /> : <Link2 size={14} />}
+              {linked.has(p.id) ? 'Linked' : 'Link'}
+            </button>
+          </li>
+        ))}
+        {!candidates.length && <li className="link-empty">No other projects match.</li>}
+      </ul>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+      <div className="modal-footer">
+        <button type="button" className="button primary" onClick={onClose}>
+          Done
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ProjectMenu({
   project,
   onAction,
@@ -643,6 +729,7 @@ function ProjectMenu({
   onDuplicate,
   onReset,
   onAddToPortfolio,
+  onCopyLink,
 }: {
   project: Project
   onAction: (p: Project, action: ProjectAction) => void
@@ -650,6 +737,7 @@ function ProjectMenu({
   onDuplicate: (p: Project) => void
   onReset: (p: Project) => void
   onAddToPortfolio?: (p: Project) => void
+  onCopyLink?: (p: Project) => void
 }) {
   const ref = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
@@ -699,6 +787,12 @@ function ProjectMenu({
               <button onClick={() => run(() => onAddToPortfolio(project))}>
                 <Briefcase size={16} />
                 Add to portfolio…
+              </button>
+            )}
+            {onCopyLink && (
+              <button onClick={() => run(() => onCopyLink(project))}>
+                <Link2 size={16} />
+                Copy link
               </button>
             )}
             {project.builtIn ? (
@@ -762,6 +856,7 @@ function ProjectCard({
   duplicate,
   reset,
   addToPortfolio,
+  copyLink,
 }: {
   project: Project
   library: Library
@@ -771,6 +866,7 @@ function ProjectCard({
   duplicate: (p: Project) => void
   reset: (p: Project) => void
   addToPortfolio: (p: Project) => void
+  copyLink: (p: Project) => void
 }) {
   const collection = library.collections.find((c) => c.id === project.collectionId)
   return (
@@ -806,6 +902,7 @@ function ProjectCard({
             onDuplicate={duplicate}
             onReset={reset}
             onAddToPortfolio={addToPortfolio}
+            onCopyLink={copyLink}
           />
         </div>
         <p className="card-description">
@@ -1184,6 +1281,14 @@ export default function App() {
       setModal(null)
       setToast({ text: `Added ${project.title} to ${name}.` })
     }
+  }
+  /** Put a link to the project on the clipboard; it works wherever this app is hosted. */
+  function copyProjectLink(project: Project) {
+    const link = absoluteProjectLink(project.id)
+    navigator.clipboard?.writeText(link).then(
+      () => setToast({ text: `Link to ${project.title} copied.` }),
+      () => setToast({ text: `Copy this link: ${link}` }),
+    )
   }
   function exportBackup() {
     try {
@@ -1933,6 +2038,7 @@ export default function App() {
                         onDuplicate={duplicate}
                         onReset={reset}
                         onAddToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
+                        onCopyLink={copyProjectLink}
                       />
                     </div>
                   </div>
@@ -2196,6 +2302,72 @@ export default function App() {
                             )}
                           </div>
                         )}
+                        <h2 className="context-subheading">Related projects</h2>
+                        {relatedProjects(library, currentProject).length > 0 ? (
+                          <ul className="related-list" aria-label="Related projects">
+                            {relatedProjects(library, currentProject).map((related) => (
+                              <li key={related.id}>
+                                <a href={projectRoute(related.id)}>
+                                  <ExampleIcon
+                                    tools={related.tools}
+                                    code={related.projectType === 'code'}
+                                    size={14}
+                                  />
+                                  <span>{related.title}</span>
+                                </a>
+                                {currentProject.status !== 'trashed' && (
+                                  <button
+                                    className="icon-button"
+                                    aria-label={`Unlink ${related.title}`}
+                                    title="Unlink"
+                                    onClick={() =>
+                                      commit((current) =>
+                                        unlinkProjects(current, currentProject.id, related.id),
+                                      )
+                                    }
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="context-hint">
+                            Connect this project to the ones it builds on or feeds.
+                          </p>
+                        )}
+                        {currentProject.status !== 'trashed' && (
+                          <button
+                            className="text-button"
+                            onClick={() => showModal({ kind: 'link', project: currentProject })}
+                          >
+                            <Link2 size={14} />
+                            Link a project
+                          </button>
+                        )}
+                        {backlinks(library, currentProject).length > 0 && (
+                          <>
+                            <h2 className="context-subheading">Linked from</h2>
+                            <ul className="related-list" aria-label="Linked from">
+                              {backlinks(library, currentProject).map((link, i) => (
+                                <li key={`${link.kind}-${link.id}-${i}`}>
+                                  <a href={link.route}>
+                                    {link.kind === 'portfolio' ? (
+                                      <Briefcase size={14} />
+                                    ) : (
+                                      <Link2 size={14} />
+                                    )}
+                                    <span>
+                                      {link.title}
+                                      <small>{link.detail}</small>
+                                    </span>
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
                         <div className="context-tip">
                           <FolderOpen size={22} />
                           <h3>A home for the whole project</h3>
@@ -2346,6 +2518,7 @@ export default function App() {
                       duplicate={duplicate}
                       reset={reset}
                       addToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
+                      copyLink={copyProjectLink}
                     />
                   ))}
                 </div>
@@ -2646,6 +2819,23 @@ export default function App() {
             error={saveError}
             onClose={() => setModal(null)}
             onSave={(choice) => addToPortfolio(modal.project, choice)}
+          />
+        </Modal>
+      )}
+      {modal?.kind === 'link' && (
+        <Modal
+          title={`Relate projects to ${modal.project.title}`}
+          subtitle="Linked projects appear on each other's overview pages."
+          onClose={() => setModal(null)}
+        >
+          <LinkProjectForm
+            project={library.projects.find((p) => p.id === modal.project.id) ?? modal.project}
+            library={library}
+            error={saveError}
+            onClose={() => setModal(null)}
+            onLink={(target) =>
+              commit((current) => linkProjects(current, modal.project.id, target.id))
+            }
           />
         </Modal>
       )}

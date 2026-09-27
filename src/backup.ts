@@ -83,24 +83,22 @@ export function restoreCopies(current: Library, backup: Library): Library {
     collectionIds.set(c.id, id)
     return { id, name: uniqueName(c.name, names, 60) }
   })
-  // Portfolio entries point at projects and outputs by id, so the copies keep the new ids.
-  const projectIds = new Map<string, string>()
+  // Related-project links and portfolio entries point at projects and outputs by id, so the
+  // copies keep the new ids; links to projects outside the backup (built-ins) stay as they are.
+  const projectIds = new Map(backup.projects.map((p) => [p.id, crypto.randomUUID()] as const))
   const outputIds = new Map<string, string>()
-  const projects = structuredClone(backup.projects).map((p) => {
-    const id = crypto.randomUUID()
-    projectIds.set(p.id, id)
-    return {
-      ...p,
-      id,
-      outputs: p.outputs.map((output) => {
-        const outputId = crypto.randomUUID()
-        outputIds.set(output.id, outputId)
-        return { ...output, id: outputId }
-      }),
-      title: uniqueName(p.title, titles, 100),
-      collectionId: p.collectionId === null ? null : collectionIds.get(p.collectionId)!,
-    }
-  })
+  const projects = structuredClone(backup.projects).map((p) => ({
+    ...p,
+    id: projectIds.get(p.id)!,
+    outputs: p.outputs.map((output) => {
+      const outputId = crypto.randomUUID()
+      outputIds.set(output.id, outputId)
+      return { ...output, id: outputId }
+    }),
+    title: uniqueName(p.title, titles, 100),
+    collectionId: p.collectionId === null ? null : collectionIds.get(p.collectionId)!,
+    ...(p.relatedIds ? { relatedIds: p.relatedIds.map((id) => projectIds.get(id) ?? id) } : {}),
+  }))
   const portfolioTitles = new Set(
     (current.portfolios ?? []).map((p) => p.title.toLocaleLowerCase()),
   )

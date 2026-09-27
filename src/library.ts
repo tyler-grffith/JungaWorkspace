@@ -78,6 +78,8 @@ export type Project = {
   exampleId?: string
   /** A project every library holds; set by the built-ins layer, never stored as truth. */
   builtIn?: boolean
+  /** Projects this one names as related (one direction; the other side shows it as a backlink). */
+  relatedIds?: string[]
   graph?: GraphDocument
   sheet?: SheetDocument
   code?: CodeDocument
@@ -102,6 +104,12 @@ export type ProjectInput = Pick<
 export type View = 'all' | 'favorites' | 'examples' | 'archive' | 'trash' | `collection:${string}`
 export type Sort = 'updated' | 'name' | 'created'
 export const STORAGE_KEY = 'junga.library.v1'
+export const MAX_RELATED = 50
+const validRelatedIds = (value: unknown, own: unknown): value is string[] =>
+  Array.isArray(value) &&
+  value.length <= MAX_RELATED &&
+  value.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 100 && id !== own) &&
+  new Set(value).size === value.length
 export const emptyLibrary = (): Library => ({ version: 1, projects: [], collections: [] })
 const timestamp = () => new Date().toISOString()
 const name = (value: string, label: string, max: number) => {
@@ -252,6 +260,7 @@ export function duplicateProject(library: Library, id: string) {
     ...output,
     id: crypto.randomUUID(),
   }))
+  if (original.relatedIds) result.project.relatedIds = [...original.relatedIds]
   if (original.sourceManifest)
     result.project.sourceManifest = structuredClone(original.sourceManifest)
   return result
@@ -397,6 +406,36 @@ export function removeCollection(library: Library, id: string): Library {
       p.collectionId === id ? { ...p, collectionId: null } : p,
     ),
   }
+}
+
+// --- Links between projects ---------------------------------------------------------------------
+/** Name `targetId` as related to project `id`; the reverse direction shows as a backlink. */
+export function linkProjects(library: Library, id: string, targetId: string): Library {
+  if (id === targetId) throw new Error('A project cannot be related to itself.')
+  const target = library.projects.find((p) => p.id === targetId)
+  if (!target) throw new Error('That project is no longer available.')
+  if (target.status === 'trashed')
+    throw new Error('Restore that project from the trash before linking to it.')
+  return changeProject(library, id, (p) => {
+    if (p.status === 'trashed') throw new Error('Restore this project before linking it.')
+    const related = p.relatedIds ?? []
+    if (related.includes(targetId)) return p
+    if (related.length >= MAX_RELATED)
+      throw new Error(`A project can name up to ${MAX_RELATED} related projects.`)
+    return { ...p, relatedIds: [...related, targetId], updatedAt: timestamp() }
+  })
+}
+export function unlinkProjects(library: Library, id: string, targetId: string): Library {
+  return changeProject(library, id, (p) => {
+    if (p.status === 'trashed') throw new Error('Restore this project before editing its links.')
+    if (!p.relatedIds?.includes(targetId)) return p
+    const relatedIds = p.relatedIds.filter((r) => r !== targetId)
+    const { relatedIds: _dropped, ...rest } = p
+    void _dropped
+    return relatedIds.length
+      ? { ...p, relatedIds, updatedAt: timestamp() }
+      : { ...rest, updatedAt: timestamp() }
+  })
 }
 
 // --- Portfolios -------------------------------------------------------------------------------
@@ -566,6 +605,7 @@ export function parseLibrary(raw: string | null): Library {
         return false
       if (p.exampleId !== undefined && !validExampleId(p.exampleId)) return false
       if (p.builtIn !== undefined && typeof p.builtIn !== 'boolean') return false
+      if (p.relatedIds !== undefined && !validRelatedIds(p.relatedIds, p.id)) return false
       if (p.outputs !== undefined && !validOutputs(p.outputs)) return false
       if (p.sourceManifest !== undefined && !validManifest(p.sourceManifest)) return false
       const ownsOutput =

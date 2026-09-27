@@ -140,6 +140,13 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] `modeler`: SolidWorks-shaped prototype with a real feature history (sketches and ten feature types with parameters), suppress/delete/undo/rebuild, orientations, display styles, section view, planes and origin, material, appearance, units, mass properties, measure; placeholder box geometry.
 - [x] `slicer`: Bambu-shaped prototype with printer/filament/process settings, plates of box objects, arrange/clone/delete, slice estimate, layer preview, simulated device, project notes; JSON export.
 
+## UX refinement rounds — September 27, 2026
+
+- [x] Round 1 (`library maintenance.md`, decision 59): tool chips on cards open editors; Recently opened sort; search by tool and collection names; collection counts; Delete forever and Empty trash with reference cleanup; the storage meter; sidebar spacing; the import dialog's visible file inputs; cropped previews in portfolio cards.
+- [x] Round 2: unbounded canvas boards fit their content on open; project picker in the document link box; Import existing files on the welcome panel; last-backup note in the sidebar; Recently opened in the design registry's default sort.
+- [x] Round 3: project picker on collection item links; copy fixes.
+- [ ] Awaiting Tyler: multi-select with bulk archive/move/trash, a "continue where you left off" strip, and whether creating a one-tool project should open its editor straight away (it changes several browser tests' first steps).
+
 ## Links, import, and the library folder — September 27, 2026
 
 - [x] `relatedIds` on projects with validation, duplication, and restore remapping; `src/linking.ts` backlinks (projects, collection items, document links, portfolios); Related projects and Linked from on the overview; the link picker; Copy link; project links in documents (decision 56).

@@ -100,6 +100,7 @@ export default function CollectionEditor({
   unsaved,
   onBack,
   onChange,
+  projects = [],
 }: {
   title: string
   document: CollectionDocument
@@ -107,6 +108,8 @@ export default function CollectionEditor({
   unsaved: boolean
   onBack: () => void
   onChange: (next: CollectionDocument) => boolean
+  /** The library's other projects, offered as link targets for an item. */
+  projects?: readonly { id: string; title: string }[]
 }) {
   const [currentId, setCurrentId] = useState(doc.rootIds[0])
   const [openItem, setOpenItem] = useState<string | null>(null)
@@ -632,17 +635,40 @@ export default function CollectionEditor({
                 <label>
                   Link
                   <input
-                    type="url"
+                    type="text"
+                    inputMode="url"
                     value={detail.link}
-                    placeholder="https://"
+                    placeholder="https://… or #/project/…"
                     onChange={(e) => {
                       const link = e.target.value.trim()
                       if (link === '' || safeUrl(link))
                         changeItem(detail.id, (i) => ({ ...i, link }))
-                      else setMessage('Links must start with https:// or http://.')
+                      else
+                        setMessage(
+                          'Links must start with https:// or http://, or be a project link (#/project/…).',
+                        )
                     }}
                   />
                 </label>
+                {projects.length > 0 && (
+                  <label>
+                    Link to a project
+                    <select
+                      value={isProjectLink(detail.link) ? (detail.link.split('/')[2] ?? '') : ''}
+                      onChange={(e) => {
+                        const id = e.target.value
+                        changeItem(detail.id, (i) => ({ ...i, link: id ? `#/project/${id}` : '' }))
+                      }}
+                    >
+                      <option value="">None</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {detail.link && (
                   <a
                     className="button"

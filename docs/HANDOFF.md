@@ -12,7 +12,11 @@
 
 **Library folder.** **Keep a folder in step** at the bottom of the sidebar (Chrome or Edge) chooses a folder that receives `junga-library.json` and one file per project after every save; the sidebar line shows the last write, and **Load from folder…** restores it in another browser. Decision 58.
 
-**Validation.** `npm run check` (203 unit tests, TypeScript, build); `tests/portfolio.spec.ts` and `tests/import.spec.ts` (four Chromium tests with accessibility scans) and the existing suites, 92 tests green on the portfolio commit.
+**Refinement rounds.** Three passes from a screenshot review of every screen at desktop and phone widths (decision 59; `library maintenance.md`): a card's tool chips open the tool; sort by **Recently opened**; search matches tool and collection names; collections show counts; **Delete forever** (a trashed project's menu) and **Empty trash** confirm and clean up references; the storage dialog has a meter of the browser's allowance and the sidebar says when the library was last backed up; an unbounded canvas board opens fitted to its content; the document link box and a collection item's link offer the library's projects; the welcome panel offers **Import existing files**; the sidebar is tighter so its bottom fits a laptop screen; the import dialog's stray file inputs and cropped card previews are fixed.
+
+**Validation.** `npm run check` (205 unit tests, TypeScript, build); `tests/portfolio.spec.ts` and `tests/import.spec.ts` (five Chromium tests with accessibility scans) and the existing suites; the full suite green after each round (95 tests after round 1). Manual passes in the dev browser and the screenshot script (`scratchpad`, not committed).
+
+**Not done, for Tyler to decide.** Two-way links on creation; Excel import (needs a zip reader); reading a library folder's edits back into the app; per-project folders with native files (Q1); multi-select with bulk actions; opening a one-tool project's editor straight after creation (changes several tests' first steps); page themes and per-entry cover images for portfolios; the blog.
 
 ## Modeler, slicer, and painter built out — `main`, September 25, 2026 (committed as `5d70f76`)
 

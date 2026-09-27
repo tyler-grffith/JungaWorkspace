@@ -8,7 +8,7 @@ export type ParamValue = number | string | boolean
 export type ParamDef = {
   id: string
   label: string
-  kind: 'number' | 'select' | 'toggle' | 'text'
+  kind: 'number' | 'select' | 'toggle' | 'text' | 'color'
   default: ParamValue
   unit?: string
   options?: readonly string[]
@@ -22,6 +22,8 @@ export type ToolDef = {
   label: string
   icon: LucideIcon
   hint?: string
+  /** Keyboard shortcut shown in the tooltip. */
+  shortcut?: string
   /** Parameters shown in the property panel when the tool starts. None means it runs at once. */
   params?: ParamDef[]
   /** Requires a selection of this kind in the tree before it can start. */
@@ -42,6 +44,10 @@ export type TreeNode = {
   suppressed?: boolean
   badge?: string
   kind?: string
+  /** Tooltip, e.g. a rebuild error. */
+  title?: string
+  /** Drawn with a warning mark: the feature could not be built. */
+  error?: boolean
 }
 export type PanelTab = { id: string; label: string; icon: LucideIcon }
 export type StatusItem = { id: string; text: string; icon?: LucideIcon }

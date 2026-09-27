@@ -11,6 +11,7 @@
   --wb-viewport: linear-gradient(180deg, #dfe6ee 0%, #f7f9fb 60%, #eef1f4 100%);
   --wb-grid: rgba(60, 80, 110, 0.18);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   height: calc(100vh - 130px);
   min-height: 560px;
@@ -677,4 +678,226 @@
   color: var(--wb-muted);
   background: var(--wb-panel);
   border-top: 1px solid var(--wb-border);
+}
+
+/* Additions: field help, error rows, sketch editor, section slider */
+.wb-field-help {
+  font-size: 10.5px;
+  color: var(--wb-muted);
+  line-height: 1.35;
+}
+.wb-tree-row.error .wb-tree-label {
+  color: #c0392b;
+}
+.wb-tree-row.error .wb-tree-label svg {
+  color: #c0392b;
+}
+.wb-field input[type='color'],
+.wb-panel input[type='color'] {
+  padding: 0;
+  height: 28px;
+}
+.wb-range {
+  width: 100%;
+}
+.wb-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+.wb-toolbar-row .wb-button {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+.wb-inline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Sketch editor: a 2D drawing surface in the viewport slot */
+.sk-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  overflow: hidden;
+  background: #fbfcfd;
+  outline: none;
+}
+.workbench.theme-dark .sk-editor {
+  background: #1b1e23;
+}
+.sk-editor > svg.sk-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+.sk-editor.tool-select > svg.sk-canvas {
+  cursor: default;
+}
+.sk-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  background: var(--wb-panel);
+  border: 1px solid var(--wb-border);
+  border-radius: 6px;
+  max-width: calc(100% - 16px);
+}
+.sk-toolbar button {
+  border: 0;
+  background: none;
+  color: var(--wb-ink);
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 11px;
+}
+.sk-toolbar button:hover {
+  background: var(--wb-hover);
+}
+.sk-toolbar button.active {
+  background: var(--wb-selected);
+  color: var(--wb-accent, #d9251d);
+}
+.sk-toolbar .sep {
+  width: 1px;
+  background: var(--wb-border);
+  margin: 2px 3px;
+}
+.sk-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--wb-muted);
+  padding: 0 4px;
+}
+.sk-toolbar label input {
+  width: 48px;
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: var(--wb-bg);
+  color: var(--wb-ink);
+}
+.sk-status {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  z-index: 3;
+  font-size: 11px;
+  color: var(--wb-ink);
+  background: var(--wb-panel);
+  padding: 4px 8px;
+  border-radius: 4px;
+  max-width: 70%;
+}
+.sk-dims {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  z-index: 3;
+  background: var(--wb-panel);
+  border: 1px solid var(--wb-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  min-width: 150px;
+}
+.sk-dims label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: var(--wb-muted);
+}
+.sk-dims input {
+  width: 64px;
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: var(--wb-bg);
+  color: var(--wb-ink);
+}
+.sk-dims .sk-dims-title {
+  font-weight: 600;
+  color: var(--wb-ink);
+}
+.wb-subsection {
+  border-top: 1px dashed var(--wb-border);
+  padding-top: 4px;
+}
+.wb-subsection > summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wb-muted);
+  padding: 4px 0;
+}
+.wb-subsection .wb-row {
+  margin-top: 4px;
+}
+.wb-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--wb-border);
+}
+.wb-change {
+  display: grid;
+  grid-template-columns: auto 64px minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--wb-muted);
+}
+.wb-change .wb-button {
+  padding: 2px 6px;
+}
+.wb-legend-time {
+  color: var(--wb-muted);
+  font-variant-numeric: tabular-nums;
+}
+.wb-heat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--wb-muted);
+  margin-top: 8px;
+}
+.wb-heat i {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgb(59, 76, 192),
+    rgb(46, 165, 110),
+    rgb(230, 200, 60),
+    rgb(210, 50, 40)
+  );
 }

@@ -20,23 +20,34 @@ export function bracketModel(): ModelerDocument {
     [-30, -17],
     [30, -17],
   ] as const
+  const plate = newFeature('extrude', 1, { depth: 6, end: 'Blind' }, base.id)
+  const bossFeature = newFeature('extrude', 2, { depth: 14, end: 'Blind' }, boss.id)
   return {
     ...emptyModeler(),
     material: 'Aluminum 6061',
     color: '#8fa3b8',
     sketches: [base, boss, slot],
     features: [
-      newFeature('extrude', 1, { depth: 6, end: 'Blind' }, base.id),
-      newFeature('extrude', 2, { depth: 14, end: 'Blind' }, boss.id),
+      plate,
+      bossFeature,
       newFeature('hole', 1, { diameter: 8, x: 0, y: 0, end: 'Through All' }),
       ...holes.map(([x, y], i) =>
-        newFeature('hole', i + 2, { diameter: 5, x, y, end: 'Through All' }),
+        newFeature('hole', i + 2, {
+          diameter: 5,
+          x,
+          y,
+          end: 'Through All',
+          type: 'Counterbore',
+          cbDiameter: 9,
+          cbDepth: 2.5,
+        }),
       ),
       newFeature('cut', 1, { depth: 6, end: 'Blind' }, slot.id),
-      newFeature('fillet', 1, { radius: 2 }),
+      newFeature('fillet', 1, { radius: 6, edges: 'Vertical edges', targetId: plate.id }),
+      newFeature('chamfer', 1, { distance: 1, edges: 'Top edges', targetId: bossFeature.id }),
     ],
     notes:
-      'A mounting bracket: 80 × 50 × 6 mm plate, Ø22 boss with a Ø8 through hole, four Ø5 mounting holes, and a slot cut into the plate. The fillet is recorded and awaits a kernel.',
+      'A mounting bracket: 80 × 50 × 6 mm plate with rounded corners, a Ø22 boss with a chamfered top and a Ø8 through hole, four counterbored Ø5 mounting holes, and a slot cut into the plate. Every feature is real geometry: double-click one in the tree to edit it.',
   }
 }
 

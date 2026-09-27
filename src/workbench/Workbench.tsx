@@ -27,6 +27,8 @@ export type WorkbenchProps = {
     nodes: TreeNode[]
     selectedId: string | null
     onSelect: (id: string) => void
+    /** Double-click on a node: edit it. */
+    onActivate?: (id: string) => void
     tabs?: PanelTab[]
     activeTab?: string
     onTreeTab?: (id: string) => void
@@ -40,6 +42,8 @@ export type WorkbenchProps = {
   onToolCancel: () => void
   onTool: (tool: ToolDef) => void
   onCommand: (command: string) => void
+  /** Keyboard shortcuts (menu-style, e.g. "Ctrl+Z", "Del", "F") mapped to commands. */
+  shortcuts?: Record<string, string>
   viewport: ReactNode
   viewToolbar?: ToolDef[]
   onViewTool?: (id: string) => void
@@ -65,7 +69,23 @@ export default function Workbench(props: WorkbenchProps) {
       if (event.key === 'Escape') {
         setOpenMenu(null)
         if (activeTool) props.onToolCancel()
+        return
       }
+      if (!props.shortcuts || !root.current?.contains(event.target as Node)) return
+      const target = event.target as HTMLElement
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.isContentEditable
+      const name = event.key.length === 1 ? event.key.toUpperCase() : event.key
+      const combo = `${event.ctrlKey || event.metaKey ? 'Ctrl+' : ''}${event.shiftKey ? 'Shift+' : ''}${
+        name === 'Delete' ? 'Del' : name
+      }`
+      const command = props.shortcuts[combo]
+      if (!command || (typing && !combo.startsWith('Ctrl+'))) return
+      event.preventDefault()
+      props.onCommand(command)
     }
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', keys)
@@ -94,7 +114,7 @@ export default function Workbench(props: WorkbenchProps) {
         aria-selected={node.id === tree.selectedId}
       >
         <div
-          className={`wb-tree-row ${node.id === tree.selectedId ? 'selected' : ''} ${node.suppressed ? 'suppressed' : ''}`}
+          className={`wb-tree-row ${node.id === tree.selectedId ? 'selected' : ''} ${node.suppressed ? 'suppressed' : ''} ${node.error ? 'error' : ''}`}
           style={{ paddingLeft: 6 + depth * 14 }}
         >
           {hasChildren ? (
@@ -109,7 +129,13 @@ export default function Workbench(props: WorkbenchProps) {
           ) : (
             <span className="wb-tree-toggle" aria-hidden="true" />
           )}
-          <button type="button" className="wb-tree-label" onClick={() => tree.onSelect(node.id)}>
+          <button
+            type="button"
+            className="wb-tree-label"
+            onClick={() => tree.onSelect(node.id)}
+            onDoubleClick={() => tree.onActivate?.(node.id)}
+            title={node.title}
+          >
             {Icon && <Icon size={14} aria-hidden="true" />}
             <span>{node.label}</span>
             {node.badge && <span className="wb-tree-badge">{node.badge}</span>}
@@ -202,7 +228,7 @@ export default function Workbench(props: WorkbenchProps) {
                       key={tool.id}
                       type="button"
                       className={`wb-tool ${activeTool?.id === tool.id ? 'active' : ''}`}
-                      title={tool.hint ?? tool.label}
+                      title={`${tool.hint ?? tool.label}${tool.shortcut ? ` (${tool.shortcut})` : ''}`}
                       aria-label={tool.label}
                       aria-pressed={activeTool?.id === tool.id}
                       disabled={tool.disabled || props.readOnly}
@@ -374,6 +400,7 @@ export function ParamField({
   value: ParamValue
   onChange: (value: ParamValue) => void
 }) {
+  const help = param.help ? <small className="wb-field-help">{param.help}</small> : null
   switch (param.kind) {
     case 'number':
       return (
@@ -384,25 +411,45 @@ export function ParamField({
           </span>
           <input
             type="number"
+            aria-label={`${param.label}${param.unit ? ` (${param.unit})` : ''}`}
             value={Number(value)}
             min={param.min}
             max={param.max}
             step={param.step ?? 'any'}
             onChange={(e) => onChange(Number(e.target.value))}
           />
+          {help}
+        </label>
+      )
+    case 'color':
+      return (
+        <label className="wb-field">
+          <span>{param.label}</span>
+          <input
+            type="color"
+            aria-label={param.label}
+            value={String(value)}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {help}
         </label>
       )
     case 'select':
       return (
         <label className="wb-field">
           <span>{param.label}</span>
-          <select value={String(value)} onChange={(e) => onChange(e.target.value)}>
+          <select
+            aria-label={param.label}
+            value={String(value)}
+            onChange={(e) => onChange(e.target.value)}
+          >
             {(param.options ?? []).map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
           </select>
+          {help}
         </label>
       )
     case 'toggle':
@@ -420,7 +467,13 @@ export function ParamField({
       return (
         <label className="wb-field">
           <span>{param.label}</span>
-          <input type="text" value={String(value)} onChange={(e) => onChange(e.target.value)} />
+          <input
+            type="text"
+            aria-label={param.label}
+            value={String(value)}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {help}
         </label>
       )
   }

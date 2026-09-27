@@ -12,9 +12,12 @@ tools are about: the colour model, the recipe, and the swap plan.
 
 > Create another sub-app called "PLA Painter" that is analagous to chroma canvas and hueforge.
 
+> Your job is to build out the 3D modelor, slicer, and painter. Don't stop until these sub-apps
+> are highly capable counterparts of their commercial analogs.
+
 ## Conceptual gaps I, the agent, filled in
 
-- **The colour model.** A filament at thickness *t* over a colour below shows
+- **The colour model.** A filament at thickness _t_ over a colour below shows
   `mix(below, filament, min(1, t / TD))`, with TD its transmission distance. Walking the stack
   from the base up gives a colour ramp: the colour seen at every layer count. Each pixel picks the
   ramp step nearest its colour (weighted RGB), and that step is the pixel's height. This is the
@@ -32,6 +35,14 @@ tools are about: the colour model, the recipe, and the swap plan.
   spool starts; the print sheet adds size, height, grid, and a filament estimate and exports as
   text. The relief exports as a closed, stepped STL, and **Send to Slicer** places a decimated
   copy on the project's plate with the plan in the slicer's notes.
+- **September 25 build-out (decision 54).** Layers now mix in linear light and match by CIE
+  ΔE2000 (weighted RGB remains an option); Floyd–Steinberg dithering, gamma, saturation, blur,
+  sharpening, and a minimum feature size shape the picture; **Auto-place swaps** searches the
+  start layers for the lowest mean ΔE and **Suggest filaments** picks a stack from the library;
+  a frame with a hanging hole, a layer-by-layer scrub, a compare slider, a print-time estimate,
+  a ΔE readout, a TD calibration strip, 3MF, and G-code with M600 pauses (through the slicer
+  engine) complete the HueForge workflow. Send to Slicer also sets the slicer's process and the
+  spool changes.
 - **Presets say they are approximate.** Transmission distances vary by brand and even by spool;
   the presets are typical values and the panel says to measure your own, as HueForge users do.
 
@@ -44,5 +55,8 @@ tools are about: the colour model, the recipe, and the swap plan.
 - For further refinement: presets (`FILAMENT_PRESETS`), the colour distance and the grid cap
   (`paint.ts`, `MAX_PIXELS`), the relief budgets for the 3D view, STL, and slicer
   (`PainterEditor.tsx`), and the filament density used for the estimate.
-- Not built, and the obvious next steps: dithering, automatic swap placement from the image's
-  colours, Lab-space matching, per-filament layer-height limits, and a measured-TD helper.
+- For the September 25 build-out: the optimiser budgets (`placeSwaps` shrinks to 3,000 pixels,
+  `suggestStack` to 1,200 and six candidate positions), the ΔE sampling stride, the print-time
+  constants in `estimateSeconds`, and the calibration strip's steps (`PainterEditor.tsx`).
+- Not built, and the obvious next steps: per-filament layer-height limits, luminance-only
+  ("lithophane") mode, and a measured-TD input from a photographed strip.

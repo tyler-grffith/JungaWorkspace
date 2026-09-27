@@ -137,3 +137,49 @@ test('the print sheet output shows the painting read-only', async ({ page }) => 
   const results = await new AxeBuilder({ page }).analyze()
   expect(results.violations.map((v) => v.id)).toEqual([])
 })
+
+test('auto-places swaps, frames the print, scrubs by layer, and exports G-code with pauses', async ({
+  page,
+}) => {
+  test.setTimeout(90000)
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await createProject(page, 'Bands', ['PLA Painter'], 'Open painter')
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Choose image…' }).click()
+  await (
+    await chooser
+  ).setFiles({ name: 'bands.png', mimeType: 'image/png', buffer: await testImage(page) })
+  await expect(page.getByRole('img', { name: 'Printed preview' })).toBeVisible()
+  const errorNote = page.getByText(/Average colour error ΔE [\d.]+/)
+  await expect(errorNote).toBeVisible()
+  const before = Number(/ΔE ([\d.]+)/.exec((await errorNote.textContent())!)![1])
+
+  await page.getByRole('button', { name: 'Auto-place swaps' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Placing swaps done' })).toBeVisible()
+  const after = Number(/ΔE ([\d.]+)/.exec((await errorNote.textContent())!)![1])
+  expect(after).toBeLessThanOrEqual(before)
+
+  await page.getByLabel('Frame (mm)').fill('4')
+  await page.getByLabel('Hanging hole Ø (mm)').fill('5')
+  await expect(page.getByRole('complementary', { name: 'Print sheet' })).toContainText(
+    '+ 4 mm frame',
+  )
+  await page.getByLabel('Dithering').selectOption('floyd')
+  await page.getByRole('tab', { name: 'By layer' }).click()
+  await expect(page.getByRole('img', { name: /Print after layer \d+/ })).toBeVisible()
+  await page.getByRole('tab', { name: 'Compare' }).click()
+  await expect(page.getByRole('img', { name: 'Original beside printed' })).toBeVisible()
+  const gcode = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export G-code with pauses' }).click()
+  expect((await gcode).suggestedFilename()).toBe('bands.gcode')
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: /G-code written: \d+ layers with \d+ spool changes/ }),
+  ).toBeVisible()
+  const painting = JSON.parse((await saved(page))!).projects[0].painter
+  expect(painting.frame).toEqual({ width: 4, holeDiameter: 5 })
+  expect(painting.render.dither).toBe('floyd')
+  expect(errors).toEqual([])
+})

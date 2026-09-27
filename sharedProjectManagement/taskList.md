@@ -138,6 +138,15 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] `modeler`: SolidWorks-shaped prototype with a real feature history (sketches and ten feature types with parameters), suppress/delete/undo/rebuild, orientations, display styles, section view, planes and origin, material, appearance, units, mass properties, measure; placeholder box geometry.
 - [x] `slicer`: Bambu-shaped prototype with printer/filament/process settings, plates of box objects, arrange/clone/delete, slice estimate, layer preview, simulated device, project notes; JSON export.
 
+## Modeler, slicer, painter build-out — September 25, 2026
+
+- [x] Geometry: BSP booleans with feature tags (`src/workbench/csg.ts`), general extrusions with holes/draft/fillets/chamfers, ear clipping, loft, sweep, rotations, 3MF/OBJ writers (decision 52).
+- [x] Modeler: real cuts/holes/fillets/chamfers/shells/lofts/sweeps/circular patterns/mesh bodies, rebuild cache and errors, feature editing, rename/reorder/roll back, free sketcher with dimensions and snapping, capped section view, mass properties, check, STL/3MF/OBJ (decisions 52–53).
+- [x] Slicer: profiles and presets, raster skins and supports, eight infill patterns, brim/skirt/raft, seams, per-object overrides, AMS slots and filament changes, acceleration-aware estimate with per-type times, richer G-code, transforms and plane cut, preview schemes, simulated device, 3MF (decision 54).
+- [x] Painter: linear-light mixing, ΔE2000 matching, dithering, picture processing, auto swap placement, filament suggestion, frame and hole, layer scrub, compare, time estimate, calibration strip, 3MF, G-code with pauses (decision 54).
+- [x] Unit and browser tests; uncommitted on `main` for the ship chat.
+- [ ] Awaiting Tyler: tree supports, variable layer height, ironing, printer connectivity, a boundary-representation kernel, an asset store for meshes and images.
+
 ## PLA Painter — September 24, 2026
 
 - [x] `painter`: image, size, layer recipe, filament stack with transmission distances; colour ramp; per-pixel layer heights; printed preview, heightmap, original, painted 3D relief; swap plan and print sheet; STL, print sheet, and PNG export; Send to Slicer; print sheet output (decision 47).

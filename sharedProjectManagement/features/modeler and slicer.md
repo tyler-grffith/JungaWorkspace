@@ -22,7 +22,20 @@ the slicer produces toolpaths and G-code. A geometry kernel (booleans, fillets) 
 
 > figure out how to add functionality to the modeler and the slicer and do it
 
+> Your job is to build out the 3D modelor, slicer, and painter. Don't stop until these sub-apps
+> are highly capable counterparts of their commercial analogs.
+
 ## Conceptual gaps I, the agent, filled in
+
+- **September 25 build-out (decisions 52–54).** Booleans arrived as a BSP CSG on meshes with
+  per-face feature tags, so cuts, holes, shells, fillets, and chamfers are real geometry and one
+  closed body exports as STL, 3MF, or OBJ; a free sketcher draws entities on a plane with
+  snapping and typed dimensions; features are edited, renamed, reordered, and rolled back from
+  the tree. The slicer gained printer, filament, and process profiles, per-object bitmaps that
+  sort the interior into top and bottom surfaces, internal solid, and sparse infill and that grow
+  supports under overhangs, eight infill patterns, brim/skirt/raft, seams, per-object overrides,
+  AMS slots with scheduled changes, an acceleration-aware estimate with per-type times, richer
+  G-code, transforms and a plane cut, preview colour schemes, a simulated device, and 3MF export.
 
 - **One workbench shell, two specs.** `src/workbench/` is a declarative desktop-application shell:
   title bar, menu bar with dropdowns, command tabs with grouped tool buttons (SolidWorks'
@@ -73,7 +86,13 @@ the slicer produces toolpaths and G-code. A geometry kernel (booleans, fillets) 
   angle, and camera speeds (`Viewport3D.tsx`), profile segment counts (`SEGMENTS` in the modeler
   model), the slicer's speeds, solid layer count, brim loops, and path colours (`slicing.ts`), the
   mesh budget (`MAX_TRIANGLES`), and the status bar contents.
-- Not built, and the obvious next steps: support generation, a free sketcher, fillet/chamfer/
-  shell geometry (a boundary-representation kernel or a mesh-based approximation), 3MF, printer
-  connectivity, and an asset store so meshes leave the library key. The shell, documents, and
-  mesh layer are shaped so those slot in without moving the UI.
+- For the September 25 build-out: the boolean budget (`MAX_BODY_TRIANGLES`) and rebuild cache
+  size in `src/modeler/model.ts`; the sketcher's snap tolerances and shortcuts
+  (`SketchEditor.tsx`); printer, filament, and process profiles (`src/slicer/profiles.ts`);
+  the raster cell budget (`raster.ts`), support gap and overhang stacking, raft thicknesses,
+  skirt distance, and the sharp-corner angle of the time model (`slicing.ts`).
+- Not built, and the obvious next steps: tree supports (generated as normal supports and
+  labelled so), variable layer height, ironing paths, printer connectivity, a
+  boundary-representation kernel (booleans keep T-junctions, which Check reports), and an asset
+  store so meshes leave the library key. The shell, documents, and mesh layer are shaped so
+  those slot in without moving the UI.

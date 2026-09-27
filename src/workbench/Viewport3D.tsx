@@ -42,6 +42,8 @@ export type SceneMesh = {
   fill: string
   /** One colour per triangle, overriding `fill` where given. */
   colors?: string[]
+  /** One pick id per triangle, overriding `id` where given (a body tagged by feature). */
+  ids?: string[]
   /** Edge colour; null draws no edges. */
   stroke?: string | null
   dashed?: boolean
@@ -236,6 +238,7 @@ const Viewport3D = forwardRef<ViewportHandle, Viewport3DProps>(function Viewport
       fill: string
       shade: number
       edges: number
+      id: string | undefined
     }
     const faces: Face[] = []
     for (const item of items) {
@@ -256,6 +259,7 @@ const Viewport3D = forwardRef<ViewportHandle, Viewport3DProps>(function Viewport
           fill: item.colors?.[t] ?? item.fill,
           shade,
           edges: hard[t],
+          id: item.ids?.[t] ?? item.id,
         })
       })
     }
@@ -287,7 +291,7 @@ const Viewport3D = forwardRef<ViewportHandle, Viewport3DProps>(function Viewport
           }
         ctx.stroke()
       }
-      if (!f.item.wire) drawn.current.push({ id: f.item.id, pts: f.pts })
+      if (!f.item.wire) drawn.current.push({ id: f.id, pts: f.pts })
     }
     ctx.globalAlpha = 1
     ctx.setLineDash([])

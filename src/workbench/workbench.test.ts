@@ -45,16 +45,16 @@ describe('modeler model', () => {
     expect(part.solids.map((s) => s.cut)).toEqual([false, false, true])
     expect(bounds(part.solids[1].mesh)?.max.z).toBeCloseTo(30)
     expect(volume(part.solids[0].mesh)).toBeCloseTo(60 * 40 * 20)
-    // The hole is a reversed cylinder drilled down from the top face.
-    expect(volume(part.solids[2].mesh)).toBeLessThan(0)
-    expect(bounds(part.solids[2].mesh)?.max.z).toBeCloseTo(30)
+    // The hole is a cylinder drilled down from the top face and subtracted from the body.
+    expect(bounds(part.solids[2].mesh)?.max.z).toBeCloseTo(30.5)
+    expect(volume(part.body.mesh)).toBeLessThan(60 * 40 * 30)
     const steel = massProperties(doc)
     expect(steel.volume).toBeCloseTo(60 * 40 * 30 - Math.PI * 16 * 10, -1)
     expect(steel.mass).toBeGreaterThan(0)
     expect(steel.size).toEqual({ x: 60, y: 40, z: 30 })
     const suppressed = { ...doc, features: doc.features.map((f) => ({ ...f, suppressed: true })) }
     expect(derive(suppressed).solids).toHaveLength(0)
-    expect(validModeler({ ...doc, features: [{ ...doc.features[0], type: 'loft' }] })).toBe(false)
+    expect(validModeler({ ...doc, features: [{ ...doc.features[0], type: 'blend' }] })).toBe(false)
     expect(validModeler({ ...doc, features: [{ ...doc.features[0], sketchId: 'missing' }] })).toBe(
       false,
     )
@@ -70,7 +70,8 @@ describe('modeler model', () => {
     doc.features.push(newFeature('pattern', 1, { direction: 'X', spacing: 30, count: 3 }))
     doc.features.push(newFeature('mirror', 1, { plane: 'Front' }))
     const part = derive(doc)
-    expect(part.solids).toHaveLength(6)
+    // Three patterned cylinders, then the whole body mirrored across the front plane.
+    expect(part.solids).toHaveLength(4)
     const printable = printableMesh(doc)
     expect(bounds(printable)?.min.z).toBeCloseTo(0)
     expect(triangleCount(printable)).toBeLessThanOrEqual(4000)
@@ -99,8 +100,9 @@ describe('slicer model', () => {
     expect(standard.result.grams).toBeGreaterThan(0)
     const first = standard.layers[0]
     expect(first.paths.filter((p) => p.kind === 'outer')).toHaveLength(3)
-    expect(first.paths.some((p) => p.kind === 'solid')).toBe(true)
+    expect(first.paths.some((p) => p.kind === 'bottom')).toBe(true)
     expect(standard.layers[50].paths.some((p) => p.kind === 'infill')).toBe(true)
+    expect(standard.layers.at(-1)!.paths.some((p) => p.kind === 'top')).toBe(true)
     const dense = slicePlate({ ...next, process: { ...next.process, infill: 100 } })
     expect(dense.result.grams).toBeGreaterThan(standard.result.grams)
     const fast = slicePlate({ ...next, process: { ...next.process, speed: 'ludicrous' } })

@@ -3,7 +3,7 @@
 // marks, the swap list, and the print sheet that puts them together.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { gridFor, printedHeight, type PainterDocument } from './model'
-import { paint, printStats, ramp, rgbToHex, type Painting } from './paint'
+import { paint, printStats, ramp, rgbToHex, scrubPixels, type Painting } from './paint'
 import './painter.css'
 
 /** The image's pixels scaled to the working grid; null until the image has loaded. */
@@ -35,24 +35,35 @@ export function usePixels(src: string | null, cols: number, rows: number) {
   }, [src, cols, rows])
   return pixels
 }
-/** The painting for a document, recomputed as the recipe changes. */
-export function usePainting(doc: PainterDocument): Painting | null {
+/** The painting for a document, recomputed as the recipe changes; pass pixels already read. */
+export function usePainting(
+  doc: PainterDocument,
+  given?: Uint8ClampedArray | null,
+): Painting | null {
   const { cols, rows } = gridFor(doc)
-  const pixels = usePixels(doc.image?.src ?? null, cols, rows)
+  const own = usePixels(given === undefined ? (doc.image?.src ?? null) : null, cols, rows)
+  const pixels = given === undefined ? own : given
   return useMemo(() => (pixels ? paint(pixels, cols, rows, doc) : null), [pixels, cols, rows, doc])
 }
 
-/** Draws the painting as the print will look, or as a heightmap (taller is lighter). */
+/**
+ * Draws the painting as the print will look, as a heightmap (taller is lighter), as the print
+ * after a given layer, or as the original beside the print split at a percentage.
+ */
 export function PaintingCanvas({
   painting,
   doc,
   mode,
   label,
+  layer,
+  split,
 }: {
   painting: Painting
   doc: PainterDocument
-  mode: 'printed' | 'heightmap'
+  mode: 'printed' | 'heightmap' | 'scrub' | 'compare'
   label: string
+  layer?: number
+  split?: number
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -61,14 +72,31 @@ export function PaintingCanvas({
     if (!canvas || !ctx) return
     canvas.width = painting.cols
     canvas.height = painting.rows
-    const rgba =
-      mode === 'printed' ? painting.preview : heightmapPixels(painting.layers, doc.maxLayers)
+    let rgba: Uint8ClampedArray
+    if (mode === 'printed') rgba = painting.preview
+    else if (mode === 'heightmap') rgba = heightmapPixels(painting.layers, doc.maxLayers)
+    else if (mode === 'scrub') rgba = scrubPixels(painting, doc, layer ?? doc.maxLayers)
+    else {
+      rgba = new Uint8ClampedArray(painting.preview)
+      const source = painting.source ?? painting.preview
+      const edge = Math.round((painting.cols * (split ?? 50)) / 100)
+      for (let r = 0; r < painting.rows; r++)
+        for (let c = 0; c < edge; c++) {
+          const i = (r * painting.cols + c) * 4
+          rgba[i] = source[i]
+          rgba[i + 1] = source[i + 1]
+          rgba[i + 2] = source[i + 2]
+        }
+      for (let r = 0; r < painting.rows; r++)
+        if (edge > 0 && edge < painting.cols)
+          rgba.set([255, 255, 255, 255], (r * painting.cols + edge) * 4)
+    }
     ctx.putImageData(
       new ImageData(rgba as Uint8ClampedArray<ArrayBuffer>, painting.cols, painting.rows),
       0,
       0,
     )
-  }, [painting, mode, doc.maxLayers])
+  }, [painting, mode, doc, layer, split])
   return (
     <canvas
       ref={ref}
@@ -145,11 +173,18 @@ export function SwapList({ doc }: { doc: PainterDocument }) {
 
 export function Stats({ doc, painting }: { doc: PainterDocument; painting: Painting | null }) {
   const s = printStats(doc, painting)
+  const h = Math.floor(s.seconds / 3600)
+  const m = Math.round((s.seconds % 3600) / 60)
   const rows: [string, string][] = [
-    ['Size', `${doc.width} × ${Math.round(printedHeight(doc))} mm`],
+    [
+      'Size',
+      `${doc.width} × ${Math.round(printedHeight(doc))} mm${doc.frame?.width ? ` + ${doc.frame.width} mm frame` : ''}`,
+    ],
     ['Height', `${s.height} mm · ${doc.maxLayers} layers of ${doc.layerHeight} mm`],
     ['Grid', `${s.cols} × ${s.rows} pixels`],
     ['Filament', painting ? `about ${s.grams} g` : 'add an image'],
+    ['Print time', painting ? `about ${h ? `${h}h ${m}m` : `${m}m`}` : '—'],
+    ['Colour error', painting ? `ΔE ${s.error.toFixed(1)}` : '—'],
   ]
   return (
     <dl className="painter-stats">

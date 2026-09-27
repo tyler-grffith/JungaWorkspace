@@ -1,25 +1,41 @@
 // The slicer: a Bambu Studio-shaped workbench (Prepare / Preview / Device / Project tabs,
 // printer-filament-process sidebar, build plate viewport, object panel, slice button) over a
-// project document. Objects are boxes, imported STL meshes, or parts sent from the modeler; the
-// plate is really sliced into toolpaths that Preview draws layer by layer and that export as
-// G-code. The printer on the Device tab is simulated.
-import { forwardRef, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+// project document. Objects are boxes, imported STL meshes, or parts sent from the modeler or
+// painter; the plate is really sliced into toolpaths that Preview draws layer by layer, by line
+// type, speed, height, or filament, and that export as G-code or 3MF. The printer on the Device
+// tab is simulated from the estimate.
+import {
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react'
 import {
   ArrowLeft,
   Boxes,
   Copy,
   Fan,
   FileUp,
+  FlipHorizontal2,
+  FlipVertical2,
   Gauge,
   Home,
   LayoutGrid,
   Layers,
+  Maximize2,
   PackagePlus,
   Paintbrush,
+  Palette,
   Pause,
   Play,
   Power,
   Printer,
+  RotateCcw,
+  RotateCw,
+  Route,
   Scissors,
   Settings2,
   Shuffle,
@@ -33,44 +49,64 @@ import {
 import Workbench from '../workbench/Workbench'
 import Viewport3D, { gridLines, type SceneItem, type ViewportHandle } from '../workbench/Viewport3D'
 import {
+  bounds,
   compact,
   decimate,
   extrude,
   frames,
+  mirror as mirrorMesh,
   parseStl,
   profile,
+  rotateX,
+  rotateY,
   settle,
   toStl,
+  translate,
   triangleCount,
   vec,
   type Mesh,
 } from '../workbench/geometry'
+import { intersect, tagged } from '../workbench/csg'
+import { toThreeMf } from '../workbench/threemf'
 import { downloadBlob, safeFilename } from '../canvas/export'
 import { printableMesh } from '../modeler/model'
 import {
   PATH_COLORS,
+  PATH_KINDS,
   PATH_LABELS,
   slicePlate,
   toGcode,
-  type PathKind,
   type SlicedPlate,
 } from './slicing'
 import type { Menu, ParamValue, RibbonTab, ToolDef, TreeNode } from '../workbench/types'
 import {
-  BED_SIZE,
+  FILAMENT_TYPES,
+  INFILL_PATTERNS,
+  MAX_SLOTS,
   MAX_TRIANGLES,
   OBJECT_COLORS,
   PRINTERS,
+  PROCESS_PRESETS,
   activePlate,
+  allSlots,
+  applyPreset,
   arrange,
+  bedFor,
+  filamentTemps,
   footprint,
   formatDuration,
   meshObject,
   newObject,
   newPlate,
+  normalizeSlicer,
   objectMesh,
+  outsideBed,
   plateMesh,
+  printerProfile,
   validSlicer,
+  type Filament,
+  type FilamentType,
+  type ObjectOverrides,
   type PlateObject,
   type Process,
   type SlicerDocument,
@@ -101,7 +137,7 @@ const RIBBON: RibbonTab[] = [
                 default: 40,
                 unit: 'mm',
                 min: 1,
-                max: 256,
+                max: 400,
               },
               {
                 id: 'depth',
@@ -110,7 +146,7 @@ const RIBBON: RibbonTab[] = [
                 default: 40,
                 unit: 'mm',
                 min: 1,
-                max: 256,
+                max: 400,
               },
               {
                 id: 'height',
@@ -119,7 +155,7 @@ const RIBBON: RibbonTab[] = [
                 default: 30,
                 unit: 'mm',
                 min: 1,
-                max: 250,
+                max: 400,
               },
             ],
           },
@@ -130,12 +166,12 @@ const RIBBON: RibbonTab[] = [
             hint: 'Load a mesh from an STL file onto the plate.',
           },
           { id: 'clone', label: 'Clone', icon: Copy, hint: 'Duplicate the selected object.' },
-          { id: 'delete', label: 'Delete', icon: Trash2 },
+          { id: 'delete', label: 'Delete', icon: Trash2, shortcut: 'Del' },
           {
             id: 'arrange',
             label: 'Arrange',
             icon: LayoutGrid,
-            hint: 'Lay the plate out on a grid.',
+            hint: 'Lay the plate out on a grid, largest first.',
           },
           {
             id: 'orient',
@@ -146,12 +182,51 @@ const RIBBON: RibbonTab[] = [
         ],
       },
       {
-        label: 'Edit',
+        label: 'Transform',
         tools: [
-          { id: 'noop:split', label: 'Split to Parts', icon: Scissors, disabled: true },
-          { id: 'noop:cut', label: 'Cut', icon: Slice, disabled: true },
-          { id: 'noop:support', label: 'Support Painting', icon: Paintbrush, disabled: true },
-          { id: 'noop:seam', label: 'Seam Painting', icon: Waves, disabled: true },
+          {
+            id: 'rotate:x',
+            label: 'Rotate X 90°',
+            icon: RotateCw,
+            hint: 'Tip the selected object over the X axis.',
+          },
+          {
+            id: 'rotate:y',
+            label: 'Rotate Y 90°',
+            icon: RotateCcw,
+            hint: 'Tip the selected object over the Y axis.',
+          },
+          { id: 'mirror:x', label: 'Mirror X', icon: FlipHorizontal2 },
+          { id: 'mirror:y', label: 'Mirror Y', icon: FlipVertical2 },
+          {
+            id: 'layflat',
+            label: 'Lay Flat',
+            icon: Layers,
+            hint: 'Turn the selected object onto its lowest, widest face.',
+          },
+          {
+            id: 'fit',
+            label: 'Scale to Fit',
+            icon: Maximize2,
+            hint: 'Shrink the selected object until it fits the build volume.',
+          },
+          {
+            id: 'cut',
+            label: 'Cut',
+            icon: Scissors,
+            hint: 'Cut the selected object with a horizontal plane into two objects.',
+            params: [
+              {
+                id: 'height',
+                label: 'Cut height',
+                kind: 'number',
+                default: 10,
+                unit: 'mm',
+                min: 0.1,
+                max: 400,
+              },
+            ],
+          },
         ],
       },
       {
@@ -159,6 +234,7 @@ const RIBBON: RibbonTab[] = [
         tools: [
           { id: 'plate:add', label: 'Add Plate', icon: Square },
           { id: 'plate:next', label: 'Next Plate', icon: Layers },
+          { id: 'plate:delete', label: 'Delete Plate', icon: Trash2 },
         ],
       },
     ],
@@ -172,15 +248,23 @@ const RIBBON: RibbonTab[] = [
         tools: [
           { id: 'layer:up', label: 'Layer Up', icon: Layers, hint: 'Show one more layer.' },
           { id: 'layer:down', label: 'Layer Down', icon: Layers },
+          { id: 'layer:first', label: 'First Layer', icon: Square },
           { id: 'layer:all', label: 'All Layers', icon: Boxes },
         ],
       },
       {
-        label: 'Color scheme',
+        label: 'Colour scheme',
         tools: [
           { id: 'scheme:type', label: 'Line Type', icon: Paintbrush },
           { id: 'scheme:speed', label: 'Speed', icon: Gauge },
           { id: 'scheme:height', label: 'Layer Height', icon: Layers },
+          { id: 'scheme:filament', label: 'Filament', icon: Palette },
+          {
+            id: 'toggle:travel',
+            label: 'Travel',
+            icon: Route,
+            hint: 'Show the head’s moves between paths.',
+          },
         ],
       },
     ],
@@ -210,9 +294,16 @@ const RIBBON: RibbonTab[] = [
         tools: [
           { id: 'notes', label: 'Notes', icon: StickyNote },
           {
+            id: 'export:3mf',
+            label: 'Export 3MF',
+            icon: Boxes,
+            hint: 'Download the plate as a 3MF file for Bambu Studio or PrusaSlicer.',
+          },
+          { id: 'export:gcode', label: 'Export G-code', icon: Printer },
+          {
             id: 'export:json',
             label: 'Export Project',
-            icon: Boxes,
+            icon: FileUp,
             hint: 'Download the project as JSON.',
           },
         ],
@@ -224,13 +315,14 @@ const MENUS: Menu[] = [
   {
     label: 'File',
     items: [
-      { label: 'New Project', shortcut: 'Ctrl+N', command: 'notyet:New Project' },
+      { label: 'New Project', shortcut: 'Ctrl+N', command: 'new' },
       { label: 'Import STL…', shortcut: 'Ctrl+I', command: 'import' },
       { label: 'Import from Modeler', command: 'import:modeler' },
       { label: 'Save Project', shortcut: 'Ctrl+S', command: 'save' },
       'separator',
       { label: 'Export Project (JSON)…', command: 'export:json' },
       { label: 'Export Plate as G-code…', command: 'export:gcode' },
+      { label: 'Export Plate as 3MF…', command: 'export:3mf' },
       { label: 'Export Plate as STL…', command: 'export:stl' },
     ],
   },
@@ -242,7 +334,8 @@ const MENUS: Menu[] = [
       'separator',
       { label: 'Clone', shortcut: 'Ctrl+D', command: 'clone' },
       { label: 'Delete', shortcut: 'Del', command: 'delete' },
-      { label: 'Select All', shortcut: 'Ctrl+A', command: 'notyet:Multi-select' },
+      { label: 'Arrange', shortcut: 'A', command: 'arrange' },
+      { label: 'Lay Flat', shortcut: 'L', command: 'layflat' },
     ],
   },
   {
@@ -252,11 +345,37 @@ const MENUS: Menu[] = [
       { label: 'Preview', command: 'view:preview' },
       { label: 'Device', command: 'view:device' },
       { label: 'Project', command: 'view:project' },
+      'separator',
+      { label: 'Zoom to Fit', shortcut: 'F', command: 'zoom' },
     ],
   },
-  { label: 'Help', items: [{ label: 'About this prototype', command: 'about' }] },
+  { label: 'Help', items: [{ label: 'About the slicer', command: 'about' }] },
 ]
+const SHORTCUTS: Record<string, string> = {
+  'Ctrl+Z': 'undo',
+  'Ctrl+Y': 'redo',
+  'Ctrl+D': 'clone',
+  Del: 'delete',
+  A: 'arrange',
+  L: 'layflat',
+}
 type History = { past: SlicerDocument[]; future: SlicerDocument[] }
+export type Scheme = 'type' | 'speed' | 'height' | 'filament'
+
+/** A colour along blue → green → yellow → red for a 0–1 value, as Bambu's speed view. */
+export function heat(t: number): string {
+  const stops = [
+    [59, 76, 192],
+    [46, 165, 110],
+    [230, 200, 60],
+    [210, 50, 40],
+  ]
+  const x = Math.max(0, Math.min(1, t)) * (stops.length - 1)
+  const i = Math.min(stops.length - 2, Math.floor(x))
+  const f = x - i
+  const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f))
+  return `rgb(${c[0]},${c[1]},${c[2]})`
+}
 
 /** The build plate viewport shared by the editor and the read-only output. */
 export const SlicerViewport = forwardRef<
@@ -266,31 +385,42 @@ export const SlicerViewport = forwardRef<
     selected: string | null
     /** Layer toolpaths to draw instead of the objects, when previewing a slice. */
     sliced?: SlicedPlate | null
+    scheme?: Scheme
+    showTravel?: boolean
     onPick?: (id: string | null) => void
     onDrag?: (id: string, delta: { x: number; y: number }) => void
     onDrop?: (id: string) => void
   }
->(function SlicerViewport({ document: doc, selected, sliced, onPick, onDrag, onDrop }, ref) {
+>(function SlicerViewport(
+  { document: doc, selected, sliced, scheme = 'type', showTravel, onPick, onDrag, onDrop },
+  ref,
+) {
   const plate = activePlate(doc)
-  const bed = BED_SIZE[doc.printer] ?? 256
+  const bed = bedFor(doc.printer)
   const previewing = doc.view === 'preview' && sliced && sliced.layers.length > 0
+  const outside = new Set(outsideBed(plate, bed).map((o) => o.id))
+  const slots = allSlots(doc)
   const items: SceneItem[] = [
     {
       kind: 'lines',
-      polylines: gridLines(bed, bed / 8),
-      stroke: 'rgba(255,255,255,0.12)',
+      polylines: gridLines(Math.max(bed.x, bed.y), Math.max(bed.x, bed.y) / 8),
+      stroke: 'rgba(255,255,255,0.1)',
       layer: 'under',
     },
     {
       kind: 'lines',
       polylines: [
         [
-          vec(-bed / 2, -bed / 2, 0),
-          vec(bed / 2, -bed / 2, 0),
-          vec(bed / 2, bed / 2, 0),
-          vec(-bed / 2, bed / 2, 0),
-          vec(-bed / 2, -bed / 2, 0),
+          vec(-bed.x / 2, -bed.y / 2, 0),
+          vec(bed.x / 2, -bed.y / 2, 0),
+          vec(bed.x / 2, bed.y / 2, 0),
+          vec(-bed.x / 2, bed.y / 2, 0),
+          vec(-bed.x / 2, -bed.y / 2, 0),
         ],
+        [vec(-bed.x / 2, -bed.y / 2, 0), vec(-bed.x / 2, -bed.y / 2, 6)],
+        [vec(bed.x / 2, -bed.y / 2, 0), vec(bed.x / 2, -bed.y / 2, 6)],
+        [vec(bed.x / 2, bed.y / 2, 0), vec(bed.x / 2, bed.y / 2, 6)],
+        [vec(-bed.x / 2, bed.y / 2, 0), vec(-bed.x / 2, bed.y / 2, 6)],
       ],
       stroke: 'rgba(255,255,255,0.45)',
       width: 1.5,
@@ -299,20 +429,43 @@ export const SlicerViewport = forwardRef<
   ]
   if (previewing) {
     const shown = sliced.layers.slice(0, Math.max(1, doc.previewLayer))
-    const byKind = new Map<PathKind, { x: number; y: number; z: number }[][]>()
+    const speeds = sliced.layers.flatMap((l) => l.paths.map((p) => p.speed))
+    const minSpeed = Math.min(...speeds)
+    const maxSpeed = Math.max(...speeds)
+    const heights = sliced.layers.map((l) => l.height)
+    const minH = Math.min(...heights)
+    const maxH = Math.max(...heights)
+    const byColor = new Map<string, { x: number; y: number; z: number }[][]>()
+    const colorOf = (
+      path: SlicedPlate['layers'][number]['paths'][number],
+      layer: SlicedPlate['layers'][number],
+    ) =>
+      scheme === 'speed'
+        ? heat(maxSpeed > minSpeed ? (path.speed - minSpeed) / (maxSpeed - minSpeed) : 0.5)
+        : scheme === 'height'
+          ? heat(maxH > minH ? (layer.height - minH) / (maxH - minH) : 0.5)
+          : scheme === 'filament'
+            ? (slots[path.slot]?.color ?? slots[0].color)
+            : PATH_COLORS[path.kind]
     for (const layer of shown)
       for (const path of layer.paths) {
         const points = (path.closed ? [...path.points, path.points[0]] : path.points).map((p) =>
           vec(p.x, p.y, layer.z),
         )
-        byKind.set(path.kind, [...(byKind.get(path.kind) ?? []), points])
+        const color = colorOf(path, layer)
+        byColor.set(color, [...(byColor.get(color) ?? []), points])
       }
-    for (const [kind, polylines] of byKind)
+    for (const [stroke, polylines] of byColor)
+      items.push({ kind: 'lines', polylines, stroke, width: 1 })
+    if (showTravel)
       items.push({
         kind: 'lines',
-        polylines,
-        stroke: PATH_COLORS[kind],
-        width: kind === 'outer' ? 1.4 : 0.8,
+        polylines: shown.flatMap((l) =>
+          l.travels.map((t) => [vec(t[0].x, t[0].y, l.z), vec(t[1].x, t[1].y, l.z)]),
+        ),
+        stroke: 'rgba(120,160,220,0.55)',
+        width: 0.6,
+        dashed: true,
       })
   } else
     for (const o of plate.objects)
@@ -320,11 +473,11 @@ export const SlicerViewport = forwardRef<
         kind: 'mesh',
         id: o.id,
         mesh: objectMesh(o),
-        fill: o.color,
-        stroke: selected === o.id ? '#3b8beb' : 'rgba(0,0,0,0.35)',
+        fill: scheme === 'filament' ? (slots[o.slot ?? 0]?.color ?? o.color) : o.color,
+        stroke: outside.has(o.id) ? '#e03b3b' : selected === o.id ? '#3b8beb' : 'rgba(0,0,0,0.35)',
       })
   const tallest = Math.max(40, ...plate.objects.map((o) => o.height * (o.scale ?? 1)))
-  const extent = extrude(profile('rectangle', bed, bed), frames.Top(), 0, tallest)
+  const extent = extrude(profile('rectangle', bed.x, bed.y), frames.Top(), 0, tallest)
   return (
     <Viewport3D
       ref={ref}
@@ -336,8 +489,11 @@ export const SlicerViewport = forwardRef<
       onDrop={onDrop}
     >
       <div className="wb-viewport-note">
-        {doc.printer} · {bed} × {bed} mm · {plate.name}
-        {previewing ? ` · layer ${doc.previewLayer}/${sliced.layers.length}` : ''}
+        {doc.printer} · {bed.x} × {bed.y} × {bed.z} mm · {plate.name}
+        {previewing
+          ? ` · layer ${doc.previewLayer}/${sliced.layers.length} · z ${sliced.layers[Math.max(0, doc.previewLayer - 1)]?.z.toFixed(2)} mm`
+          : ''}
+        {outside.size ? ` · ${outside.size} outside the bed` : ''}
         {!plate.objects.length ? ' · Add or import an object from the Prepare tab.' : ''}
       </div>
     </Viewport3D>
@@ -348,16 +504,31 @@ export const SlicerViewport = forwardRef<
 function objectFromMesh(name: string, mesh: Mesh, index: number) {
   return meshObject(name, compact(settle(decimate(mesh, MAX_TRIANGLES))), index)
 }
+/** Replace an object's geometry with a transformed copy, keeping its place and colour. */
+function withMesh(o: PlateObject, mesh: Mesh): PlateObject {
+  const next = meshObject(o.name, compact(settle(mesh)), 0)
+  return {
+    ...o,
+    width: next.width,
+    depth: next.depth,
+    height: next.height,
+    mesh: next.mesh,
+    scale: 1,
+  }
+}
+const boxOf = (w: number, d: number, h: number) =>
+  extrude(profile('rectangle', w, d), frames.Top(), 0, h)
 
 export default function SlicerEditor({
   title,
-  document: doc,
+  document: raw,
   readOnly,
   unsaved,
   onBack,
   onChange,
   related,
 }: EditorProps<SlicerDocument>) {
+  const doc = useMemo(() => normalizeSlicer(raw), [raw])
   const [tool, setTool] = useState<ToolDef | null>(null)
   const viewport = useRef<ViewportHandle>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -367,11 +538,16 @@ export default function SlicerEditor({
   const [panelTab, setPanelTab] = useState<'settings' | 'objects'>('settings')
   const [message, setMessage] = useState('')
   const [history, setHistory] = useState<History>({ past: [], future: [] })
-  const [device, setDevice] = useState<{ state: 'idle' | 'printing' | 'paused'; progress: number }>(
-    { state: 'idle', progress: 0 },
-  )
+  const [scheme, setScheme] = useState<Scheme>('type')
+  const [showTravel, setShowTravel] = useState(false)
+  const [device, setDevice] = useState<{
+    state: 'idle' | 'printing' | 'paused' | 'done'
+    elapsed: number
+  }>({ state: 'idle', elapsed: 0 })
   const plate = activePlate(doc)
-  const bed = BED_SIZE[doc.printer] ?? 256
+  const bed = bedFor(doc.printer)
+  const printer = printerProfile(doc.printer)
+  const slots = allSlots(doc)
   const selectedObject = plate.objects.find((o) => o.id === selected) ?? null
   // Toolpaths for Preview and export. Every plate or process change clears `doc.sliced`, so it
   // is the one dependency that matters; the layer slider and view changes reuse the result.
@@ -380,11 +556,14 @@ export default function SlicerEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [doc.sliced],
   )
+  const estimate = doc.sliced
 
   const apply = (next: SlicerDocument, record = true) => {
     if (readOnly) return false
     if (!validSlicer(next)) {
-      setMessage('That change could not be saved. Keep objects inside the plate limits.')
+      setMessage(
+        'That change could not be saved. Keep objects inside the plate limits and meshes within the storage budget.',
+      )
       return false
     }
     if (record) setHistory((h) => ({ past: [...h.past.slice(-49), doc], future: [] }))
@@ -399,15 +578,52 @@ export default function SlicerEditor({
     changePlate((p) => ({ ...p, objects: p.objects.map((o) => (o.id === id ? change(o) : o)) }))
   const setProcess = (change: Partial<Process>) =>
     apply({ ...doc, process: { ...doc.process, ...change }, sliced: null })
+  const setSlot = (index: number, change: Partial<Filament>) => {
+    if (index === 0) apply({ ...doc, filament: { ...doc.filament, ...change }, sliced: null })
+    else
+      apply({
+        ...doc,
+        slots: (doc.slots ?? []).map((s, i) => (i === index - 1 ? { ...s, ...change } : s)),
+        sliced: null,
+      })
+  }
+
+  // --- The simulated printer runs through the estimate at 60× real time. ---
+  useEffect(() => {
+    if (device.state !== 'printing' || !estimate) return
+    const timer = window.setInterval(
+      () =>
+        setDevice((d) => {
+          const elapsed = d.elapsed + 60
+          return elapsed >= estimate.seconds
+            ? { state: 'done', elapsed: estimate.seconds }
+            : { ...d, elapsed }
+        }),
+      1000,
+    )
+    return () => window.clearInterval(timer)
+  }, [device.state, estimate])
+  const deviceLayer = useMemo(() => {
+    if (!sliced || device.state === 'idle') return 0
+    let t = 0
+    for (const layer of sliced.layers) {
+      t += layer.seconds
+      if (t >= device.elapsed) return layer.index + 1
+    }
+    return sliced.layers.length
+  }, [sliced, device])
 
   function startTool(t: ToolDef) {
-    if (t.id.startsWith('noop:')) {
-      setMessage(t.hint ?? `${t.label} is not built yet.`)
-      return
-    }
     if (t.params) {
+      if (t.id === 'cut' && !selectedObject) {
+        setMessage('Select an object to cut first.')
+        return
+      }
       setTool(t)
-      setValues(Object.fromEntries(t.params.map((p) => [p.id, p.default])))
+      const defaults = Object.fromEntries(t.params.map((p) => [p.id, p.default]))
+      if (t.id === 'cut' && selectedObject)
+        defaults.height = Math.round((selectedObject.height * (selectedObject.scale ?? 1)) / 2)
+      setValues(defaults)
       return
     }
     command(t.id)
@@ -423,7 +639,7 @@ export default function SlicerEditor({
         plate.objects.length,
       )
       addObject(object, `${object.name} added to ${plate.name}.`)
-    }
+    } else if (tool.id === 'cut' && selectedObject) cutObject(selectedObject, Number(values.height))
     setTool(null)
   }
   /** Add an object to the plate, arranged with the others, and select it. */
@@ -433,7 +649,7 @@ export default function SlicerEditor({
       setSelected(object.id)
       setPanelTab('objects')
       setMessage(note)
-    } else setMessage(`${object.name} would pass the plate\u2019s storage budget.`)
+    } else setMessage(`${object.name} would pass the plate’s storage budget.`)
   }
   async function importFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])]
@@ -478,36 +694,138 @@ export default function SlicerEditor({
       dragging.current = true
       setHistory((h) => ({ past: [...h.past.slice(-49), doc], future: [] }))
     }
-    const limit = bed / 2
-    const clamp = (n: number) => Math.round(Math.max(-limit, Math.min(limit, n)) * 100) / 100
+    const clamp = (n: number, limit: number) =>
+      Math.round(Math.max(-limit, Math.min(limit, n)) * 100) / 100
     changePlate(
       (p) => ({
         ...p,
         objects: p.objects.map((o) =>
-          o.id === id ? { ...o, x: clamp(o.x + delta.x), y: clamp(o.y + delta.y) } : o,
+          o.id === id
+            ? { ...o, x: clamp(o.x + delta.x, bed.x / 2), y: clamp(o.y + delta.y, bed.y / 2) }
+            : o,
         ),
       }),
       false,
     )
   }
-  function command(id: string) {
-    if (id.startsWith('notyet:')) {
-      setMessage(`${id.slice(7)} is not part of this prototype yet.`)
+  /** Transform the selected object's geometry in place. */
+  function transform(o: PlateObject, fn: (mesh: Mesh) => Mesh) {
+    const mesh = o.mesh
+      ? fn(o.mesh.length ? o.mesh : boxOf(o.width, o.depth, o.height))
+      : fn(boxOf(o.width, o.depth, o.height))
+    const next = withMesh(o, mesh)
+    if (!o.mesh) {
+      // Boxes stay boxes: read the new size off the turned mesh and drop the mesh again.
+      changeObject(o.id, () => ({ ...next, mesh: undefined }))
+    } else changeObject(o.id, () => next)
+  }
+  function layFlat(o: PlateObject) {
+    const base = o.mesh ?? boxOf(o.width, o.depth, o.height)
+    const candidates: Mesh[] = [
+      base,
+      rotateX(base, 90),
+      rotateX(base, -90),
+      rotateX(base, 180),
+      rotateY(base, 90),
+      rotateY(base, -90),
+    ]
+    let best = base
+    let bestScore = Infinity
+    for (const m of candidates) {
+      const b = bounds(m)!
+      const height = b.max.z - b.min.z
+      const score = height - ((b.max.x - b.min.x) * (b.max.y - b.min.y)) / 1e6
+      if (score < bestScore - 1e-6) {
+        bestScore = score
+        best = m
+      }
+    }
+    transform(o, () => best)
+    setMessage(`${o.name} laid on its widest face.`)
+  }
+  function cutObject(o: PlateObject, height: number) {
+    const mesh = objectMesh(o)
+    const b = bounds(mesh)
+    if (!b || height <= 0 || height >= b.max.z - 0.01) {
+      setMessage('Choose a cut height inside the object.')
       return
     }
+    const big = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) * 2 + 20
+    const lower = intersect(
+      tagged(mesh, 'o'),
+      tagged(translate(boxOf(big, big, height), vec(o.x, o.y, 0)), 'b'),
+    ).mesh
+    const upper = intersect(
+      tagged(mesh, 'o'),
+      tagged(translate(boxOf(big, big, b.max.z - height + 1), vec(o.x, o.y, height)), 'b'),
+    ).mesh
+    if (!lower.length || !upper.length) {
+      setMessage('The cut left one side empty.')
+      return
+    }
+    const bottom = { ...withMesh(o, decimate(lower, MAX_TRIANGLES)), rotation: 0 }
+    const top = {
+      ...withMesh(o, decimate(upper, MAX_TRIANGLES)),
+      id: newObject('x').id,
+      name: `${o.name} (upper)`,
+      rotation: 0,
+      color: OBJECT_COLORS[plate.objects.length % OBJECT_COLORS.length],
+    }
+    if (
+      changePlate((p) =>
+        arrange(
+          {
+            ...p,
+            objects: [
+              ...p.objects.map((x) =>
+                x.id === o.id ? { ...bottom, name: `${o.name} (lower)` } : x,
+              ),
+              top,
+            ],
+          },
+          bed,
+        ),
+      )
+    )
+      setMessage(`${o.name} cut at ${height} mm into two objects.`)
+  }
+  function slice() {
+    if (!plate.objects.length) {
+      setMessage('Add an object before slicing.')
+      return
+    }
+    const out = outsideBed(plate, bed)
+    if (out.length) {
+      setMessage(
+        `${out.map((o) => o.name).join(', ')} ${out.length === 1 ? 'is' : 'are'} outside the build volume. Move, scale, or arrange first.`,
+      )
+      return
+    }
+    setMessage('Slicing…')
+    window.setTimeout(() => {
+      const started = performance.now()
+      const { result } = slicePlate(doc)
+      apply({ ...doc, sliced: result, view: 'preview', previewLayer: result.layers }, false)
+      setDevice({ state: 'idle', elapsed: 0 })
+      setMessage(
+        `Sliced ${plate.name} in ${((performance.now() - started) / 1000).toFixed(1)} s: ${result.layers} layers, ${formatDuration(result.seconds)}, ${result.grams} g.`,
+      )
+    }, 30)
+  }
+  function command(id: string) {
     if (id.startsWith('view:')) {
       apply({ ...doc, view: id.slice(5) as SlicerView }, false)
       return
     }
     if (id.startsWith('scheme:')) {
-      setMessage(
-        id === 'scheme:type'
-          ? 'Preview colours show line type: outer wall, inner wall, sparse infill, solid infill, brim.'
-          : `The ${id.slice(7)} colour scheme is not built yet; line type is shown.`,
-      )
+      setScheme(id.slice(7) as Scheme)
+      if (doc.view !== 'preview') apply({ ...doc, view: 'preview' }, false)
       return
     }
     switch (id) {
+      case 'toggle:travel':
+        setShowTravel((v) => !v)
+        break
       case 'clone':
         if (selectedObject) {
           const copy = {
@@ -539,13 +857,61 @@ export default function SlicerEditor({
           changeObject(selectedObject.id, (o) => ({ ...o, rotation: depth > width ? 90 : 0 }))
         }
         break
+      case 'rotate:x':
+      case 'rotate:y':
+        if (!selectedObject) setMessage('Select an object first.')
+        else transform(selectedObject, (m) => (id === 'rotate:x' ? rotateX(m, 90) : rotateY(m, 90)))
+        break
+      case 'mirror:x':
+      case 'mirror:y':
+        if (!selectedObject) setMessage('Select an object first.')
+        else if (!selectedObject.mesh) setMessage('A box is its own mirror image.')
+        else transform(selectedObject, (m) => mirrorMesh(m, id === 'mirror:x' ? 'x' : 'y'))
+        break
+      case 'layflat':
+        if (!selectedObject) setMessage('Select an object first.')
+        else layFlat(selectedObject)
+        break
+      case 'fit':
+        if (!selectedObject) setMessage('Select an object first.')
+        else {
+          const f = footprint({ ...selectedObject, scale: 1 })
+          const s = Math.min(
+            1,
+            (bed.x - 10) / f.width,
+            (bed.y - 10) / f.depth,
+            bed.z / selectedObject.height,
+          )
+          if (selectedObject.mesh)
+            changeObject(selectedObject.id, (o) => ({
+              ...o,
+              scale: Math.round(s * 1000) / 1000,
+              x: 0,
+              y: 0,
+            }))
+          else
+            changeObject(selectedObject.id, (o) => ({
+              ...o,
+              width: o.width * s,
+              depth: o.depth * s,
+              height: o.height * s,
+              x: 0,
+              y: 0,
+            }))
+          setMessage(
+            s < 1
+              ? `${selectedObject.name} scaled to ${Math.round(s * 100)}% to fit.`
+              : `${selectedObject.name} already fits.`,
+          )
+        }
+        break
       case 'import':
         fileInput.current?.click()
         break
       case 'import:modeler':
         importFromModeler()
         break
-      case 'fit':
+      case 'zoom':
         viewport.current?.fit()
         break
       case 'plate:add': {
@@ -561,24 +927,26 @@ export default function SlicerEditor({
         setSelected(null)
         break
       }
-      case 'slice': {
-        if (!plate.objects.length) {
-          setMessage('Add an object before slicing.')
-          return
+      case 'plate:delete':
+        if (doc.plates.length < 2) setMessage('A project keeps at least one plate.')
+        else {
+          const rest = doc.plates.filter((p) => p.id !== plate.id)
+          apply({ ...doc, plates: rest, activePlate: rest[0].id, sliced: null })
+          setSelected(null)
         }
-        const { result } = slicePlate(doc)
-        apply({ ...doc, sliced: result, view: 'preview', previewLayer: result.layers }, false)
-        setMessage(
-          `Sliced ${plate.name}: ${result.layers} layers, ${formatDuration(result.seconds)}, ${result.grams} g.`,
-        )
         break
-      }
+      case 'slice':
+        slice()
+        break
       case 'layer:up':
         if (doc.sliced)
           apply({ ...doc, previewLayer: Math.min(doc.sliced.layers, doc.previewLayer + 1) }, false)
         break
       case 'layer:down':
         if (doc.sliced) apply({ ...doc, previewLayer: Math.max(1, doc.previewLayer - 1) }, false)
+        break
+      case 'layer:first':
+        if (doc.sliced) apply({ ...doc, previewLayer: 1 }, false)
         break
       case 'layer:all':
         if (doc.sliced) apply({ ...doc, previewLayer: doc.sliced.layers }, false)
@@ -589,15 +957,18 @@ export default function SlicerEditor({
       case 'device:print':
         if (!doc.sliced) setMessage('Slice the plate first.')
         else {
-          setDevice({ state: 'printing', progress: 12 })
+          setDevice({ state: 'printing', elapsed: 0 })
           apply({ ...doc, view: 'device' }, false)
         }
         break
       case 'device:pause':
-        setDevice((d) => ({ ...d, state: d.state === 'paused' ? 'printing' : 'paused' }))
+        setDevice((d) => ({
+          ...d,
+          state: d.state === 'paused' ? 'printing' : d.state === 'printing' ? 'paused' : d.state,
+        }))
         break
       case 'device:stop':
-        setDevice({ state: 'idle', progress: 0 })
+        setDevice({ state: 'idle', elapsed: 0 })
         break
       case 'device:cool':
         setMessage('Cooling nozzle and bed (simulated).')
@@ -616,6 +987,11 @@ export default function SlicerEditor({
         onChange(next)
         break
       }
+      case 'new':
+        changePlate((p) => ({ ...p, objects: [] }))
+        setSelected(null)
+        setMessage('The plate is empty. Undo brings the objects back.')
+        break
       case 'save':
         setMessage(
           unsaved
@@ -637,6 +1013,21 @@ export default function SlicerEditor({
             `${safeFilename(title) || 'plate'}-${safeFilename(plate.name)}.gcode`,
           )
         break
+      case 'export:3mf':
+        if (!plate.objects.length) setMessage('The plate is empty.')
+        else
+          downloadBlob(
+            toThreeMf(
+              plate.objects.map((o) => ({
+                name: o.name,
+                mesh: objectMesh(o),
+                color: slots[o.slot ?? 0]?.color ?? o.color,
+              })),
+              title,
+            ),
+            `${safeFilename(title) || 'plate'}-${safeFilename(plate.name)}.3mf`,
+          )
+        break
       case 'export:stl':
         if (!plate.objects.length) setMessage('The plate is empty.')
         else
@@ -650,7 +1041,7 @@ export default function SlicerEditor({
         break
       case 'about':
         setMessage(
-          'A Bambu Studio-shaped slicer: real settings, plates, toolpaths, and G-code. The printer is simulated.',
+          'A Bambu Studio-shaped slicer: profiles, plates, real toolpaths with skins and supports, G-code and 3MF. The printer is simulated.',
         )
         break
       default:
@@ -675,7 +1066,7 @@ export default function SlicerEditor({
     ],
     [plate],
   )
-  const estimate = doc.sliced
+
   const settingsPanel = (
     <div>
       <details className="wb-section" open>
@@ -688,12 +1079,24 @@ export default function SlicerEditor({
             <select
               value={doc.printer}
               disabled={readOnly}
-              onChange={(e) => apply({ ...doc, printer: e.target.value, sliced: null })}
+              onChange={(e) => {
+                const p = printerProfile(e.target.value)
+                apply({
+                  ...doc,
+                  printer: e.target.value,
+                  nozzle: p.nozzles.includes(doc.nozzle) ? doc.nozzle : 0.4,
+                  sliced: null,
+                })
+              }}
             >
               {PRINTERS.map((p) => (
                 <option key={p}>{p}</option>
               ))}
             </select>
+            <small className="wb-field-help">
+              {printer.bed.x} × {printer.bed.y} × {printer.bed.z} mm · up to {printer.maxSpeed} mm/s
+              · {printer.slots} {printer.slots === 1 ? 'spool' : 'spool slots'}
+            </small>
           </label>
           <label className="wb-field">
             <span>Nozzle</span>
@@ -702,7 +1105,7 @@ export default function SlicerEditor({
               disabled={readOnly}
               onChange={(e) => apply({ ...doc, nozzle: Number(e.target.value), sliced: null })}
             >
-              {[0.2, 0.4, 0.6, 0.8].map((n) => (
+              {printer.nozzles.map((n) => (
                 <option key={n} value={n}>
                   {n} mm
                 </option>
@@ -716,51 +1119,110 @@ export default function SlicerEditor({
           <Waves size={14} /> Filament
         </summary>
         <div className="wb-section-body">
-          <div className="wb-row">
-            <label className="wb-field">
-              <span>Type</span>
-              <select
-                value={doc.filament.type}
-                disabled={readOnly}
-                onChange={(e) =>
-                  apply({
-                    ...doc,
-                    filament: {
-                      ...doc.filament,
-                      type: e.target.value as SlicerDocument['filament']['type'],
+          {slots.map((f, i) => (
+            <div key={i} className="wb-slot">
+              <div className="wb-row three">
+                <label className="wb-field">
+                  <span>{i === 0 ? 'Slot 1' : `Slot ${i + 1}`}</span>
+                  <select
+                    value={f.type}
+                    disabled={readOnly}
+                    onChange={(e) => setSlot(i, { type: e.target.value as FilamentType })}
+                  >
+                    {FILAMENT_TYPES.map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="wb-field">
+                  <span>Colour</span>
+                  <input
+                    type="color"
+                    value={f.color}
+                    disabled={readOnly}
+                    aria-label={`Slot ${i + 1} colour`}
+                    onChange={(e) => setSlot(i, { color: e.target.value })}
+                  />
+                </label>
+                <label className="wb-field">
+                  <span>Brand</span>
+                  <input
+                    value={f.brand}
+                    maxLength={40}
+                    disabled={readOnly}
+                    aria-label={`Slot ${i + 1} brand`}
+                    onChange={(e) => setSlot(i, { brand: e.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="wb-row three">
+                <label className="wb-field">
+                  <span>Nozzle °C</span>
+                  <input
+                    type="number"
+                    min={150}
+                    max={350}
+                    value={filamentTemps(f).nozzleTemp}
+                    disabled={readOnly}
+                    aria-label={`Slot ${i + 1} nozzle temperature`}
+                    onChange={(e) => setSlot(i, { nozzleTemp: Number(e.target.value) })}
+                  />
+                </label>
+                <label className="wb-field">
+                  <span>Bed °C</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={130}
+                    value={filamentTemps(f).bedTemp}
+                    disabled={readOnly}
+                    aria-label={`Slot ${i + 1} bed temperature`}
+                    onChange={(e) => setSlot(i, { bedTemp: Number(e.target.value) })}
+                  />
+                </label>
+                {i > 0 && !readOnly ? (
+                  <button
+                    type="button"
+                    className="wb-button"
+                    style={{ alignSelf: 'end' }}
+                    onClick={() =>
+                      apply({
+                        ...doc,
+                        slots: (doc.slots ?? []).filter((_, k) => k !== i - 1),
+                        sliced: null,
+                      })
+                    }
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </div>
+            </div>
+          ))}
+          {!readOnly && slots.length < Math.min(MAX_SLOTS, Math.max(2, printer.slots)) && (
+            <button
+              type="button"
+              className="wb-button"
+              onClick={() =>
+                apply({
+                  ...doc,
+                  slots: [
+                    ...(doc.slots ?? []),
+                    {
+                      type: 'PLA',
+                      brand: doc.filament.brand,
+                      color: OBJECT_COLORS[slots.length % OBJECT_COLORS.length],
                     },
-                    sliced: null,
-                  })
-                }
-              >
-                {['PLA', 'PETG', 'ABS', 'TPU', 'PLA-CF'].map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-            </label>
-            <label className="wb-field">
-              <span>Color</span>
-              <input
-                type="color"
-                value={doc.filament.color}
-                disabled={readOnly}
-                onChange={(e) =>
-                  apply({ ...doc, filament: { ...doc.filament, color: e.target.value } }, false)
-                }
-              />
-            </label>
-          </div>
-          <label className="wb-field">
-            <span>Brand</span>
-            <input
-              value={doc.filament.brand}
-              maxLength={40}
-              disabled={readOnly}
-              onChange={(e) =>
-                apply({ ...doc, filament: { ...doc.filament, brand: e.target.value } }, false)
+                  ],
+                  sliced: null,
+                })
               }
-            />
-          </label>
+            >
+              Add a spool slot
+            </button>
+          )}
         </div>
       </details>
       <details className="wb-section" open>
@@ -768,6 +1230,25 @@ export default function SlicerEditor({
           <Settings2 size={14} /> Process
         </summary>
         <div className="wb-section-body">
+          <label className="wb-field">
+            <span>Preset</span>
+            <select
+              value=""
+              disabled={readOnly}
+              aria-label="Process preset"
+              onChange={(e) =>
+                e.target.value &&
+                apply({ ...doc, process: applyPreset(doc.process, e.target.value), sliced: null })
+              }
+            >
+              <option value="">Apply a preset…</option>
+              {PROCESS_PRESETS.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="wb-row">
             <label className="wb-field">
               <span>Layer height (mm)</span>
@@ -776,13 +1257,27 @@ export default function SlicerEditor({
                 disabled={readOnly}
                 onChange={(e) => setProcess({ layerHeight: Number(e.target.value) })}
               >
-                {[0.08, 0.12, 0.16, 0.2, 0.24, 0.28].map((n) => (
+                {[0.08, 0.12, 0.16, 0.2, 0.24, 0.28, 0.32].map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>
                 ))}
               </select>
             </label>
+            <label className="wb-field">
+              <span>First layer (mm)</span>
+              <input
+                type="number"
+                min={0.05}
+                max={0.6}
+                step={0.02}
+                value={doc.process.firstLayerHeight}
+                disabled={readOnly}
+                onChange={(e) => setProcess({ firstLayerHeight: Number(e.target.value) })}
+              />
+            </label>
+          </div>
+          <div className="wb-row three">
             <label className="wb-field">
               <span>Walls</span>
               <input
@@ -792,6 +1287,28 @@ export default function SlicerEditor({
                 value={doc.process.walls}
                 disabled={readOnly}
                 onChange={(e) => setProcess({ walls: Number(e.target.value) })}
+              />
+            </label>
+            <label className="wb-field">
+              <span>Top layers</span>
+              <input
+                type="number"
+                min={0}
+                max={20}
+                value={doc.process.topLayers}
+                disabled={readOnly}
+                onChange={(e) => setProcess({ topLayers: Number(e.target.value) })}
+              />
+            </label>
+            <label className="wb-field">
+              <span>Bottom layers</span>
+              <input
+                type="number"
+                min={0}
+                max={20}
+                value={doc.process.bottomLayers}
+                disabled={readOnly}
+                onChange={(e) => setProcess({ bottomLayers: Number(e.target.value) })}
               />
             </label>
           </div>
@@ -816,7 +1333,7 @@ export default function SlicerEditor({
                   setProcess({ infillPattern: e.target.value as Process['infillPattern'] })
                 }
               >
-                {['grid', 'gyroid', 'honeycomb', 'triangles', 'lightning'].map((p) => (
+                {INFILL_PATTERNS.map((p) => (
                   <option key={p}>{p}</option>
                 ))}
               </select>
@@ -832,30 +1349,87 @@ export default function SlicerEditor({
             <span>Enable supports</span>
           </label>
           {doc.process.supports && (
-            <label className="wb-field">
-              <span>Support type</span>
-              <select
-                value={doc.process.supportType}
-                disabled={readOnly}
-                onChange={(e) =>
-                  setProcess({ supportType: e.target.value as Process['supportType'] })
-                }
-              >
-                <option value="tree">Tree</option>
-                <option value="normal">Normal</option>
-              </select>
-            </label>
+            <div className="wb-row three">
+              <label className="wb-field">
+                <span>Type</span>
+                <select
+                  value={doc.process.supportType}
+                  disabled={readOnly}
+                  onChange={(e) =>
+                    setProcess({ supportType: e.target.value as Process['supportType'] })
+                  }
+                >
+                  <option value="normal">Normal</option>
+                  <option value="tree">Tree</option>
+                </select>
+              </label>
+              <label className="wb-field">
+                <span>Overhang (°)</span>
+                <input
+                  type="number"
+                  min={10}
+                  max={89}
+                  value={doc.process.supportAngle}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ supportAngle: Number(e.target.value) })}
+                />
+              </label>
+              <label className="wb-field">
+                <span>Density (%)</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={100}
+                  value={doc.process.supportDensity}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ supportDensity: Number(e.target.value) })}
+                />
+              </label>
+            </div>
           )}
+          <div className="wb-row three">
+            <label className="wb-field inline">
+              <input
+                type="checkbox"
+                checked={doc.process.brim}
+                disabled={readOnly}
+                onChange={(e) => setProcess({ brim: e.target.checked })}
+              />
+              <span>Brim</span>
+            </label>
+            <label className="wb-field">
+              <span>Brim width</span>
+              <input
+                type="number"
+                min={0}
+                max={50}
+                value={doc.process.brimWidth}
+                disabled={readOnly || !doc.process.brim}
+                onChange={(e) => setProcess({ brimWidth: Number(e.target.value) })}
+              />
+            </label>
+            <label className="wb-field">
+              <span>Skirt loops</span>
+              <input
+                type="number"
+                min={0}
+                max={10}
+                value={doc.process.skirtLoops}
+                disabled={readOnly}
+                onChange={(e) => setProcess({ skirtLoops: Number(e.target.value) })}
+              />
+            </label>
+          </div>
           <label className="wb-field inline">
             <input
               type="checkbox"
-              checked={doc.process.brim}
+              checked={doc.process.raft}
               disabled={readOnly}
-              onChange={(e) => setProcess({ brim: e.target.checked })}
+              onChange={(e) => setProcess({ raft: e.target.checked })}
             />
-            <span>Brim</span>
+            <span>Raft</span>
           </label>
-          <div className="wb-row">
+          <div className="wb-row three">
             <label className="wb-field">
               <span>Speed</span>
               <select
@@ -880,35 +1454,210 @@ export default function SlicerEditor({
                 ))}
               </select>
             </label>
-          </div>
-          <div className="wb-row">
             <label className="wb-field">
-              <span>Nozzle temp (°C)</span>
-              <input
-                type="number"
-                min={150}
-                max={320}
-                value={doc.process.nozzleTemp}
+              <span>Wall order</span>
+              <select
+                value={doc.process.wallOrder}
                 disabled={readOnly}
-                onChange={(e) => setProcess({ nozzleTemp: Number(e.target.value) })}
-              />
-            </label>
-            <label className="wb-field">
-              <span>Bed temp (°C)</span>
-              <input
-                type="number"
-                min={0}
-                max={120}
-                value={doc.process.bedTemp}
-                disabled={readOnly}
-                onChange={(e) => setProcess({ bedTemp: Number(e.target.value) })}
-              />
+                onChange={(e) => setProcess({ wallOrder: e.target.value as Process['wallOrder'] })}
+              >
+                <option value="inner-outer">inner first</option>
+                <option value="outer-inner">outer first</option>
+              </select>
             </label>
           </div>
+          <details className="wb-subsection">
+            <summary>Speeds (mm/s)</summary>
+            <div className="wb-row three">
+              {(
+                [
+                  ['outerWallSpeed', 'Outer wall'],
+                  ['innerWallSpeed', 'Inner wall'],
+                  ['infillSpeed', 'Infill'],
+                  ['topSpeed', 'Top surface'],
+                  ['travelSpeed', 'Travel'],
+                  ['firstLayerSpeed', 'First layer'],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="wb-field">
+                  <span>{label}</span>
+                  <input
+                    type="number"
+                    min={5}
+                    max={1000}
+                    value={doc.process[key]}
+                    disabled={readOnly}
+                    onChange={(e) => setProcess({ [key]: Number(e.target.value) })}
+                  />
+                </label>
+              ))}
+            </div>
+          </details>
+          <details className="wb-subsection">
+            <summary>Retraction, cooling</summary>
+            <div className="wb-row three">
+              <label className="wb-field">
+                <span>Retract (mm)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  value={doc.process.retractLength}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ retractLength: Number(e.target.value) })}
+                />
+              </label>
+              <label className="wb-field">
+                <span>Retract speed</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={doc.process.retractSpeed}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ retractSpeed: Number(e.target.value) })}
+                />
+              </label>
+              <label className="wb-field">
+                <span>Z hop (mm)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  step={0.1}
+                  value={doc.process.zHop}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ zHop: Number(e.target.value) })}
+                />
+              </label>
+              <label className="wb-field">
+                <span>Fan (%)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={doc.process.fanSpeed}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ fanSpeed: Number(e.target.value) })}
+                />
+              </label>
+              <label className="wb-field">
+                <span>Min layer time (s)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={doc.process.minLayerTime}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ minLayerTime: Number(e.target.value) })}
+                />
+              </label>
+              <label className="wb-field">
+                <span>Nozzle °C</span>
+                <input
+                  type="number"
+                  min={150}
+                  max={350}
+                  value={doc.process.nozzleTemp}
+                  disabled={readOnly}
+                  onChange={(e) => setProcess({ nozzleTemp: Number(e.target.value) })}
+                />
+              </label>
+            </div>
+          </details>
+          <details className="wb-subsection" open={doc.process.changes.length > 0}>
+            <summary>Filament changes ({doc.process.changes.length})</summary>
+            <ul className="wb-list">
+              {doc.process.changes.map((c, i) => (
+                <li key={i} className="wb-change">
+                  <span>Layer</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100000}
+                    value={c.layer}
+                    aria-label={`Change ${i + 1} layer`}
+                    disabled={readOnly}
+                    onChange={(e) =>
+                      setProcess({
+                        changes: doc.process.changes.map((x, k) =>
+                          k === i ? { ...x, layer: Number(e.target.value) } : x,
+                        ),
+                      })
+                    }
+                  />
+                  <select
+                    value={c.slot}
+                    aria-label={`Change ${i + 1} filament`}
+                    disabled={readOnly}
+                    onChange={(e) =>
+                      setProcess({
+                        changes: doc.process.changes.map((x, k) =>
+                          k === i ? { ...x, slot: Number(e.target.value) } : x,
+                        ),
+                      })
+                    }
+                  >
+                    <option value={-1}>Pause for a manual swap</option>
+                    {slots.map((s, k) => (
+                      <option key={k} value={k}>
+                        Slot {k + 1} · {s.type}
+                      </option>
+                    ))}
+                  </select>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="wb-button"
+                      aria-label={`Remove change ${i + 1}`}
+                      onClick={() =>
+                        setProcess({ changes: doc.process.changes.filter((_, k) => k !== i) })
+                      }
+                    >
+                      ×
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {!readOnly && (
+              <button
+                type="button"
+                className="wb-button"
+                onClick={() =>
+                  setProcess({
+                    changes: [
+                      ...doc.process.changes,
+                      {
+                        layer: Math.max(2, (doc.process.changes.at(-1)?.layer ?? 0) + 10),
+                        slot: -1,
+                      },
+                    ],
+                  })
+                }
+              >
+                Add a change
+              </button>
+            )}
+            <p className="wb-hint">
+              A pause writes M600 so you can swap spools by hand; a slot writes a tool change for
+              the AMS.
+            </p>
+          </details>
         </div>
       </details>
     </div>
   )
+  const overrides = selectedObject?.overrides ?? {}
+  const setOverride = (patch: ObjectOverrides) =>
+    selectedObject &&
+    changeObject(selectedObject.id, (o) => {
+      const next = { ...(o.overrides ?? {}), ...patch }
+      for (const k of Object.keys(next) as (keyof ObjectOverrides)[])
+        if (next[k] === undefined) delete next[k]
+      return { ...o, overrides: Object.keys(next).length ? next : undefined }
+    })
   const rightPanel: ReactNode = (
     <div className="wb-panel">
       {doc.view === 'device' ? (
@@ -922,32 +1671,57 @@ export default function SlicerEditor({
             className="wb-progress"
             role="progressbar"
             aria-label="Print progress"
-            aria-valuenow={device.progress}
+            aria-valuenow={
+              estimate ? Math.round((100 * device.elapsed) / Math.max(1, estimate.seconds)) : 0
+            }
             aria-valuemin={0}
             aria-valuemax={100}
           >
-            <div style={{ width: `${device.progress}%` }} />
+            <div
+              style={{
+                width: `${estimate ? Math.min(100, (100 * device.elapsed) / Math.max(1, estimate.seconds)) : 0}%`,
+              }}
+            />
           </div>
+          {estimate && device.state !== 'idle' && (
+            <>
+              <div className="wb-stat">
+                <span>Layer</span>
+                <strong>
+                  {deviceLayer} / {estimate.layers}
+                </strong>
+              </div>
+              <div className="wb-stat">
+                <span>Remaining</span>
+                <strong>{formatDuration(Math.max(0, estimate.seconds - device.elapsed))}</strong>
+              </div>
+            </>
+          )}
           <div className="wb-stat">
             <span>
               <Thermometer size={12} /> Nozzle
             </span>
-            <strong>{device.state === 'idle' ? 24 : doc.process.nozzleTemp} °C</strong>
+            <strong>
+              {device.state === 'idle' || device.state === 'done' ? 24 : doc.process.nozzleTemp} °C
+            </strong>
           </div>
           <div className="wb-stat">
             <span>
               <Thermometer size={12} /> Bed
             </span>
-            <strong>{device.state === 'idle' ? 23 : doc.process.bedTemp} °C</strong>
+            <strong>
+              {device.state === 'idle' || device.state === 'done' ? 23 : doc.process.bedTemp} °C
+            </strong>
           </div>
           <div className="wb-stat">
             <span>
               <Fan size={12} /> Part fan
             </span>
-            <strong>{device.state === 'printing' ? '100%' : '0%'}</strong>
+            <strong>{device.state === 'printing' ? `${doc.process.fanSpeed}%` : '0%'}</strong>
           </div>
           <p className="wb-hint">
-            A simulated printer. Connecting to a real one is a later increment.
+            A simulated printer running the estimate at 60× speed. Sending to a real printer over
+            the network is a later increment.
           </p>
         </>
       ) : doc.view === 'project' ? (
@@ -978,6 +1752,18 @@ export default function SlicerEditor({
               </li>
             ))}
           </ul>
+          {!readOnly && (
+            <label className="wb-field">
+              <span>Rename {plate.name}</span>
+              <input
+                value={plate.name}
+                maxLength={40}
+                onChange={(e) =>
+                  changePlate((p) => ({ ...p, name: e.target.value || p.name }), false)
+                }
+              />
+            </label>
+          )}
         </>
       ) : (
         <>
@@ -1019,8 +1805,8 @@ export default function SlicerEditor({
                   <input
                     type="number"
                     value={selectedObject.x}
-                    min={-bed / 2}
-                    max={bed / 2}
+                    min={-bed.x / 2}
+                    max={bed.x / 2}
                     onChange={(e) =>
                       changeObject(selectedObject.id, (o) => ({ ...o, x: Number(e.target.value) }))
                     }
@@ -1031,8 +1817,8 @@ export default function SlicerEditor({
                   <input
                     type="number"
                     value={selectedObject.y}
-                    min={-bed / 2}
-                    max={bed / 2}
+                    min={-bed.y / 2}
+                    max={bed.y / 2}
                     onChange={(e) =>
                       changeObject(selectedObject.id, (o) => ({ ...o, y: Number(e.target.value) }))
                     }
@@ -1046,8 +1832,10 @@ export default function SlicerEditor({
                     <input
                       type="number"
                       min={1}
-                      max={dim === 'height' ? 250 : bed}
-                      value={selectedObject[dim]}
+                      max={dim === 'height' ? bed.z : Math.max(bed.x, bed.y)}
+                      value={
+                        Math.round(selectedObject[dim] * (selectedObject.scale ?? 1) * 100) / 100
+                      }
                       readOnly={!!selectedObject.mesh}
                       title={
                         selectedObject.mesh
@@ -1064,7 +1852,7 @@ export default function SlicerEditor({
                   </label>
                 ))}
               </div>
-              <div className="wb-row">
+              <div className="wb-row three">
                 <label className="wb-field">
                   <span>Rotation (°)</span>
                   <input
@@ -1099,17 +1887,143 @@ export default function SlicerEditor({
                     />
                   </label>
                 )}
+                <label className="wb-field">
+                  <span>Colour</span>
+                  <input
+                    type="color"
+                    value={selectedObject.color}
+                    onChange={(e) =>
+                      changeObject(selectedObject.id, (o) => ({ ...o, color: e.target.value }))
+                    }
+                  />
+                </label>
               </div>
-              <label className="wb-field">
-                <span>Color</span>
-                <input
-                  type="color"
-                  value={selectedObject.color}
-                  onChange={(e) =>
-                    changeObject(selectedObject.id, (o) => ({ ...o, color: e.target.value }))
-                  }
-                />
-              </label>
+              {slots.length > 1 && (
+                <label className="wb-field">
+                  <span>Filament slot</span>
+                  <select
+                    value={selectedObject.slot ?? 0}
+                    onChange={(e) =>
+                      changeObject(selectedObject.id, (o) => ({
+                        ...o,
+                        slot: Number(e.target.value),
+                      }))
+                    }
+                  >
+                    {slots.map((s, i) => (
+                      <option key={i} value={i}>
+                        Slot {i + 1} · {s.type} {s.brand}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <details className="wb-subsection" open={!!selectedObject.overrides}>
+                <summary>Object settings {selectedObject.overrides ? '(overridden)' : ''}</summary>
+                <div className="wb-row three">
+                  <label className="wb-field">
+                    <span>Walls</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      placeholder={String(doc.process.walls)}
+                      value={overrides.walls ?? ''}
+                      aria-label="Object walls"
+                      onChange={(e) =>
+                        setOverride({
+                          walls: e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="wb-field">
+                    <span>Infill %</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      placeholder={String(doc.process.infill)}
+                      value={overrides.infill ?? ''}
+                      aria-label="Object infill"
+                      onChange={(e) =>
+                        setOverride({
+                          infill: e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="wb-field">
+                    <span>Pattern</span>
+                    <select
+                      value={overrides.infillPattern ?? ''}
+                      aria-label="Object infill pattern"
+                      onChange={(e) =>
+                        setOverride({
+                          infillPattern: (e.target.value || undefined) as
+                            Process['infillPattern'] | undefined,
+                        })
+                      }
+                    >
+                      <option value="">plate</option>
+                      {INFILL_PATTERNS.map((p) => (
+                        <option key={p}>{p}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="wb-field">
+                    <span>Supports</span>
+                    <select
+                      value={
+                        overrides.supports === undefined ? '' : overrides.supports ? 'on' : 'off'
+                      }
+                      aria-label="Object supports"
+                      onChange={(e) =>
+                        setOverride({
+                          supports: e.target.value === '' ? undefined : e.target.value === 'on',
+                        })
+                      }
+                    >
+                      <option value="">plate</option>
+                      <option value="on">on</option>
+                      <option value="off">off</option>
+                    </select>
+                  </label>
+                  <label className="wb-field">
+                    <span>Top layers</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={20}
+                      placeholder={String(doc.process.topLayers)}
+                      value={overrides.topLayers ?? ''}
+                      aria-label="Object top layers"
+                      onChange={(e) =>
+                        setOverride({
+                          topLayers: e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="wb-field">
+                    <span>Bottom layers</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={20}
+                      placeholder={String(doc.process.bottomLayers)}
+                      value={overrides.bottomLayers ?? ''}
+                      aria-label="Object bottom layers"
+                      onChange={(e) =>
+                        setOverride({
+                          bottomLayers: e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+                <p className="wb-hint">Blank fields follow the plate’s process.</p>
+              </details>
             </>
           )}
           <div className="wb-panel-title">Slice</div>
@@ -1133,6 +2047,12 @@ export default function SlicerEditor({
                   {estimate.grams} g · {estimate.meters} m
                 </strong>
               </div>
+              {estimate.bySlot && estimate.bySlot.length > 1 && (
+                <div className="wb-stat">
+                  <span>By slot</span>
+                  <strong>{estimate.bySlot.map((g, i) => `T${i + 1} ${g} g`).join(' · ')}</strong>
+                </div>
+              )}
               <div className="wb-stat">
                 <span>Layers</span>
                 <strong>{estimate.layers}</strong>
@@ -1145,6 +2065,9 @@ export default function SlicerEditor({
                 <label className="wb-field">
                   <span>
                     Layer {doc.previewLayer} of {estimate.layers}
+                    {sliced?.layers[doc.previewLayer - 1]
+                      ? ` · ${formatDuration(Math.round(sliced.layers[doc.previewLayer - 1].seconds))} this layer`
+                      : ''}
                   </span>
                   <input
                     type="range"
@@ -1158,21 +2081,48 @@ export default function SlicerEditor({
               <button type="button" className="wb-button" onClick={() => command('device:print')}>
                 <Play size={13} /> Print plate
               </button>
-              {doc.view === 'preview' && (
+              {doc.view === 'preview' && scheme === 'type' && (
                 <ul className="wb-legend" aria-label="Line types">
-                  {(Object.keys(PATH_COLORS) as PathKind[]).map((kind) => (
+                  {PATH_KINDS.filter(
+                    (kind) => estimate.byType?.[kind] !== undefined || !estimate.byType,
+                  ).map((kind) => (
                     <li key={kind}>
                       <span className="wb-swatch" style={{ background: PATH_COLORS[kind] }} />
-                      {PATH_LABELS[kind]}
+                      <span style={{ flex: 1 }}>{PATH_LABELS[kind]}</span>
+                      {estimate.byType?.[kind] !== undefined && (
+                        <span className="wb-legend-time">
+                          {formatDuration(estimate.byType[kind])}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
+              {doc.view === 'preview' && scheme === 'filament' && (
+                <ul className="wb-legend" aria-label="Filaments">
+                  {slots.map((s, i) => (
+                    <li key={i}>
+                      <span className="wb-swatch" style={{ background: s.color }} />
+                      Slot {i + 1} · {s.type} {s.brand}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {doc.view === 'preview' && (scheme === 'speed' || scheme === 'height') && (
+                <div
+                  className="wb-heat"
+                  aria-label={scheme === 'speed' ? 'Speed scale' : 'Layer height scale'}
+                >
+                  <span>{scheme === 'speed' ? 'slow' : 'thin'}</span>
+                  <i />
+                  <span>{scheme === 'speed' ? 'fast' : 'thick'}</span>
+                </div>
+              )}
             </>
           )}
           <p className="wb-hint">
-            Time and filament are summed from the toolpaths shown in Preview. Supports are not
-            generated yet.
+            Time and filament come from the toolpaths in Preview: walls, skins, infill, supports,
+            brim, skirt, and raft, with retractions and a cooling floor per layer.
           </p>
         </>
       )}
@@ -1192,7 +2142,9 @@ export default function SlicerEditor({
         </div>
         <div className="canvas-heading-actions">
           {unsaved && <span className="unsaved-note">Changes not saved</span>}
-          <span className="unsaved-note">Real toolpaths and G-code · simulated printer</span>
+          <span className="unsaved-note">
+            Real toolpaths, supports, and G-code · simulated printer
+          </span>
         </div>
       </div>
       <input
@@ -1235,12 +2187,15 @@ export default function SlicerEditor({
         onToolCancel={() => setTool(null)}
         onTool={startTool}
         onCommand={command}
+        shortcuts={SHORTCUTS}
         viewport={
           <SlicerViewport
             ref={viewport}
             document={doc}
             selected={selected}
             sliced={sliced}
+            scheme={scheme}
+            showTravel={showTravel}
             onPick={setSelected}
             onDrag={readOnly ? undefined : dragObject}
             onDrop={() => {
@@ -1248,10 +2203,27 @@ export default function SlicerEditor({
             }}
           />
         }
+        viewToolbar={
+          doc.view === 'preview'
+            ? [
+                { id: 'scheme:type', label: 'Line Type', icon: Paintbrush },
+                { id: 'scheme:speed', label: 'Speed', icon: Gauge },
+                { id: 'scheme:height', label: 'Layer Height', icon: Layers },
+                { id: 'scheme:filament', label: 'Filament', icon: Palette },
+                { id: 'toggle:travel', label: 'Travel', icon: Route },
+                { id: 'zoom', label: 'Zoom to Fit', icon: Maximize2 },
+              ]
+            : [{ id: 'zoom', label: 'Zoom to Fit', icon: Maximize2 }]
+        }
+        onViewTool={command}
+        activeViewTools={[`scheme:${scheme}`, ...(showTravel ? ['toggle:travel'] : [])]}
         rightPanel={rightPanel}
         status={[
           { id: 'printer', text: doc.printer, icon: Printer },
-          { id: 'filament', text: `${doc.filament.type} · ${doc.nozzle} mm nozzle` },
+          {
+            id: 'filament',
+            text: `${slots.map((s) => s.type).join(' + ')} · ${doc.nozzle} mm nozzle`,
+          },
           {
             id: 'objects',
             text: `${plate.objects.length} objects · ${triangleCount(plateMesh(plate)).toLocaleString()} triangles`,
@@ -1259,7 +2231,7 @@ export default function SlicerEditor({
           {
             id: 'slice',
             text: estimate
-              ? `${formatDuration(estimate.seconds)} · ${estimate.grams} g`
+              ? `${formatDuration(estimate.seconds)} · ${estimate.grams} g · $${estimate.cost.toFixed(2)}`
               : 'Not sliced',
           },
         ]}

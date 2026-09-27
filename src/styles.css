@@ -141,7 +141,7 @@ button:disabled:hover {
   display: flex;
   align-items: center;
   gap: 11px;
-  margin: 0 8px 26px;
+  margin: 0 8px 20px;
 }
 .brand > span {
   font-family: 'Manrope Variable', sans-serif;
@@ -165,7 +165,7 @@ button:disabled:hover {
   display: flex;
   gap: 10px;
   padding: 12px 10px;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   background: #f8f9f5;
 }
 .workspace-avatar {
@@ -206,12 +206,12 @@ button:disabled:hover {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 12px;
+  padding: 9px 12px;
   border-radius: 6px;
   color: var(--muted);
   font-size: 12.5px;
   font-weight: 500;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 .nav-item:hover {
   background: #e9eee3;
@@ -232,9 +232,12 @@ button:disabled:hover {
   color: #4f6644;
 }
 .collections-label {
-  margin-top: 25px;
+  margin-top: 18px;
   margin-bottom: 5px;
   padding-right: 4px;
+}
+.section-label {
+  margin-top: 18px;
 }
 .collections-label .icon-button {
   width: 26px;
@@ -257,7 +260,8 @@ button:disabled:hover {
   flex: 1;
   font-size: 12px;
 }
-.collection-item > a > span:last-child {
+.collection-item .collection-name {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -309,7 +313,7 @@ button:disabled:hover {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 14px 0;
+  padding: 10px 0;
 }
 .local-icon {
   color: var(--muted);
@@ -337,7 +341,7 @@ button:disabled:hover {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 0 0 20px;
+  padding: 0 0 12px;
   text-align: left;
   min-width: 0;
   width: 100%;
@@ -359,7 +363,7 @@ button:disabled:hover {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 0 0 20px;
+  padding: 0 0 12px;
 }
 .backup-link:hover {
   color: var(--green);
@@ -1025,7 +1029,8 @@ button:disabled:hover {
   flex-wrap: wrap;
 }
 /* Tool / medium tags: bold, dark green, so a card's tools can be scanned at a glance. */
-.tool-labels > span {
+.tool-labels > span,
+.tool-labels > .tool-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1036,6 +1041,18 @@ button:disabled:hover {
   border: 1px solid #d3e0cb;
   border-radius: 4px;
   background: #eff5ea;
+}
+.tool-labels > .tool-chip {
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+.tool-labels > .tool-chip:hover,
+.tool-labels > .tool-chip:focus-visible {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
 }
 .card-footer {
   border-top: 1px solid #edf0e6;
@@ -1737,6 +1754,34 @@ button:disabled:hover {
 }
 .error-banner {
   margin-bottom: 25px;
+}
+.storage-meter {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.storage-meter-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #e6ebe1;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.storage-meter-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  border-radius: 3px;
+}
+.storage-meter.is-high .storage-meter-bar > span {
+  background: #b8862b;
+}
+.storage-meter.is-full .storage-meter-bar > span {
+  background: var(--danger);
+}
+.storage-meter p {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
 }
 .storage-info {
   color: var(--muted);

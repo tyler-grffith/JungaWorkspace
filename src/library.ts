@@ -102,7 +102,7 @@ export type ProjectInput = Pick<
   'title' | 'description' | 'tools' | 'collectionId' | 'referenceUrl'
 > & { projectType?: ProjectType }
 export type View = 'all' | 'favorites' | 'examples' | 'archive' | 'trash' | `collection:${string}`
-export type Sort = 'updated' | 'name' | 'created'
+export type Sort = 'updated' | 'name' | 'created' | 'opened'
 export const STORAGE_KEY = 'junga.library.v1'
 export const MAX_RELATED = 50
 const validRelatedIds = (value: unknown, own: unknown): value is string[] =>
@@ -501,8 +501,11 @@ export function selectProjects(
   query = '',
   tool: Tool | 'all' = 'all',
   sort: Sort = 'updated',
+  /** Extra words a search may match, such as the names of a project's tools. */
+  describe?: (project: Project) => string,
 ): Project[] {
   const search = query.trim().toLocaleLowerCase()
+  const collectionNames = new Map(library.collections.map((c) => [c.id, c.name]))
   return library.projects
     .filter((p) => {
       const visible =
@@ -520,7 +523,10 @@ export function selectProjects(
       return (
         visible &&
         (tool === 'all' || p.tools.includes(tool)) &&
-        (!search || `${p.title} ${p.description} ${p.notes}`.toLocaleLowerCase().includes(search))
+        (!search ||
+          `${p.title} ${p.description} ${p.notes} ${collectionNames.get(p.collectionId ?? '') ?? ''} ${describe?.(p) ?? ''}`
+            .toLocaleLowerCase()
+            .includes(search))
       )
     })
     .sort((a, b) =>
@@ -528,8 +534,51 @@ export function selectProjects(
         ? a.title.localeCompare(b.title)
         : (sort === 'created'
             ? b.createdAt.localeCompare(a.createdAt)
-            : b.updatedAt.localeCompare(a.updatedAt)) || a.title.localeCompare(b.title),
+            : sort === 'opened'
+              ? (b.openedAt ?? '').localeCompare(a.openedAt ?? '') ||
+                b.updatedAt.localeCompare(a.updatedAt)
+              : b.updatedAt.localeCompare(a.updatedAt)) || a.title.localeCompare(b.title),
     )
+}
+
+/** Remove a trashed project for good, and every reference other things kept to it. */
+export function deleteForever(library: Library, id: string): Library {
+  const project = library.projects.find((p) => p.id === id)
+  if (!project) throw new Error('This project is no longer available.')
+  if (project.status !== 'trashed')
+    throw new Error('Move a project to the trash before deleting it.')
+  if (project.builtIn) throw new Error('Built-in examples stay in the library.')
+  return forget(library, new Set([id]))
+}
+/** Remove every trashed project for good. */
+export function emptyTrash(library: Library): Library {
+  const ids = new Set(
+    library.projects.filter((p) => p.status === 'trashed' && !p.builtIn).map((p) => p.id),
+  )
+  return ids.size ? forget(library, ids) : library
+}
+function forget(library: Library, ids: Set<string>): Library {
+  const projects = library.projects
+    .filter((p) => !ids.has(p.id))
+    .map((p) => {
+      if (!p.relatedIds?.some((r) => ids.has(r))) return p
+      const relatedIds = p.relatedIds.filter((r) => !ids.has(r))
+      const { relatedIds: _dropped, ...rest } = p
+      void _dropped
+      return relatedIds.length ? { ...p, relatedIds } : rest
+    })
+  const portfolios = library.portfolios?.map((portfolio) =>
+    portfolio.sections.some((s) => s.entries.some((e) => ids.has(e.projectId)))
+      ? {
+          ...portfolio,
+          sections: portfolio.sections.map((s) => ({
+            ...s,
+            entries: s.entries.filter((e) => !ids.has(e.projectId)),
+          })),
+        }
+      : portfolio,
+  )
+  return { ...library, projects, ...(portfolios ? { portfolios } : {}) }
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>

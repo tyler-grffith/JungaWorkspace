@@ -130,6 +130,7 @@ export const PAGE_STYLE = `
   position: relative;
 }
 .pf-figure > * { max-width: 100%; max-height: 100%; }
+.pf-figure:has(.pf-sheet), .pf-figure:has(.pf-doc) { justify-content: flex-start; align-items: flex-start; }
 .pf-figure svg { width: 100%; height: 100%; display: block; }
 .pf-figure .pf-figure-svg { background: #fbfcfa; }
 .pf-entry-body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
@@ -178,16 +179,14 @@ export const PAGE_STYLE = `
   border-collapse: collapse;
   font-size: 11px;
   background: #fff;
-  align-self: flex-start;
-  margin: 12px;
+  margin: 10px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .pf-sheet th, .pf-sheet td { border: 1px solid #e3e8df; padding: 4px 8px; max-width: 110px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pf-sheet th { background: #f1f4ee; color: #61705c; font-weight: 600; text-align: center; }
 .pf-figure .pf-doc {
-  align-self: flex-start;
   width: min(86%, 420px);
-  margin: 16px auto 0;
+  margin: 14px 7%;
   background: #fff;
   padding: 22px 26px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.08);

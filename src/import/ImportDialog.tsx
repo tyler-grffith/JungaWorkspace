@@ -180,14 +180,14 @@ export default function ImportDialog({
           ref={fileInput}
           type="file"
           multiple
-          hidden
+          style={{ display: 'none' }}
           aria-label="Files to import"
           onChange={chooseFiles}
         />
         <input
           ref={folderInput}
           type="file"
-          hidden
+          style={{ display: 'none' }}
           aria-label="Folder to import"
           onChange={chooseFolder}
           {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}

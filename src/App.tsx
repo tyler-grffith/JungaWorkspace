@@ -85,6 +85,8 @@ import {
   actOnProject,
   addProject,
   addPortfolio,
+  deleteForever,
+  emptyTrash,
   addProjectToPortfolio,
   removePortfolio,
   savePortfolio,
@@ -185,10 +187,15 @@ function ToolLabels({
   tools,
   code = false,
   example = false,
+  title = '',
+  onOpen,
 }: {
   tools: Tool[]
   code?: boolean
   example?: boolean
+  title?: string
+  /** When given, each tool chip opens that tool's editor straight from the card. */
+  onOpen?: (tool: Tool) => void
 }) {
   return (
     <span className="tool-labels">
@@ -199,12 +206,26 @@ function ToolLabels({
         </span>
       )}
       {code && <span>Code project</span>}
-      {tools.map((tool) => (
-        <span key={tool}>
-          <ToolIcon tool={tool} size={13} />
-          {moduleById[tool].name}
-        </span>
-      ))}
+      {tools.map((tool) =>
+        onOpen ? (
+          <button
+            key={tool}
+            type="button"
+            className="tool-chip"
+            title={moduleById[tool].openLabel}
+            aria-label={`${moduleById[tool].openLabel} · ${title}`}
+            onClick={() => onOpen(tool)}
+          >
+            <ToolIcon tool={tool} size={13} />
+            {moduleById[tool].name}
+          </button>
+        ) : (
+          <span key={tool}>
+            <ToolIcon tool={tool} size={13} />
+            {moduleById[tool].name}
+          </span>
+        ),
+      )}
     </span>
   )
 }
@@ -658,6 +679,40 @@ function AddToPortfolioForm({
   )
 }
 
+/** Browsers give one site about 5 MB of local storage; say how much of it the library uses. */
+export const STORAGE_BUDGET = 5 * 1024 * 1024
+export function storageUsage(): { bytes: number; share: number } {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY) ?? ''
+    const bytes = new Blob([raw]).size
+    return { bytes, share: bytes / STORAGE_BUDGET }
+  } catch {
+    return { bytes: 0, share: 0 }
+  }
+}
+const formatBytes = (bytes: number) =>
+  bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+function StorageMeter() {
+  const usage = storageUsage()
+  const level = usage.share > 0.9 ? 'is-full' : usage.share > 0.7 ? 'is-high' : ''
+  return (
+    <div className={`storage-meter ${level}`} role="group" aria-label="Library size">
+      <div className="storage-meter-bar" aria-hidden="true">
+        <span style={{ width: `${Math.min(100, Math.round(usage.share * 100))}%` }} />
+      </div>
+      <p>
+        Library size: {formatBytes(usage.bytes)} of about {formatBytes(STORAGE_BUDGET)} this browser
+        allows.
+        {usage.share > 0.7
+          ? ' Images and meshes take most of it; a library folder or exported project files keep work safe past the limit.'
+          : ''}
+      </p>
+    </div>
+  )
+}
+
 /** Pick projects to relate to one; each pick links at once, so several can be added in a row. */
 function LinkProjectForm({
   project,
@@ -748,6 +803,7 @@ function ProjectMenu({
   onAddToPortfolio,
   onCopyLink,
   onExport,
+  onDeleteForever,
 }: {
   project: Project
   onAction: (p: Project, action: ProjectAction) => void
@@ -757,6 +813,7 @@ function ProjectMenu({
   onAddToPortfolio?: (p: Project) => void
   onCopyLink?: (p: Project) => void
   onExport?: (p: Project) => void
+  onDeleteForever?: (p: Project) => void
 }) {
   const ref = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
@@ -788,10 +845,27 @@ function ProjectMenu({
       </summary>
       <div className="menu-panel">
         {project.status === 'trashed' ? (
-          <button onClick={() => run(() => onAction(project, 'restore'))}>
-            <RotateCcw size={16} />
-            Restore project
-          </button>
+          <>
+            <button onClick={() => run(() => onAction(project, 'restore'))}>
+              <RotateCcw size={16} />
+              Restore project
+            </button>
+            {onExport && (
+              <button onClick={() => run(() => onExport(project))}>
+                <Download size={16} />
+                Export project…
+              </button>
+            )}
+            {onDeleteForever && (
+              <>
+                <div className="menu-rule" />
+                <button className="danger-text" onClick={() => run(() => onDeleteForever(project))}>
+                  <Trash2 size={16} />
+                  Delete forever
+                </button>
+              </>
+            )}
+          </>
         ) : (
           <>
             <button onClick={() => run(() => onEdit(project))}>
@@ -883,6 +957,8 @@ function ProjectCard({
   addToPortfolio,
   copyLink,
   exportProject,
+  openTool,
+  deleteForever,
 }: {
   project: Project
   library: Library
@@ -894,6 +970,8 @@ function ProjectCard({
   addToPortfolio: (p: Project) => void
   copyLink: (p: Project) => void
   exportProject: (p: Project) => void
+  openTool: (p: Project, tool: Tool) => void
+  deleteForever: (p: Project) => void
 }) {
   const collection = library.collections.find((c) => c.id === project.collectionId)
   return (
@@ -931,6 +1009,7 @@ function ProjectCard({
             onAddToPortfolio={addToPortfolio}
             onCopyLink={copyLink}
             onExport={exportProject}
+            onDeleteForever={deleteForever}
           />
         </div>
         <p className="card-description">
@@ -940,6 +1019,8 @@ function ProjectCard({
           tools={project.tools}
           code={project.projectType === 'code'}
           example={!!project.exampleId}
+          title={project.title}
+          onOpen={project.status === 'trashed' ? undefined : (tool) => openTool(project, tool)}
         />
         <div className="card-footer">
           <span className="card-collection">
@@ -1314,6 +1395,30 @@ export default function App() {
       setToast({ text: `Added ${project.title} to ${name}.` })
     }
   }
+  /** The one irreversible action in the library: it asks, and it offers a backup first. */
+  function deleteProjectForever(project: Project) {
+    if (
+      !window.confirm(
+        `Delete “${project.title}” forever? This cannot be undone. Cancel and use Export project… first if you want a file of it.`,
+      )
+    )
+      return
+    if (commit((current) => deleteForever(current, project.id)))
+      setToast({ text: `${project.title} was deleted.` })
+  }
+  function emptyTrashNow(count: number) {
+    if (
+      !window.confirm(
+        `Delete ${count === 1 ? 'the project' : `all ${count} projects`} in the trash forever? This cannot be undone.`,
+      )
+    )
+      return
+    if (commit((current) => emptyTrash(current)))
+      setToast({
+        text:
+          count === 1 ? 'The trash is empty.' : `${count} projects deleted. The trash is empty.`,
+      })
+  }
   /** One project as a file of its own, restorable into any library through Import. */
   function exportProject(project: Project) {
     downloadText(serializeProject(project), projectFilename(project))
@@ -1591,7 +1696,9 @@ export default function App() {
       </Suspense>
     )
 
-  const projects = selectProjects(library, view, query, tool, sort)
+  const projects = selectProjects(library, view, query, tool, sort, (p) =>
+    p.tools.map((t) => moduleById[t].name).join(' '),
+  )
   const total = selectProjects(library, view).length
   const activeCount = selectProjects(library, 'all').length
   const missingCollection = view.startsWith('collection:') && !currentCollection
@@ -1686,7 +1793,10 @@ export default function App() {
                 }
               >
                 <span className="collection-dot" />
-                <span>{collection.name}</span>
+                <span className="collection-name">{collection.name}</span>
+                <span className="nav-count">
+                  {selectProjects(library, `collection:${collection.id}`).length}
+                </span>
               </a>
               <button
                 className="icon-button"
@@ -1740,7 +1850,7 @@ export default function App() {
         )}
         {shortcuts.length > 0 && (
           <>
-            <div className="nav-label">SHORTCUTS</div>
+            <div className="nav-label section-label">SHORTCUTS</div>
             <nav aria-label="Shortcuts">
               {shortcuts.map(({ example, project }) => (
                 <a
@@ -2517,6 +2627,12 @@ export default function App() {
                       <Trash2 size={18} />
                     </button>
                   )}
+                  {view === 'trash' && total > 0 && (
+                    <button className="button secondary" onClick={() => emptyTrashNow(total)}>
+                      <Trash2 size={16} />
+                      Empty trash
+                    </button>
+                  )}
                   {view !== 'trash' && view !== 'archive' && !missingCollection && (
                     <>
                       <button
@@ -2575,6 +2691,7 @@ export default function App() {
                     <option value="updated">Last updated</option>
                     <option value="name">Name A–Z</option>
                     <option value="created">Newest created</option>
+                    <option value="opened">Recently opened</option>
                   </select>
                   <div className="view-toggle" role="group" aria-label="Library view">
                     <button
@@ -2622,6 +2739,8 @@ export default function App() {
                       addToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
                       copyLink={copyProjectLink}
                       exportProject={exportProject}
+                      openTool={(p, t) => openEditor(p, [t], moduleById[t].route)}
+                      deleteForever={deleteProjectForever}
                     />
                   ))}
                 </div>
@@ -2989,6 +3108,7 @@ export default function App() {
         >
           <div className="storage-info">
             <Monitor size={32} />
+            <StorageMeter />
             <p>
               Projects and notes save automatically in this browser. They’ll be here when you return
               to the same site address.

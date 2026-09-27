@@ -256,6 +256,20 @@
   border: 1px solid var(--border);
   border-radius: 6px;
 }
+.pfe-entry-figure .pf-sheet {
+  font-size: 9px;
+  margin: 6px;
+}
+.pfe-entry-figure .pf-sheet th,
+.pfe-entry-figure .pf-sheet td {
+  padding: 2px 5px;
+  max-width: 70px;
+}
+.pfe-entry-figure .pf-doc {
+  margin: 8px 7%;
+  padding: 12px 14px;
+  font-size: 7px;
+}
 .pfe-entry-fields {
   display: flex;
   flex-direction: column;

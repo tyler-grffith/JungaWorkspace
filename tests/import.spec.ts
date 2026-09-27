@@ -55,20 +55,21 @@ test('imports files as projects, exports one, and imports it back as a copy', as
   expect(file.suggestedFilename()).toBe('notes.junga-project.json')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
   const exported = Buffer.concat(await (await file.createReadStream()).toArray())
-  await page
-    .getByRole('dialog')
-    .getByLabel('Files to import')
-    .setInputFiles({
-      name: file.suggestedFilename(),
-      mimeType: 'application/json',
-      buffer: exported,
-    })
+  await page.getByRole('dialog').getByLabel('Files to import').setInputFiles({
+    name: file.suggestedFilename(),
+    mimeType: 'application/json',
+    buffer: exported,
+  })
   await expect(page.getByRole('dialog').getByText(/Junga project · /)).toBeVisible()
   await page
     .getByRole('dialog')
     .getByRole('button', { name: /^Import 1 project$/ })
     .click()
+  // One imported project opens at once; the library then lists the copy beside the original.
+  await expect(page.getByRole('heading', { name: 'notes (restored)', exact: true })).toBeVisible()
+  await page.goto('/#/all')
   await expect(page.getByRole('article', { name: 'notes (restored)', exact: true })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'notes', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -94,4 +95,33 @@ test('relates two projects and shows the link from both sides', async ({ page })
   await page.getByLabel('Actions for Alpha study', { exact: true }).click()
   await page.getByRole('button', { name: 'Copy link', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: /copied|Copy this link/ })).toBeVisible()
+})
+
+test('opens a tool from its card chip, sorts by recently opened, and deletes from the trash', async ({
+  page,
+}) => {
+  await createProject(page, 'Chip study')
+  await page.goto('/#/all')
+  await page.getByRole('button', { name: 'Open spreadsheet · Chip study', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Chip study', exact: true })).toBeVisible()
+  await expect(page.getByText('SPREADSHEET', { exact: true })).toBeVisible()
+  await page.goto('/#/all')
+  await page.getByRole('combobox', { name: 'Sort projects' }).selectOption('opened')
+  await expect(page.getByRole('article').first()).toContainText('Chip study')
+  // Search finds a project by the name of a tool it holds.
+  await page.getByRole('searchbox', { name: 'Search projects' }).fill('spreadsheet')
+  await expect(page.getByRole('article', { name: 'Chip study', exact: true })).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search projects' }).fill('')
+  // Trash, then empty the trash; the project is gone for good.
+  await page.getByLabel('Actions for Chip study', { exact: true }).click()
+  await page.getByRole('button', { name: 'Move to trash', exact: true }).click()
+  await page.goto('/#/trash')
+  await expect(page.getByRole('article', { name: 'Chip study', exact: true })).toBeVisible()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Empty trash', exact: true }).click()
+  await expect(page.getByText('The trash is empty.', { exact: true })).toBeVisible()
+  await expect(page.getByRole('article')).toHaveCount(0)
+  await page.goto('/#/all')
+  await expect(page.getByRole('article')).toHaveCount(0)
+  await accessible(page)
 })

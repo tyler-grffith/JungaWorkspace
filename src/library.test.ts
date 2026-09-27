@@ -21,6 +21,8 @@ import {
   starterNotes,
   cosmicClockSeed,
   addExampleProject,
+  deleteForever,
+  emptyTrash,
   type Library,
   type StorageAccess,
 } from './library'
@@ -134,6 +136,41 @@ describe('project lifecycle', () => {
     ).toThrow('https://')
     const library = saveCollection(emptyLibrary(), 'Science')
     expect(() => saveCollection(library, ' science ')).toThrow('already exists')
+  })
+})
+
+describe('deleting for good', () => {
+  it('deletes only trashed projects, empties the trash, and drops references to them', () => {
+    const a = addProject(emptyLibrary(), { ...starterInput, title: 'A' })
+    const b = addProject(a.library, { ...starterInput, title: 'B' })
+    let library = b.library
+    expect(() => deleteForever(library, a.project.id)).toThrow('trash')
+    library = actOnProject(library, a.project.id, 'trash')
+    library = {
+      ...library,
+      projects: library.projects.map((p) =>
+        p.id === b.project.id ? { ...p, relatedIds: [a.project.id] } : p,
+      ),
+    }
+    const deleted = deleteForever(library, a.project.id)
+    expect(deleted.projects.map((p) => p.id)).toEqual([b.project.id])
+    expect(deleted.projects[0].relatedIds).toBeUndefined()
+    expect(() => deleteForever(deleted, a.project.id)).toThrow('no longer')
+    const trashedB = actOnProject(deleted, b.project.id, 'trash')
+    expect(emptyTrash(trashedB).projects).toEqual([])
+    expect(emptyTrash(deleted)).toBe(deleted)
+  })
+  it('sorts by the time a project was last opened, unopened ones last', () => {
+    const a = addProject(emptyLibrary(), { ...starterInput, title: 'A' })
+    const b = addProject(a.library, { ...starterInput, title: 'B' })
+    const opened = actOnProject(b.library, a.project.id, 'open')
+    expect(selectProjects(opened, 'all', '', 'all', 'opened').map((p) => p.title)).toEqual([
+      'A',
+      'B',
+    ])
+    const names = (p: { tools: string[] }) => p.tools.join(' ')
+    expect(selectProjects(opened, 'all', 'sheet', 'all', 'updated', names)).toHaveLength(0)
+    expect(selectProjects(opened, 'all', 'graph', 'all', 'updated', names)).toHaveLength(2)
   })
 })
 

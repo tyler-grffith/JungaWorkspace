@@ -22,6 +22,8 @@ src/modules/ids.ts ──► src/library.ts (domain, storage) ──► src/App.
 src/modules/registry.ts   src/modules/examples.ts        editors: src/graph, src/sheet, src/code, src/linked
 src/modules/documents.ts  src/modules/editors.tsx        document modules: src/canvas, src/document, src/collection,
                                                           src/modeler + src/slicer (on src/workbench), src/painter
+                                 │
+                          presentation: src/present (figures per module) ──► src/portfolio (page, editor) ──► src/export
 ```
 
 | Layer           | Files                                                                                                                                                    | Responsibility                                                                                                                             |
@@ -33,10 +35,11 @@ src/modules/documents.ts  src/modules/editors.tsx        document modules: src/c
 | Editors         | `src/graph/`, `src/sheet/`, `src/code/`, `src/canvas/`, `src/document/`, `src/collection/`, `src/modeler/`, `src/slicer/`, `src/painter/`, `src/linked/` | Each module's document model, engine, and editor component. Editors receive a document and return the next one; they do not touch storage. |
 | Shell           | `src/App.tsx`                                                                                                                                            | Hash routing, sidebar, library views, project overview, per-editor draft/save plumbing, toasts, dialogs.                                   |
 | Design          | `src/design/`                                                                                                                                            | Settings registry, validation, designer panel, dev-server save endpoint, CSS variable injection.                                           |
+| Presentation    | `src/present/`, `src/portfolio/`, `src/export/`                                                                                                          | Static figures per module, the portfolio model/editor/page, and pure export functions (HTML, Markdown) that reuse the same components.     |
 
 ## Routing
 
-Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`, `canvas`, `document`, `collection`, `modeler`, `slicer`, `painter`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
+Hash routes: `#/all`, `#/favorites`, `#/archive`, `#/trash`, `#/collection/<id>`, `#/project/<id>`, and `#/project/<id>/<segment>` where `<segment>` is a module route (`graph`, `sheet`, `code`, `canvas`, `document`, `collection`, `modeler`, `slicer`, `painter`) or a combined view route (`workspace`). `#/project/<id>/output/<outputId>` opens one of a project's outputs, read-only. `#/portfolio/<id>` assembles a portfolio and `#/portfolio/<id>/present` shows it read-only. `moduleForRoute` and `combinedViewForRoute` in the module registry resolve the segment against the project's tools, so a project cannot open an editor it does not have.
 
 ## Adding a document module (the usual case)
 
@@ -85,13 +88,13 @@ Examples are _built-in projects_: one per kind of project (every module, the spr
 
 Add an entry to `src/modules/examples.ts` with the project input, notes, a synchronous `documents()` factory (it runs on every load, so keep it quick), an optional `loadDocuments()` for heavy bundled material (the draw.io canvas fetches its file from `public/assets/examples/` the first time the project opens; the shell shows the loading fallback until then), optional `outputs()` and `sourceManifest`, whether it also appears on the empty-library welcome strip, and where to open. Content that is more than a few lines lives in `src/examples/<name>.ts`. Never rename an example's `id`: the user's edits are stored against it.
 
-## Portfolio, blog, and export (planned)
+## Portfolio, presentation render, and export
 
-These are both in-app views and exported outputs, with no hosting target chosen yet. The intended shape:
+Presentation views read projects rather than editing them, so they live on the library, not on a project. The portfolio is the first one; a blog would follow the same shape.
 
-- **Presentation views** are library-level modules that read projects rather than editing them: a portfolio view selects and orders projects with presentation metadata; a blog view is a dated, tagged list with rich text. They register like modules but operate on the library, not a single project's document.
-- **Export targets** are pure functions from a project or a selection of projects to files (HTML, JSON, images). Keep them in `src/export/` with one file per target and no React dependency, so a hosting choice later is a deployment detail rather than a rewrite.
-- Module documents should expose a `render for presentation` path (static SVG for graphs, static table for sheets) that both the in-app views and the export targets reuse. The canvas module already does this: `src/canvas/render.tsx` draws the editor stage, thumbnails, presenter, and SVG export from one set of components, and `src/canvas/export.ts` holds the pure export functions.
+- **Render for presentation.** `src/present/ProjectPreview.tsx` draws one static figure per module from the saved document (`figureFor(project, output?)`) and one line of facts (`previewSummary`). Figures are inline SVG or plain HTML with colours inline and no hooks, stylesheet, or storage access, so `renderToStaticMarkup` produces the same picture the app shows. Add a module's figure there when adding a module; until then the project's title stands in.
+- **The portfolio** (`src/portfolio/`): `model.ts` is the versioned `Portfolio` (sections of entries pointing at projects and outputs by id) with pure operations and validation; `library.ts` holds the library-level operations (`addPortfolio`, `savePortfolio`, `removePortfolio`, `addProjectToPortfolio`) and validates `library.portfolios` on every read and write; `backup.ts` carries portfolios and remaps entries when restoring copies. `PortfolioEditor.tsx` is the assembly screen (lazy, controlled by the host through `onChange`, saved through `useDeferredSave` like module editors); `PortfolioPage.tsx` is the reader's page, with its stylesheet as a string in `pageStyle.ts`; `PortfolioPresenter.tsx` is the read-only route around it.
+- **Export targets** are pure functions in `src/export/`, one file per target: `portfolio.ts` renders `PortfolioPage` to a standalone HTML file (stylesheet inlined, figures inside, reference links instead of routes) and to Markdown. The canvas module's `src/canvas/export.ts` follows the same rule. A hosting choice later is a deployment detail: the exports are files to put anywhere.
 
 ## What is deliberately not abstracted
 

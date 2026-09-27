@@ -19,7 +19,9 @@ import {
 } from './modules/editors'
 import { useDeferredSave } from './modules/useDeferredSave'
 import OutputPage from './OutputPage'
+import { validPortfolio, type Portfolio } from './portfolio/model'
 import {
+  lazy,
   Suspense,
   useEffect,
   useMemo,
@@ -33,6 +35,7 @@ import {
   ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
+  Briefcase,
   Check,
   CheckCheck,
   ChevronDown,
@@ -69,6 +72,10 @@ import {
   saveOutput,
   actOnProject,
   addProject,
+  addPortfolio,
+  addProjectToPortfolio,
+  removePortfolio,
+  savePortfolio,
   duplicateProject,
   editProject,
   removeCollection,
@@ -126,6 +133,9 @@ import {
   stripBuiltIns,
 } from './modules/builtins'
 
+const PortfolioEditor = lazy(() => import('./portfolio/PortfolioEditor'))
+const PortfolioPresenter = lazy(() => import('./portfolio/PortfolioPresenter'))
+
 /** One module edit waiting for the library write. */
 type ModuleSave = {
   [K in DocumentTool]: { tool: K; project: Project; value: ModuleDocuments[K] }
@@ -134,12 +144,15 @@ type ModalState =
   | { kind: 'project'; project?: Project }
   | { kind: 'collection'; collection?: Collection }
   | { kind: 'removeCollection'; collection: Collection }
+  | { kind: 'portfolio' }
+  | { kind: 'addToPortfolio'; project: Project }
   | { kind: 'storage' }
   | { kind: 'backup' }
   | null
 const formatDate = (date: string) =>
   new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(date))
 const projectRoute = (id: string) => `#/project/${id}`
+const portfolioRoute = (id: string) => `#/portfolio/${id}`
 const viewRoute = (view: View) =>
   `#/${view.startsWith('collection:') ? `collection/${view.slice(11)}` : view}`
 const readRoute = () => window.location.hash || '#/all'
@@ -464,18 +477,179 @@ function CollectionForm({
   )
 }
 
+function PortfolioForm({
+  error,
+  onSave,
+  onClose,
+}: {
+  error: string
+  onSave: (title: string, author: string) => void
+  onClose: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [author, setAuthor] = useState('')
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSave(title, author)
+      }}
+    >
+      <label>
+        Portfolio name
+        <input
+          autoFocus
+          required
+          maxLength={100}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Selected engineering work"
+        />
+      </label>
+      <label>
+        Your name <span className="optional">optional</span>
+        <input
+          maxLength={80}
+          value={author}
+          onChange={(e) => setAuthor(e.target.value)}
+          placeholder="Shown under the title"
+        />
+      </label>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+      <div className="modal-footer">
+        <button type="button" className="button secondary" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="button primary">Create portfolio</button>
+      </div>
+    </form>
+  )
+}
+
+export type PortfolioChoice = {
+  /** '' means a new portfolio named `title`. */
+  portfolioId: string
+  title: string
+  /** '' means the portfolio's last section. */
+  sectionId: string
+  /** '' means the project itself rather than one of its outputs. */
+  outputId: string
+}
+function AddToPortfolioForm({
+  project,
+  portfolios,
+  error,
+  onSave,
+  onClose,
+}: {
+  project: Project
+  portfolios: Portfolio[]
+  error: string
+  onSave: (choice: PortfolioChoice) => void
+  onClose: () => void
+}) {
+  const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? '')
+  const [title, setTitle] = useState('')
+  const [sectionId, setSectionId] = useState('')
+  const [outputId, setOutputId] = useState('')
+  const chosen = portfolios.find((p) => p.id === portfolioId)
+  const last = chosen?.sections[chosen.sections.length - 1]
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSave({ portfolioId, title, sectionId, outputId })
+      }}
+    >
+      <label>
+        Portfolio
+        <select
+          value={portfolioId}
+          onChange={(e) => {
+            setPortfolioId(e.target.value)
+            setSectionId('')
+          }}
+        >
+          {portfolios.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title.trim() || 'Untitled portfolio'}
+            </option>
+          ))}
+          <option value="">New portfolio…</option>
+        </select>
+      </label>
+      {!portfolioId && (
+        <label>
+          Portfolio name
+          <input
+            autoFocus
+            required
+            maxLength={100}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Selected engineering work"
+          />
+        </label>
+      )}
+      {chosen && chosen.sections.length > 1 && (
+        <label>
+          Section
+          <select value={sectionId} onChange={(e) => setSectionId(e.target.value)}>
+            <option value="">{last?.title.trim() || 'Last section'}</option>
+            {chosen.sections.slice(0, -1).map((s, i) => (
+              <option key={s.id} value={s.id}>
+                {s.title.trim() || `Section ${i + 1}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {project.outputs.length > 0 && (
+        <label>
+          Feature
+          <select value={outputId} onChange={(e) => setOutputId(e.target.value)}>
+            <option value="">The project</option>
+            {project.outputs.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+      <div className="modal-footer">
+        <button type="button" className="button secondary" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="button primary">Add to portfolio</button>
+      </div>
+    </form>
+  )
+}
+
 function ProjectMenu({
   project,
   onAction,
   onEdit,
   onDuplicate,
   onReset,
+  onAddToPortfolio,
 }: {
   project: Project
   onAction: (p: Project, action: ProjectAction) => void
   onEdit: (p: Project) => void
   onDuplicate: (p: Project) => void
   onReset: (p: Project) => void
+  onAddToPortfolio?: (p: Project) => void
 }) {
   const ref = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
@@ -521,6 +695,12 @@ function ProjectMenu({
               <Copy size={16} />
               Duplicate
             </button>
+            {onAddToPortfolio && (
+              <button onClick={() => run(() => onAddToPortfolio(project))}>
+                <Briefcase size={16} />
+                Add to portfolio…
+              </button>
+            )}
             {project.builtIn ? (
               <>
                 <div className="menu-rule" />
@@ -581,6 +761,7 @@ function ProjectCard({
   edit,
   duplicate,
   reset,
+  addToPortfolio,
 }: {
   project: Project
   library: Library
@@ -589,6 +770,7 @@ function ProjectCard({
   edit: (p: Project) => void
   duplicate: (p: Project) => void
   reset: (p: Project) => void
+  addToPortfolio: (p: Project) => void
 }) {
   const collection = library.collections.find((c) => c.id === project.collectionId)
   return (
@@ -623,6 +805,7 @@ function ProjectCard({
             onEdit={edit}
             onDuplicate={duplicate}
             onReset={reset}
+            onAddToPortfolio={addToPortfolio}
           />
         </div>
         <p className="card-description">
@@ -679,6 +862,13 @@ export default function App() {
   const pendingSave = useDeferredSave<ModuleSave>(({ tool, project, value }) =>
     saveModule(tool, project, value),
   )
+  const [portfolioDraft, setPortfolioDraft] = useState<{ id: string; value: Portfolio } | null>(
+    null,
+  )
+  // Portfolio edits are typed into forms; the library write follows a pause the same way.
+  const portfolioSave = useDeferredSave<{ id: string; value: Portfolio }>(({ id, value }) =>
+    savePortfolioNow(id, value),
+  )
   const [sheetEditing, setSheetEditing] = useState<{ ref: string; value: string } | null>(null)
   const [outputEditing, setOutputEditing] = useState(false)
   const draftBase = useRef<Library | null>(null)
@@ -688,12 +878,14 @@ export default function App() {
   useEffect(() => {
     const changed = () => {
       pendingSave.flush()
+      portfolioSave.flush()
       if (
         (notesDraft ||
           graphDraft ||
           sheetDraft ||
           codeDraft ||
           hasModuleDraft ||
+          portfolioDraft ||
           sheetEditing ||
           outputEditing) &&
         readRoute() !== route
@@ -711,6 +903,7 @@ export default function App() {
         setSheetDraft(null)
         setCodeDraft(null)
         setModuleDrafts({})
+        setPortfolioDraft(null)
         setSheetEditing(null)
       }
       setRoute(readRoute())
@@ -723,10 +916,12 @@ export default function App() {
     sheetDraft,
     codeDraft,
     hasModuleDraft,
+    portfolioDraft,
     sheetEditing,
     outputEditing,
     route,
     pendingSave,
+    portfolioSave,
   ])
   useEffect(() => {
     if (
@@ -735,6 +930,7 @@ export default function App() {
       !sheetDraft &&
       !codeDraft &&
       !hasModuleDraft &&
+      !portfolioDraft &&
       !sheetEditing &&
       !outputEditing
     )
@@ -745,7 +941,16 @@ export default function App() {
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [notesDraft, graphDraft, sheetDraft, codeDraft, hasModuleDraft, sheetEditing, outputEditing])
+  }, [
+    notesDraft,
+    graphDraft,
+    sheetDraft,
+    codeDraft,
+    hasModuleDraft,
+    portfolioDraft,
+    sheetEditing,
+    outputEditing,
+  ])
   useEffect(() => {
     setQuery('')
     setTool('all')
@@ -781,6 +986,9 @@ export default function App() {
   const currentProject = library?.projects.find((p) => p.id === projectId)
   const outputRoute = /^#\/project\/[^/]+\/output\/([^/]+)$/.exec(route)
   const currentOutput = currentProject?.outputs.find((output) => output.id === outputRoute?.[1])
+  const portfolioMatch = /^#\/portfolio\/([^/]+)(\/present)?$/.exec(route)
+  const currentPortfolio = library?.portfolios?.find((p) => p.id === portfolioMatch?.[1])
+  const presenting = !!portfolioMatch?.[2]
   if (library && currentProject) draftBase.current = library
   const projectTools = currentProject?.tools ?? []
   const openModule = currentProject ? moduleForRoute(route, projectTools) : null
@@ -834,8 +1042,8 @@ export default function App() {
               ? (currentCollection?.name ?? 'Collection not found')
               : design.library.title
   useEffect(() => {
-    document.title = `${currentOutput ? currentOutput.title + ' · ' : ''}${currentProject?.title ?? title} · Junga`
-  }, [title, currentProject?.title, currentOutput?.title])
+    document.title = `${currentOutput ? currentOutput.title + ' · ' : ''}${currentProject?.title ?? currentPortfolio?.title ?? title} · Junga`
+  }, [title, currentProject?.title, currentOutput?.title, currentPortfolio?.title])
   // A built-in whose example fetches its material on demand loads it the first time it opens.
   useEffect(() => {
     if (!currentProject || !builtInNeedsLoad(currentProject)) return
@@ -906,6 +1114,77 @@ export default function App() {
     if (commit((current) => duplicateProject(current, project.id).library))
       setToast({ text: 'A copy was added to your library.' })
   }
+  /** The portfolio the editor shows: the write waiting to happen, else a failed draft, else saved. */
+  function portfolioFor(portfolio: Portfolio): Portfolio {
+    const pending = portfolioSave.value
+    if (pending && pending.id === portfolio.id) return pending.value
+    if (portfolioDraft && portfolioDraft.id === portfolio.id) return portfolioDraft.value
+    return portfolio
+  }
+  function savePortfolioNow(id: string, value: Portfolio) {
+    setPortfolioDraft({ id, value })
+    const saved = commit((current) => savePortfolio(current, value))
+    if (saved) setPortfolioDraft(null)
+    return saved
+  }
+  function createPortfolio(title: string, author: string) {
+    let id = ''
+    const created = commit((current) => {
+      const result = addPortfolio(current, title, {
+        author,
+        layout: design.portfolio.defaultLayout,
+        accent: design.portfolio.defaultAccent,
+      })
+      id = result.portfolio.id
+      return result.library
+    })
+    if (created) {
+      setModal(null)
+      window.location.hash = portfolioRoute(id)
+      setToast({ text: 'Your portfolio is ready. Add projects from the library picker.' })
+    }
+  }
+  function deletePortfolio(portfolio: Portfolio) {
+    if (
+      !window.confirm(
+        `Delete the portfolio “${portfolio.title.trim() || 'Untitled portfolio'}”? The projects in it stay in your library.`,
+      )
+    )
+      return
+    portfolioSave.flush()
+    if (commit((current) => removePortfolio(current, portfolio.id))) {
+      setPortfolioDraft(null)
+      navigate('all')
+      setToast({ text: 'Portfolio deleted. Its projects are still in your library.' })
+    }
+  }
+  function addToPortfolio(project: Project, choice: PortfolioChoice) {
+    let name = ''
+    const added = commit((current) => {
+      let next = current
+      let id = choice.portfolioId
+      if (!id) {
+        const result = addPortfolio(next, choice.title, {
+          layout: design.portfolio.defaultLayout,
+          accent: design.portfolio.defaultAccent,
+        })
+        next = result.library
+        id = result.portfolio.id
+      }
+      name = next.portfolios?.find((p) => p.id === id)?.title.trim() || 'the portfolio'
+      return addProjectToPortfolio(
+        next,
+        id,
+        project.id,
+        choice.sectionId || undefined,
+        choice.outputId,
+      )
+    })
+    if (added) {
+      setModal(null)
+      setToast({ text: `Added ${project.title} to ${name}.` })
+    }
+  }
   function exportBackup() {
     try {
       let base = library
@@ -944,13 +1223,14 @@ export default function App() {
         graph: graphDraft,
         sheet: pendingSheet,
         code: codeDraft,
+        portfolio: portfolioDraft,
         ...moduleDrafts,
       })
       // Pristine built-ins come with the app, so a backup carries only the ones that changed.
       downloadData(serializeBackup(stripBuiltIns(snapshot)))
       setToast({
         text:
-          notesDraft || graphDraft || pendingSheet || codeDraft || hasModuleDraft
+          notesDraft || graphDraft || pendingSheet || codeDraft || hasModuleDraft || portfolioDraft
             ? 'Backup downloaded, including unsaved project edits. This does not save them in the browser.'
             : 'Library backup downloaded.',
       })
@@ -1064,6 +1344,7 @@ export default function App() {
     sheetDraft ||
     codeDraft ||
     hasModuleDraft ||
+    portfolioDraft ||
     sheetEditing ||
     outputEditing
   )
@@ -1083,6 +1364,7 @@ export default function App() {
           setGraphDraft(null)
           setSheetDraft(null)
           setModuleDrafts({})
+          setPortfolioDraft(null)
           setSheetEditing(null)
           setModal(null)
           setQuery('')
@@ -1133,6 +1415,16 @@ export default function App() {
     )
 
   if (outputRoute) return <OutputPage project={currentProject} output={currentOutput} />
+  if (portfolioMatch && presenting)
+    return (
+      <Suspense fallback={<ModuleLoading what="portfolio" />}>
+        <PortfolioPresenter
+          portfolio={currentPortfolio ? portfolioFor(currentPortfolio) : undefined}
+          library={library}
+          copy={{ eyebrow: design.portfolio.eyebrow, footerLine: design.portfolio.footerLine }}
+        />
+      </Suspense>
+    )
 
   const projects = selectProjects(library, view, query, tool, sort)
   const total = selectProjects(library, view).length
@@ -1247,6 +1539,40 @@ export default function App() {
             Add a collection
           </button>
         )}
+        <div className="nav-label collections-label">
+          <span>PORTFOLIOS</span>
+          <button
+            className="icon-button"
+            aria-label="New portfolio"
+            title="New portfolio"
+            onClick={() => showModal({ kind: 'portfolio' })}
+          >
+            <Plus size={17} />
+          </button>
+        </div>
+        <nav aria-label="Portfolios" className="collections-nav">
+          {(library.portfolios ?? []).map((portfolio) => (
+            <div
+              key={portfolio.id}
+              className={`collection-item ${currentPortfolio?.id === portfolio.id ? 'active' : ''}`}
+            >
+              <a
+                href={portfolioRoute(portfolio.id)}
+                onClick={() => setSidebarOpen(false)}
+                aria-current={currentPortfolio?.id === portfolio.id ? 'page' : undefined}
+              >
+                <Briefcase size={14} />
+                <span>{portfolio.title.trim() || 'Untitled portfolio'}</span>
+              </a>
+            </div>
+          ))}
+        </nav>
+        {!library.portfolios?.length && (
+          <button className="add-collection" onClick={() => showModal({ kind: 'portfolio' })}>
+            <Plus size={14} />
+            Assemble a portfolio
+          </button>
+        )}
         {shortcuts.length > 0 && (
           <>
             <div className="nav-label">SHORTCUTS</div>
@@ -1316,7 +1642,13 @@ export default function App() {
             <span>
               {openView?.name ??
                 openModule?.name ??
-                (projectId ? 'Project' : currentCollection ? 'Collection' : 'Library')}
+                (projectId
+                  ? 'Project'
+                  : portfolioMatch
+                    ? 'Portfolio'
+                    : currentCollection
+                      ? 'Collection'
+                      : 'Library')}
             </span>
           </div>
           <div className="topbar-actions">
@@ -1329,6 +1661,7 @@ export default function App() {
               sheetDraft ||
               codeDraft ||
               hasModuleDraft ||
+              portfolioDraft ||
               outputEditing
                 ? 'Changes not saved'
                 : sheetEditing
@@ -1382,7 +1715,38 @@ export default function App() {
                 ))}
             </nav>
           )}
-          {projectId ? (
+          {portfolioMatch ? (
+            currentPortfolio ? (
+              <Suspense fallback={<ModuleLoading what="portfolio" />}>
+                <PortfolioEditor
+                  key={currentPortfolio.id}
+                  portfolio={portfolioFor(currentPortfolio)}
+                  library={library}
+                  unsaved={portfolioDraft?.id === currentPortfolio.id}
+                  copy={{
+                    eyebrow: design.portfolio.eyebrow,
+                    footerLine: design.portfolio.footerLine,
+                  }}
+                  onBack={() => navigate('all')}
+                  onRemove={() => deletePortfolio(currentPortfolio)}
+                  onChange={(next) => {
+                    if (!validPortfolio(next)) return false
+                    portfolioSave.schedule({ id: next.id, value: next })
+                    return true
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <div className="empty-state">
+                <Briefcase size={42} />
+                <h1>Portfolio not found</h1>
+                <p>It may have been removed, or it belongs to a different browser.</p>
+                <button className="button primary" onClick={() => navigate('all')}>
+                  Back to library
+                </button>
+              </div>
+            )
+          ) : projectId ? (
             currentProject ? (
               builtInNeedsLoad(currentProject) ? (
                 <ModuleLoading />
@@ -1568,6 +1932,7 @@ export default function App() {
                         onEdit={(p) => showModal({ kind: 'project', project: p })}
                         onDuplicate={duplicate}
                         onReset={reset}
+                        onAddToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
                       />
                     </div>
                   </div>
@@ -1980,6 +2345,7 @@ export default function App() {
                       edit={(p) => showModal({ kind: 'project', project: p })}
                       duplicate={duplicate}
                       reset={reset}
+                      addToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
                     />
                   ))}
                 </div>
@@ -2253,6 +2619,34 @@ export default function App() {
               Remove collection
             </button>
           </div>
+        </Modal>
+      )}
+      {modal?.kind === 'portfolio' && (
+        <Modal
+          title="A new portfolio"
+          subtitle="Choose projects from your library and present them together."
+          onClose={() => setModal(null)}
+        >
+          <PortfolioForm
+            error={saveError}
+            onClose={() => setModal(null)}
+            onSave={createPortfolio}
+          />
+        </Modal>
+      )}
+      {modal?.kind === 'addToPortfolio' && (
+        <Modal
+          title={`Add “${modal.project.title}” to a portfolio`}
+          subtitle="Choose the portfolio and the section it belongs in."
+          onClose={() => setModal(null)}
+        >
+          <AddToPortfolioForm
+            project={modal.project}
+            portfolios={library.portfolios ?? []}
+            error={saveError}
+            onClose={() => setModal(null)}
+            onSave={(choice) => addToPortfolio(modal.project, choice)}
+          />
         </Modal>
       )}
       {modal?.kind === 'storage' && (

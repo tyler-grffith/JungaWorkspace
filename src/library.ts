@@ -42,6 +42,16 @@ import {
   type ModuleDocuments,
 } from './modules/documents'
 import { TOOL_IDS, isTool, type Tool } from './modules/ids'
+import {
+  addEntry,
+  emptyPortfolio,
+  MAX_PORTFOLIOS,
+  portfolioProblem,
+  validPortfolio,
+  validPortfolios,
+  type Portfolio,
+  type PortfolioLayout,
+} from './portfolio/model'
 
 export type { Tool } from './modules/ids'
 export type ProjectType = 'workable' | 'code'
@@ -78,7 +88,13 @@ export type Project = {
   slicer?: SlicerDocument
   painter?: PainterDocument
 }
-export type Library = { version: 1; projects: Project[]; collections: Collection[] }
+export type Library = {
+  version: 1
+  projects: Project[]
+  collections: Collection[]
+  /** Library-level presentations of selected projects; absent in libraries saved before them. */
+  portfolios?: Portfolio[]
+}
 export type ProjectInput = Pick<
   Project,
   'title' | 'description' | 'tools' | 'collectionId' | 'referenceUrl'
@@ -383,6 +399,63 @@ export function removeCollection(library: Library, id: string): Library {
   }
 }
 
+// --- Portfolios -------------------------------------------------------------------------------
+// A portfolio belongs to the library, like a collection, and refers to projects by id; the
+// model and its pure operations are in `src/portfolio/model.ts`.
+export function addPortfolio(
+  library: Library,
+  title: string,
+  options: { author?: string; accent?: string; layout?: PortfolioLayout } = {},
+): { library: Library; portfolio: Portfolio } {
+  const clean = name(title, 'Portfolio name', 100)
+  const portfolios = library.portfolios ?? []
+  if (portfolios.length >= MAX_PORTFOLIOS)
+    throw new Error(`A library holds up to ${MAX_PORTFOLIOS} portfolios.`)
+  if (portfolios.some((p) => p.title.toLocaleLowerCase() === clean.toLocaleLowerCase()))
+    throw new Error('A portfolio with that name already exists.')
+  const portfolio = emptyPortfolio(clean, options)
+  return { library: { ...library, portfolios: [...portfolios, portfolio] }, portfolio }
+}
+/** Replace a portfolio after validating it; the title stays unique among portfolios. */
+export function savePortfolio(library: Library, portfolio: Portfolio): Library {
+  const portfolios = library.portfolios ?? []
+  if (!portfolios.some((p) => p.id === portfolio.id))
+    throw new Error('This portfolio is no longer available.')
+  const next = { ...portfolio, updatedAt: timestamp() }
+  if (!validPortfolio(next)) throw new Error(portfolioProblem(next))
+  const title = next.title.trim().toLocaleLowerCase()
+  if (
+    title &&
+    portfolios.some((p) => p.id !== next.id && p.title.trim().toLocaleLowerCase() === title)
+  )
+    throw new Error('A portfolio with that name already exists.')
+  return { ...library, portfolios: portfolios.map((p) => (p.id === next.id ? next : p)) }
+}
+export function removePortfolio(library: Library, id: string): Library {
+  const portfolios = library.portfolios ?? []
+  if (!portfolios.some((p) => p.id === id))
+    throw new Error('This portfolio is no longer available.')
+  return { ...library, portfolios: portfolios.filter((p) => p.id !== id) }
+}
+/** Add a project, or one of its outputs, to a portfolio section (the last one by default). */
+export function addProjectToPortfolio(
+  library: Library,
+  portfolioId: string,
+  projectId: string,
+  sectionId?: string,
+  outputId = '',
+): Library {
+  const portfolio = (library.portfolios ?? []).find((p) => p.id === portfolioId)
+  if (!portfolio) throw new Error('This portfolio is no longer available.')
+  const project = library.projects.find((p) => p.id === projectId)
+  if (!project) throw new Error('This project is no longer available.')
+  if (project.status === 'trashed')
+    throw new Error('Restore this project from the trash before adding it to a portfolio.')
+  if (outputId && !project.outputs.some((o) => o.id === outputId))
+    throw new Error('That output is no longer available.')
+  return savePortfolio(library, addEntry(portfolio, projectId, outputId, sectionId))
+}
+
 export function selectProjects(
   library: Library,
   view: View,
@@ -459,6 +532,7 @@ export function parseLibrary(raw: string | null): Library {
     throw invalid()
   const ids = new Set(data.collections.map((c) => c.id))
   if (ids.size !== data.collections.length) throw invalid()
+  if (data.portfolios !== undefined && !validPortfolios(data.portfolios)) throw invalid()
   if (
     !data.projects.every((p) => {
       if (!isRecord(p)) return false

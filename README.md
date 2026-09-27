@@ -97,6 +97,10 @@ Tick **3D modeler** or **Slicer** when creating a project (or both, so parts flo
 
 Tick **PLA Painter** when creating a project (add **Slicer** too, to print the result). Drop in a picture and choose a stack of filaments, each with a colour, a transmission distance, and the layer it starts on; the painter computes the colour visible at every layer count, gives each pixel the height whose colour matches it best, and shows the printed preview, the heightmap, and an orbitable 3D relief. The print sheet lists size, height, an estimate of filament, and the layer at which to swap each spool. Export the stepped relief as STL, the sheet as text, the preview as PNG, or **Send to Slicer** to place the relief on the project's build plate with the swap plan in its notes. The same idea as HueForge and Chroma Canvas; the preset transmission distances are approximate. See `sharedProjectManagement/features/pla painter.md`.
 
+## Portfolios
+
+A portfolio presents a selection of projects together. Press **+** beside **PORTFOLIOS** in the sidebar (or **Add to portfolio…** in any project's menu) and assemble it on one screen: title, tagline, your name, an introduction, links, layout, and accent on the left; sections of entries in the middle, each with a live preview, a shown title, a role line, a caption, the output to feature, and a size; the searchable library picker on the right. Nothing is copied: entries point at projects, so the portfolio always shows the current work, and a trashed project leaves the page until it is restored. **Preview** opens the reader's page at `#/portfolio/<id>/present`; **Export** writes a standalone web page with every preview drawn inside it (graphs, spreadsheet tables, canvas pages, document tops, collection covers, paintings, build plates) or a Markdown outline, and the preview page prints or saves as PDF. Every module's static "render for presentation" lives in `src/present/`, shared by the editor, the page, and the export. See `sharedProjectManagement/features/portfolio.md`.
+
 ## Bundled source projects and scene outputs
 
 Choose **Cosmic Clock** in the library, then **Open scene** on its Earth Clock output card. The code project's **Working material** lists the actual bundled modules, assets, licenses, documentation, and maintenance scripts, and **View file** opens any of them read-only, with **Copy into** to put a text file in a code project where it can be edited and run — source from the application bundle, served assets from their URL, images as a preview, and very large data files truncated with a link to the whole file; **Outputs** contains the experiences made by that project. **Edit output settings** saves validated camera, time, overlay, and metadata defaults explicitly. This is the **Bundled source project** type in the project form: source that ships with the app, with no files kept in the browser.
@@ -118,6 +122,9 @@ For a bundled source project, Junga manages metadata/configuration and a source 
 - `src/document/`: document block model, HTML renderer and parser, block-level DOM edits, editor, reader, Markdown import/export.
 - `src/collection/`: collection graph model, editor, browser, outputs panel.
 - `src/painter/`: PLA Painter's document, painting engine (colour ramp, per-pixel layers, relief mesh, print sheet), editor, and read-only sheet.
+- `src/present/`: static "render for presentation" figures for every module, shared by the portfolio editor, page, and exports.
+- `src/portfolio/`: the portfolio model, assembly editor, reader's page and its stylesheet, and presenter route.
+- `src/export/`: pure export targets (the portfolio as standalone HTML and Markdown).
 - `src/workbench/`: the shared desktop-application shell (menus, command tabs, tree, property panels, status bar), the mesh geometry layer (`geometry.ts`), and the orbitable canvas viewport (`Viewport3D.tsx`) used by `src/modeler/` and `src/slicer/`.
 - `src/modules/documents.ts` and `src/modules/editors.tsx`: the document-module registry that wires canvas, document, collection (and future modules) into storage, backups, outputs, and the shell.
 - `tests/`: browser acceptance tests.

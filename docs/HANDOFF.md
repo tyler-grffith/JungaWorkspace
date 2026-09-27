@@ -1,8 +1,16 @@
 # Current handoff
 
-## Modeler, slicer, and painter built out — `main`, September 25, 2026 (uncommitted)
+## Portfolio — branch `codex/portfolio-and-import`, September 27, 2026
 
-Tyler's ask was to make the three sub-apps highly capable counterparts of SolidWorks, Bambu Studio, and HueForge. The work sits uncommitted on `main` for the ship chat (`npm run status`, then `npm run ship -- -m "…"`). Decisions 52–54; feature records `modeler and slicer.md` and `pla painter.md` are current.
+**Where the work is.** The September 25 build-out is now committed on `main` (`5d70f76`, the checkpoint to go back to). Everything from September 27 is on the branch `codex/portfolio-and-import`, which descends from that commit, so `git merge --ff-only codex/portfolio-and-import` on `main` adopts it without conflicts and `git branch -D codex/portfolio-and-import` discards it. The ship script runs from `main` only: fast-forward first, then `npm run ship`.
+
+**Portfolio.** Press **+** beside **PORTFOLIOS** in the sidebar (or **Add to portfolio…** in any project card's menu), name it, and assemble on one screen: settings on the left (title, tagline, your name, introduction, links, layout, accent), sections of entries in the middle (each entry has a live preview, a shown title, a role line, a caption, the output to feature, a size, arrows, and a section selector), the library picker on the right. **Preview** opens the reader's page; **Export** writes a standalone web page with every preview drawn inside it, or Markdown; the preview page prints. Try it on the examples: add LaPlace Intuition (a live graph), the flow calculator (a table), PDR Visuals (the board), Sunset Relief (the painting), and Mounting Bracket (the plate or the model view). Decision 55; feature record `portfolio.md`.
+
+**Validation.** `npm run check` (192 unit tests, TypeScript, build); `tests/portfolio.spec.ts` (two Chromium tests with accessibility scans) and the existing suites.
+
+## Modeler, slicer, and painter built out — `main`, September 25, 2026 (committed as `5d70f76`)
+
+Tyler's ask was to make the three sub-apps highly capable counterparts of SolidWorks, Bambu Studio, and HueForge. The work was committed on `main` as the September 27 checkpoint (`5d70f76`) and has not been shipped (`npm run status`, then `npm run ship`). Decisions 52–54; feature records `modeler and slicer.md` and `pla painter.md` are current.
 
 **3D modeler.** Open **Mounting Bracket** (Examples). Every feature is real geometry now: double-click **Fillet1** in the tree to edit its radius, change **Edges** to _Top edges_, OK — the plate rebuilds. **Sketch › Sketch** opens the sketcher on a plane (the body's outline on that plane is drawn faintly): press **R** and click two corners, select the rectangle and type its width and height in the dimensions box, OK, then **Features › Extruded Cut**. Try **Hole Wizard** with _Counterbore_, **Shell** on a boss, **Circular Pattern** after a hole, **Lofted Boss/Base** between two sketches on offset planes, **Evaluate › Section View** with its slider, **Mass Properties** (centre of mass, surface area), **Check** (triangle and edge counts), and **Export 3MF** / **OBJ**. Clicking a face in the viewport selects its feature; the right panel edits, suppresses, reorders, or deletes it. **Edit › Roll Back to Selected** rebuilds up to a feature.
 

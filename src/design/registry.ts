@@ -241,6 +241,41 @@ export const designGroups = {
       ]),
     },
   },
+  portfolio: {
+    title: 'Portfolio',
+    description: 'Defaults for new portfolios and the assembly page. Open a portfolio to preview.',
+    files:
+      'src/portfolio/PortfolioEditor.tsx; src/portfolio/PortfolioPage.tsx; src/portfolio/pageStyle.ts; src/portfolio/portfolio.css; src/present/ProjectPreview.tsx; src/export/portfolio.ts',
+    fields: {
+      panelWidth: number('Settings panel width (px)', 280, 220, 380, {
+        cssVar: '--portfolio-panel-width',
+      }),
+      pickerWidth: number('Library picker width (px)', 300, 240, 420, {
+        cssVar: '--portfolio-picker-width',
+      }),
+      figureHeight: number('Preview height (px)', 200, 120, 360, {
+        cssVar: '--portfolio-figure-height',
+        help: 'Height of each entry’s preview on the portfolio page and in exports.',
+      }),
+      defaultLayout: select(
+        'Default layout',
+        'cards',
+        [
+          { value: 'cards', label: 'Cards' },
+          { value: 'rows', label: 'Rows' },
+        ],
+        { help: 'Applies to new portfolios; each portfolio keeps its own layout.' },
+      ),
+      defaultAccent: color(
+        'Default accent',
+        '#285f4b',
+        '--portfolio-accent',
+        'Applies to new portfolios; each portfolio keeps its own accent.',
+      ),
+      eyebrow: text('Page eyebrow', 'PORTFOLIO', 30),
+      footerLine: text('Page footer line', 'Assembled in Junga Workspace', 80),
+    },
+  },
   theme: {
     title: 'Shared appearance',
     description: 'Colors, corners, and type used across the workspace. Check text readability.',

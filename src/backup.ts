@@ -9,6 +9,7 @@ import type { GraphDocument } from './graph/model'
 import type { SheetDocument } from './sheet/model'
 import type { CodeDocument } from './code/model'
 import { DOCUMENT_TOOLS, type ModuleDrafts } from './modules/documents'
+import type { Portfolio } from './portfolio/model'
 
 export const MAX_BACKUP_BYTES = 10 * 1024 * 1024
 export type RestoreMode = 'copies' | 'replace'
@@ -18,6 +19,7 @@ export type Drafts = {
   graph?: { id: string; value: GraphDocument } | null
   sheet?: { id: string; value: SheetDocument } | null
   code?: { id: string; value: CodeDocument } | null
+  portfolio?: { id: string; value: Portfolio } | null
 } & ModuleDrafts
 
 export function parseBackup(raw: string): Backup {
@@ -50,7 +52,12 @@ export function parseBackup(raw: string): Backup {
       ? data.exportedAt
       : undefined
   return {
-    library: { version: 1, projects: library.projects, collections: library.collections },
+    library: {
+      version: 1,
+      projects: library.projects,
+      collections: library.collections,
+      ...(library.portfolios ? { portfolios: library.portfolios } : {}),
+    },
     exportedAt,
   }
 }
@@ -76,17 +83,48 @@ export function restoreCopies(current: Library, backup: Library): Library {
     collectionIds.set(c.id, id)
     return { id, name: uniqueName(c.name, names, 60) }
   })
-  const projects = structuredClone(backup.projects).map((p) => ({
-    ...p,
-    id: crypto.randomUUID(),
-    outputs: p.outputs.map((output) => ({ ...output, id: crypto.randomUUID() })),
-    title: uniqueName(p.title, titles, 100),
-    collectionId: p.collectionId === null ? null : collectionIds.get(p.collectionId)!,
+  // Portfolio entries point at projects and outputs by id, so the copies keep the new ids.
+  const projectIds = new Map<string, string>()
+  const outputIds = new Map<string, string>()
+  const projects = structuredClone(backup.projects).map((p) => {
+    const id = crypto.randomUUID()
+    projectIds.set(p.id, id)
+    return {
+      ...p,
+      id,
+      outputs: p.outputs.map((output) => {
+        const outputId = crypto.randomUUID()
+        outputIds.set(output.id, outputId)
+        return { ...output, id: outputId }
+      }),
+      title: uniqueName(p.title, titles, 100),
+      collectionId: p.collectionId === null ? null : collectionIds.get(p.collectionId)!,
+    }
+  })
+  const portfolioTitles = new Set(
+    (current.portfolios ?? []).map((p) => p.title.toLocaleLowerCase()),
+  )
+  const portfolios = structuredClone(backup.portfolios ?? []).map((portfolio) => ({
+    ...portfolio,
+    id: crypto.randomUUID().slice(0, 8),
+    title: uniqueName(portfolio.title, portfolioTitles, 100),
+    sections: portfolio.sections.map((section) => ({
+      ...section,
+      entries: section.entries.map((entry) => ({
+        ...entry,
+        // Built-in examples are not in a backup, so their ids stay as they are.
+        projectId: projectIds.get(entry.projectId) ?? entry.projectId,
+        outputId: outputIds.get(entry.outputId) ?? entry.outputId,
+      })),
+    })),
   }))
   return {
     version: 1,
     projects: [...projects, ...current.projects],
     collections: [...current.collections, ...collections],
+    ...(current.portfolios || portfolios.length
+      ? { portfolios: [...(current.portfolios ?? []), ...portfolios] }
+      : {}),
   }
 }
 
@@ -143,6 +181,13 @@ export function libraryWithDrafts(library: Library, drafts: Drafts): Library {
     if (key !== 'notes' && key !== 'graph' && key !== 'sheet' && key !== 'code')
       (project as Record<string, unknown>)[key] = structuredClone(draft.value)
     project.updatedAt = new Date().toISOString()
+  }
+  if (drafts.portfolio) {
+    const value = structuredClone(drafts.portfolio.value)
+    const portfolios = next.portfolios ?? []
+    next.portfolios = portfolios.some((p) => p.id === value.id)
+      ? portfolios.map((p) => (p.id === value.id ? value : p))
+      : [...portfolios, value]
   }
   return parseLibrary(JSON.stringify(next))
 }

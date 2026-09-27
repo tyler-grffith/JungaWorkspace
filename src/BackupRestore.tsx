@@ -122,6 +122,9 @@ export default function BackupRestore({
             <p>
               <strong>
                 {projects.length} projects · {backup.library.collections.length} collections
+                {backup.library.portfolios?.length
+                  ? ` · ${backup.library.portfolios.length} ${backup.library.portfolios.length === 1 ? 'portfolio' : 'portfolios'}`
+                  : ''}
               </strong>
             </p>
             <p>

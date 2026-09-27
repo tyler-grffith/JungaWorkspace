@@ -6,7 +6,13 @@
 
 **Portfolio.** Press **+** beside **PORTFOLIOS** in the sidebar (or **Add to portfolio…** in any project card's menu), name it, and assemble on one screen: settings on the left (title, tagline, your name, introduction, links, layout, accent), sections of entries in the middle (each entry has a live preview, a shown title, a role line, a caption, the output to feature, a size, arrows, and a section selector), the library picker on the right. **Preview** opens the reader's page; **Export** writes a standalone web page with every preview drawn inside it, or Markdown; the preview page prints. Try it on the examples: add LaPlace Intuition (a live graph), the flow calculator (a table), PDR Visuals (the board), Sunset Relief (the painting), and Mounting Bracket (the plate or the model view). Decision 55; feature record `portfolio.md`.
 
-**Validation.** `npm run check` (192 unit tests, TypeScript, build); `tests/portfolio.spec.ts` (two Chromium tests with accessibility scans) and the existing suites.
+**Links between projects.** Open any project: the context column has **Related projects** with **Link a project** (a searchable picker; each click links at once) and, once something points here, **Linked from**: projects that name this one, collection items and document phrases linking to it, and portfolios featuring it. Every project menu has **Copy link**. In a document, Ctrl+K accepts `#/project/<id>` beside web addresses. Decision 56; feature record `project links.md`.
+
+**Import.** **Import** beside **New project**, or drop files onto the library page: each file shows what it becomes (kind and name adjustable), and **Import N projects** adds them in one save. Try a `.drawio`, a `.md`, a `.csv`, an `.stl`, a photo, or **Choose a folder** for a small web project. **Export project…** in a project menu writes a single-project file that imports anywhere as a copy. Decision 57; feature record `import and library folder.md`.
+
+**Library folder.** **Keep a folder in step** at the bottom of the sidebar (Chrome or Edge) chooses a folder that receives `junga-library.json` and one file per project after every save; the sidebar line shows the last write, and **Load from folder…** restores it in another browser. Decision 58.
+
+**Validation.** `npm run check` (203 unit tests, TypeScript, build); `tests/portfolio.spec.ts` and `tests/import.spec.ts` (four Chromium tests with accessibility scans) and the existing suites, 92 tests green on the portfolio commit.
 
 ## Modeler, slicer, and painter built out — `main`, September 25, 2026 (committed as `5d70f76`)
 

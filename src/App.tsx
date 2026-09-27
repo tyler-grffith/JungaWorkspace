@@ -22,6 +22,13 @@ import OutputPage from './OutputPage'
 import { validPortfolio, type Portfolio } from './portfolio/model'
 import { absoluteProjectLink, backlinks, relatedProjects } from './linking'
 import {
+  addImported,
+  downloadText,
+  projectFilename,
+  serializeProject,
+  type Prepared,
+} from './import/add'
+import {
   lazy,
   Suspense,
   useEffect,
@@ -45,9 +52,11 @@ import {
   CircleHelp,
   Code2,
   Copy,
+  Download,
   ExternalLink,
   Folder,
   FolderOpen,
+  FolderSync,
   Grid2X2,
   Layers3,
   LayoutGrid,
@@ -67,6 +76,7 @@ import {
   StickyNote,
   Table2,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import {
@@ -110,6 +120,7 @@ import {
   type View,
 } from './library'
 import { useLibrary } from './useLibrary'
+import { loadHome, useHome } from './home/useHome'
 import GraphCalculator from './graph/GraphCalculator'
 import { emptyGraph, laplaceGraph, LAPLACE_URL, type GraphDocument } from './graph/model'
 import SheetEditor from './sheet/SheetEditor'
@@ -139,6 +150,8 @@ import {
 
 const PortfolioEditor = lazy(() => import('./portfolio/PortfolioEditor'))
 const PortfolioPresenter = lazy(() => import('./portfolio/PortfolioPresenter'))
+const ImportDialog = lazy(() => import('./import/ImportDialog'))
+const LibraryHome = lazy(() => import('./home/LibraryHome'))
 
 /** One module edit waiting for the library write. */
 type ModuleSave = {
@@ -152,7 +165,9 @@ type ModalState =
   | { kind: 'addToPortfolio'; project: Project }
   | { kind: 'link'; project: Project }
   | { kind: 'storage' }
-  | { kind: 'backup' }
+  | { kind: 'backup'; file?: File }
+  | { kind: 'import'; files?: File[] }
+  | { kind: 'home' }
   | null
 const formatDate = (date: string) =>
   new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(date))
@@ -251,11 +266,13 @@ function Modal({
   subtitle,
   children,
   onClose,
+  wide = false,
 }: {
   title: string
   subtitle?: string
   children: ReactNode
   onClose: () => void
+  wide?: boolean
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -271,7 +288,7 @@ function Modal({
   return (
     <dialog
       ref={ref}
-      className="modal"
+      className={`modal ${wide ? 'modal-wide' : ''}`}
       aria-labelledby="dialog-title"
       onCancel={(e) => {
         e.preventDefault()
@@ -730,6 +747,7 @@ function ProjectMenu({
   onReset,
   onAddToPortfolio,
   onCopyLink,
+  onExport,
 }: {
   project: Project
   onAction: (p: Project, action: ProjectAction) => void
@@ -738,6 +756,7 @@ function ProjectMenu({
   onReset: (p: Project) => void
   onAddToPortfolio?: (p: Project) => void
   onCopyLink?: (p: Project) => void
+  onExport?: (p: Project) => void
 }) {
   const ref = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
@@ -793,6 +812,12 @@ function ProjectMenu({
               <button onClick={() => run(() => onCopyLink(project))}>
                 <Link2 size={16} />
                 Copy link
+              </button>
+            )}
+            {onExport && (
+              <button onClick={() => run(() => onExport(project))}>
+                <Download size={16} />
+                Export project…
               </button>
             )}
             {project.builtIn ? (
@@ -857,6 +882,7 @@ function ProjectCard({
   reset,
   addToPortfolio,
   copyLink,
+  exportProject,
 }: {
   project: Project
   library: Library
@@ -867,6 +893,7 @@ function ProjectCard({
   reset: (p: Project) => void
   addToPortfolio: (p: Project) => void
   copyLink: (p: Project) => void
+  exportProject: (p: Project) => void
 }) {
   const collection = library.collections.find((c) => c.id === project.collectionId)
   return (
@@ -903,6 +930,7 @@ function ProjectCard({
             onReset={reset}
             onAddToPortfolio={addToPortfolio}
             onCopyLink={copyLink}
+            onExport={exportProject}
           />
         </div>
         <p className="card-description">
@@ -937,6 +965,10 @@ function ProjectCard({
 export default function App() {
   const { library, error, saveError, commit, restore, reload } = useLibrary()
   const design = useDesign()
+  const home = useHome()
+  useEffect(() => {
+    void loadHome()
+  }, [])
   const [route, setRoute] = useState(readRoute)
   const [query, setQuery] = useState('')
   const [tool, setTool] = useState<Tool | 'all'>('all')
@@ -1282,6 +1314,33 @@ export default function App() {
       setToast({ text: `Added ${project.title} to ${name}.` })
     }
   }
+  /** One project as a file of its own, restorable into any library through Import. */
+  function exportProject(project: Project) {
+    downloadText(serializeProject(project), projectFilename(project))
+    setToast({ text: `${project.title} exported. Import the file into any Junga library.` })
+  }
+  /** Add every prepared import in one save; a single new project opens at once. */
+  function importProjects(prepared: Prepared[], collectionId: string | null) {
+    const ids: string[] = []
+    const added = commit((current) =>
+      prepared.reduce((next, item) => {
+        const result = addImported(next, item, collectionId)
+        ids.push(result.project.id)
+        return result.library
+      }, current),
+    )
+    if (added) {
+      setToast({
+        text:
+          ids.length === 1
+            ? 'Imported into your library.'
+            : `Imported ${ids.length} projects into your library.`,
+      })
+      if (ids.length === 1) window.location.hash = projectRoute(ids[0])
+      else navigate(collectionId ? `collection:${collectionId}` : 'all')
+    }
+    return added
+  }
   /** Put a link to the project on the clipboard; it works wherever this app is hosted. */
   function copyProjectLink(project: Project) {
     const link = absoluteProjectLink(project.id)
@@ -1460,6 +1519,7 @@ export default function App() {
       onClose={() => setModal(null)}
     >
       <BackupRestore
+        initialFile={modal.file}
         hasDrafts={hasDrafts}
         onDownloadDrafts={exportBackup}
         onClose={() => setModal(null)}
@@ -1714,6 +1774,28 @@ export default function App() {
               <CircleHelp size={15} />
             </button>
           </div>
+          <button
+            className={`home-line ${home.error ? 'is-error' : ''}`}
+            onClick={() => showModal({ kind: 'home' })}
+            title="Library folder"
+          >
+            <FolderSync size={15} />
+            <span>
+              {!home.supported
+                ? 'Library folder: not in this browser'
+                : !home.handle
+                  ? 'Keep a folder in step'
+                  : home.error
+                    ? `Folder ${home.name}: write failed`
+                    : home.permission !== 'granted'
+                      ? `Folder ${home.name}: needs a click`
+                      : home.writing
+                        ? `Folder ${home.name}: writing…`
+                        : home.lastWrite
+                          ? `Folder ${home.name}: written ${new Date(home.lastWrite).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+                          : `Folder ${home.name}: connected`}
+            </span>
+          </button>
           <button className="backup-link" onClick={exportBackup}>
             <ArrowDownToLine size={15} />
             Download library backup
@@ -1780,6 +1862,16 @@ export default function App() {
           id="main-content"
           className={`main-content ${linkedOpen ? 'linked-main' : graphOpen ? 'calculator-main' : sheetOpen ? 'spreadsheet-main' : ''}`}
           tabIndex={-1}
+          onDragOver={(event) => {
+            // Files dropped on a library page import; editors keep their own drop zones.
+            if (!projectId && !portfolioMatch && event.dataTransfer.types.includes('Files'))
+              event.preventDefault()
+          }}
+          onDrop={(event) => {
+            if (projectId || portfolioMatch || !event.dataTransfer.files.length) return
+            event.preventDefault()
+            showModal({ kind: 'import', files: [...event.dataTransfer.files] })
+          }}
         >
           {saveError && (
             <div className="error-banner" role="alert">
@@ -2039,6 +2131,7 @@ export default function App() {
                         onReset={reset}
                         onAddToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
                         onCopyLink={copyProjectLink}
+                        onExport={exportProject}
                       />
                     </div>
                   </div>
@@ -2425,13 +2518,22 @@ export default function App() {
                     </button>
                   )}
                   {view !== 'trash' && view !== 'archive' && !missingCollection && (
-                    <button
-                      className="button primary"
-                      onClick={() => showModal({ kind: 'project' })}
-                    >
-                      <Plus size={18} />
-                      New project
-                    </button>
+                    <>
+                      <button
+                        className="button secondary"
+                        onClick={() => showModal({ kind: 'import' })}
+                      >
+                        <Upload size={17} />
+                        Import
+                      </button>
+                      <button
+                        className="button primary"
+                        onClick={() => showModal({ kind: 'project' })}
+                      >
+                        <Plus size={18} />
+                        New project
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -2519,6 +2621,7 @@ export default function App() {
                       reset={reset}
                       addToPortfolio={(p) => showModal({ kind: 'addToPortfolio', project: p })}
                       copyLink={copyProjectLink}
+                      exportProject={exportProject}
                     />
                   ))}
                 </div>
@@ -2820,6 +2923,45 @@ export default function App() {
             onClose={() => setModal(null)}
             onSave={(choice) => addToPortfolio(modal.project, choice)}
           />
+        </Modal>
+      )}
+      {modal?.kind === 'home' && (
+        <Modal
+          title="Library folder"
+          subtitle="A folder on this computer that mirrors your library, written after every change."
+          onClose={() => setModal(null)}
+        >
+          <Suspense fallback={<ModuleLoading what="folder" />}>
+            <LibraryHome
+              library={library}
+              onClose={() => setModal(null)}
+              onNotice={(text) => setToast({ text })}
+              onRestoreFile={(file) => setModal({ kind: 'backup', file })}
+            />
+          </Suspense>
+        </Modal>
+      )}
+      {modal?.kind === 'import' && (
+        <Modal
+          title="Import into your library"
+          subtitle="Files become projects here, in this browser. Nothing is uploaded."
+          onClose={() => setModal(null)}
+          wide
+        >
+          <Suspense fallback={<ModuleLoading what="importer" />}>
+            <ImportDialog
+              library={library}
+              initialFiles={modal.files}
+              options={{
+                painterWidth: design.painter.defaultWidth,
+                layerHeight: design.painter.defaultLayerHeight,
+              }}
+              error={saveError}
+              onClose={() => setModal(null)}
+              onRestoreBackup={(file) => setModal({ kind: 'backup', file })}
+              onImport={importProjects}
+            />
+          </Suspense>
         </Modal>
       )}
       {modal?.kind === 'link' && (

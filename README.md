@@ -97,6 +97,16 @@ Tick **3D modeler** or **Slicer** when creating a project (or both, so parts flo
 
 Tick **PLA Painter** when creating a project (add **Slicer** too, to print the result). Drop in a picture and choose a stack of filaments, each with a colour, a transmission distance, and the layer it starts on; the painter computes the colour visible at every layer count, gives each pixel the height whose colour matches it best, and shows the printed preview, the heightmap, and an orbitable 3D relief. The print sheet lists size, height, an estimate of filament, and the layer at which to swap each spool. Export the stepped relief as STL, the sheet as text, the preview as PNG, or **Send to Slicer** to place the relief on the project's build plate with the swap plan in its notes. The same idea as HueForge and Chroma Canvas; the preset transmission distances are approximate. See `sharedProjectManagement/features/pla painter.md`.
 
+## Links between projects
+
+Open a project and use **Link a project** in its context column to name the projects it relates to; each shows the other under **Linked from**, together with any collection item, document phrase, or portfolio that points at it. **Copy link** in a project's menu puts an address on the clipboard that works wherever the app is hosted; a document's link box (Ctrl+K) accepts `#/project/<id>` as well as web addresses. See `sharedProjectManagement/features/project links.md`.
+
+## Import, export, and the library folder
+
+**Import** beside **New project**, or files dropped on any library page, turns files into projects in one save: draw.io diagrams become canvases, Markdown, HTML, and text become documents, CSV and TSV become spreadsheets, STL meshes land on a slicer plate, pictures become paintings, code files (or a whole folder) become a code project, and Junga collection exports become collections. A file that could be several things offers the choice. **Export project…** in a project's menu writes one file that imports into any library as a copy; a whole library backup dropped on the dialog goes to the restore dialog.
+
+**Keep a folder in step** at the bottom of the sidebar (Chrome and Edge) connects a folder on this computer that receives `junga-library.json` and one file per project after every change, so the work exists as plain files you can back up, sync, or keep in git. Browser storage stays the working copy; **Load from folder…** restores the folder's library in another browser. See `sharedProjectManagement/features/import and library folder.md`.
+
 ## Portfolios
 
 A portfolio presents a selection of projects together. Press **+** beside **PORTFOLIOS** in the sidebar (or **Add to portfolio…** in any project's menu) and assemble it on one screen: title, tagline, your name, an introduction, links, layout, and accent on the left; sections of entries in the middle, each with a live preview, a shown title, a role line, a caption, the output to feature, and a size; the searchable library picker on the right. Nothing is copied: entries point at projects, so the portfolio always shows the current work, and a trashed project leaves the page until it is restored. **Preview** opens the reader's page at `#/portfolio/<id>/present`; **Export** writes a standalone web page with every preview drawn inside it (graphs, spreadsheet tables, canvas pages, document tops, collection covers, paintings, build plates) or a Markdown outline, and the preview page prints or saves as PDF. Every module's static "render for presentation" lives in `src/present/`, shared by the editor, the page, and the export. See `sharedProjectManagement/features/portfolio.md`.
@@ -125,6 +135,9 @@ For a bundled source project, Junga manages metadata/configuration and a source 
 - `src/present/`: static "render for presentation" figures for every module, shared by the portfolio editor, page, and exports.
 - `src/portfolio/`: the portfolio model, assembly editor, reader's page and its stylesheet, and presenter route.
 - `src/export/`: pure export targets (the portfolio as standalone HTML and Markdown).
+- `src/linking.ts`: project links and backlinks across projects, collections, documents, and portfolios.
+- `src/import/`: the import kind registry, CSV reader, import dialog, and Junga's single-project file.
+- `src/home/`: the library folder mirror (File System Access API), its state, and its dialog.
 - `src/workbench/`: the shared desktop-application shell (menus, command tabs, tree, property panels, status bar), the mesh geometry layer (`geometry.ts`), and the orbitable canvas viewport (`Viewport3D.tsx`) used by `src/modeler/` and `src/slicer/`.
 - `src/modules/documents.ts` and `src/modules/editors.tsx`: the document-module registry that wires canvas, document, collection (and future modules) into storage, backups, outputs, and the shell.
 - `tests/`: browser acceptance tests.

@@ -331,6 +331,28 @@ button:disabled:hover {
   margin-left: auto;
   margin-top: 2px;
 }
+.home-line {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 0 20px;
+  text-align: left;
+  min-width: 0;
+  width: 100%;
+}
+.home-line > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-line:hover {
+  color: var(--green);
+}
+.home-line.is-error {
+  color: var(--danger);
+}
 .backup-link {
   font-size: 11px;
   color: var(--muted);
@@ -1558,6 +1580,9 @@ button:disabled:hover {
   color: var(--ink);
   background: #fdfefb;
   box-shadow: 0 20px 80px #233c3226;
+}
+.modal-wide {
+  width: min(720px, calc(100vw - 32px));
 }
 .modal::backdrop {
   background: #263c3259;

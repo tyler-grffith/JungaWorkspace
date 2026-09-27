@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import {
   downloadData,
   MAX_BACKUP_BYTES,
@@ -15,11 +15,14 @@ export default function BackupRestore({
   onClose,
   hasDrafts,
   onDownloadDrafts,
+  initialFile,
 }: {
   onRestore: (library: Library, mode: RestoreMode, expectedRaw: string | null) => void
   onClose: () => void
   hasDrafts: boolean
   onDownloadDrafts: () => boolean
+  /** A backup already chosen elsewhere (the import dialog), read when the dialog opens. */
+  initialFile?: File
 }) {
   const [backup, setBackup] = useState<Backup | null>(null)
   const [filename, setFilename] = useState('')
@@ -52,8 +55,13 @@ export default function BackupRestore({
       )
     }
   }
-  async function choose(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+  useEffect(() => {
+    if (initialFile) void readFile(initialFile)
+  }, [initialFile]) // eslint-disable-line react-hooks/exhaustive-deps
+  function choose(event: ChangeEvent<HTMLInputElement>) {
+    return readFile(event.target.files?.[0])
+  }
+  async function readFile(file: File | undefined) {
     const id = ++request.current
     setBackup(null)
     setError('')

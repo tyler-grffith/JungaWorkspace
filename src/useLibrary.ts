@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { commitLibrary, readLibrary, STORAGE_KEY, type Library } from './library'
 import { restoreBackup, type RestoreMode } from './backup'
+import { mirror } from './home/useHome'
 import { mergeBuiltIns, stripBuiltIns, subscribeBuiltIns } from './modules/builtins'
 
 const message = (error: unknown) =>
@@ -45,6 +46,8 @@ export function useLibrary() {
       )
       setState({ library: mergeBuiltIns(stored), error: '' })
       setSaveError('')
+      // The connected library folder, if any, follows every successful save.
+      mirror(stored)
       return true
     } catch (error) {
       setSaveError(message(error))
@@ -55,6 +58,7 @@ export function useLibrary() {
     const library = restoreBackup(window.localStorage, backup, mode, expectedRaw)
     setState({ library: mergeBuiltIns(library), error: '' })
     setSaveError('')
+    mirror(library)
   }
   return { ...state, saveError, commit, restore, reload }
 }

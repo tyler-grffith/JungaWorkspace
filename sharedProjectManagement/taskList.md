@@ -25,6 +25,7 @@ Shared next steps and items to revisit. Maintained by the implementation agent w
 - [ ] **Review the document.** Create a project with the Document tool, type with the `# `, `- `, `> ` shortcuts, bold and link some text, nest a list with Tab, insert an image, open Preview and a reading output, export Markdown and PDF, and import one of your Markdown files. Note the first formatting or keyboard behaviour that differs from Docs in a way that matters.
 - [ ] **Review the visual canvas.** Create a project with the Visual canvas tool, draw shapes and text, connect two shapes, switch modes, add a slide, present it, add a canvas output, export SVG/PNG/PDF, and import one of the draw.io files from Drive. Note which gesture, control, or default feels wrong first; the shape library, snapping threshold, presenter frame, and defaults are all cheap to change.
 - [x] **Shape portfolio and blog.** The portfolio is built (September 27; see the increment below): a library-level presentation assembled from project references, with a per-module presentation render (`src/present/`) and HTML/Markdown exports. The blog remains: a dated, tagged list that can reuse the same render, page, and export shape. Hosting is still undecided; the export is a file to put anywhere.
+- [ ] **Review links, import, and the library folder.** Link two projects and look at both overviews; drop a draw.io file, a Markdown file, a CSV, an STL, and a photo onto the library page and import them; export a project and import it back; connect a library folder (Chrome), make a change, look at the folder, then load it in another browser. Say whether links should be two-way on creation, which import formats are missing first (Excel needs a zip reader), and whether the folder should become the working copy (Q1).
 - [ ] **Review the portfolio.** Press **+** beside PORTFOLIOS, add a few projects from the picker (an example with a graph, a spreadsheet, a canvas, the painter), write a caption and a role line, reorder, add a second section, switch Cards/Rows and the accent, open **Preview**, export the web page and open the file on its own, then **Add to portfolio…** from a project card. Say whether entries should carry their own uploaded cover image, whether the page needs themes beyond the accent, and where the exported file should live.
 - [x] **Publish the GitHub collaboration baseline.** Merged into `main` via [PR #1](https://github.com/tyler-grffith/JungaWorkspace/pull/1), with contribution/agent guidance, templates, PR CI, and main-branch protection. `bobjunga` has a pending write invitation.
 - [ ] **Review designer access.** Switch User mode → Designer mode in the top bar. Try the label preview, typed/dropdown angle controls, layout settings, and Save/Revert. Try copying a one-sentence refinement request. Implemented on `codex/designer-mode`; [workflow](../docs/REFINEMENTS.md).
@@ -58,7 +59,7 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 ## Later milestones
 
 - [ ] **Extend spreadsheet/graph integration from feedback.** The first connection plots coordinate ranges from a sheet and drives numeric cells with sliders. Revisit graph expressions referencing named spreadsheet cells, drag-to-select ranges, linked point selection, adjustable pane widths, slider animation, and unified undo across cell and slider changes.
-- [ ] **Import existing projects.** Revisit spreadsheet and Desmos import formats and compatibility after native creation works.
+- [ ] **Import existing projects.** Files import as projects now (draw.io, Markdown/HTML/text, CSV/TSV, STL, pictures, code folders, Junga files). Still open: Excel workbooks (a zip reader), Desmos (no readable export), and reading a library folder's edits back.
 - [ ] **Prepare for other users.** Decide accounts, server storage, recovery, and synchronization needs before launch; plan hosting and deployment with the product owner.
 - [ ] **Refine the user experience.** Use hands-on feedback in the second half of the semester to improve the tools and their shared workspace.
 - [ ] **Define presentation and export workflows.** Choose useful outputs from actual projects. Broader document, slide, coding, and hobby-library tools remain future product ideas.
@@ -138,6 +139,14 @@ The owner requested graphing, then the spreadsheet and backup recovery, on Septe
 - [x] Shared workbench shell (`src/workbench/`): declarative menus, command tabs, tree or settings panel, generated property panels with OK/Cancel, viewport with view toolbar, right panel, status bar, isometric projection helpers, light and dark themes.
 - [x] `modeler`: SolidWorks-shaped prototype with a real feature history (sketches and ten feature types with parameters), suppress/delete/undo/rebuild, orientations, display styles, section view, planes and origin, material, appearance, units, mass properties, measure; placeholder box geometry.
 - [x] `slicer`: Bambu-shaped prototype with printer/filament/process settings, plates of box objects, arrange/clone/delete, slice estimate, layer preview, simulated device, project notes; JSON export.
+
+## Links, import, and the library folder — September 27, 2026
+
+- [x] `relatedIds` on projects with validation, duplication, and restore remapping; `src/linking.ts` backlinks (projects, collection items, document links, portfolios); Related projects and Linked from on the overview; the link picker; Copy link; project links in documents (decision 56).
+- [x] `src/import/`: kind registry reusing module readers, CSV/TSV reader, the import dialog (files, folders, drop), Export project… and the single-project file, backups handed to the restore dialog (decision 57).
+- [x] `src/home/`: the library folder mirror (File System Access API), sidebar status line, Library folder dialog with Write now, Load from folder, Allow writing, Disconnect (decision 58).
+- [x] Unit tests (`linking.test.ts`, `import/importers.test.ts`, `home/folder.test.ts`) and `tests/import.spec.ts`.
+- [ ] Awaiting Tyler: two-way links, Excel import, reading folder edits back, per-project folders (Q1).
 
 ## Portfolio — September 27, 2026
 

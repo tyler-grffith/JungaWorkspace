@@ -10,7 +10,7 @@ Nothing in this file is a decision. Agents must not implement from it. The
 **Initial read** blocks are the implementation agent's opinion, written to give Tyler
 something to push against; they carry no authority and should be argued with freely.
 The **Decision** line under each question is the only part that binds anything, and
-every one of them currently reads *Open*.
+every one of them currently reads _Open_.
 
 Questions keep their numbers for the life of the project so chats and PRs can refer to
 "Q3" and mean this. New questions get the next number, even when they belong to an
@@ -27,7 +27,7 @@ open and edit all sorts of files. It does not need to cover everything on the co
 a user should be able to specify which folders are in the Junga Workspace.
 
 **Why it matters.** This is the question the other ones hang off. Today the library is
-its *own* store: projects live in browser local storage under one key, there is no
+its _own_ store: projects live in browser local storage under one key, there is no
 filesystem access, and work leaves only through an explicit JSON backup. The framing
 above inverts that — the filesystem becomes the source of truth and the library becomes
 an index over folders the user has nominated. That is a different application with a
@@ -70,27 +70,31 @@ describes.
   local companion process the browser app talks to. The third already has precedent
   here — designer mode's save endpoint (`src/design/server.ts`) writes
   `Design/settings.json` through exactly that pattern.
-- What is a project *on disk*? A folder with a manifest plus per-tool documents is the
+- What is a project _on disk_? A folder with a manifest plus per-tool documents is the
   obvious shape, and it makes projects diffable and git-friendly.
 - What happens to files Junga has no tool for — listed and handed to the OS, or hidden?
 - What happens to the browser-local libraries that already exist? Migration or
   coexistence.
-- Does Junga ever *launch other applications*, or only open files it can handle itself?
+- Does Junga ever _launch other applications_, or only open files it can handle itself?
   This is the line between a project manager and a shell.
 
 **Decision:** Open.
 
 **Notes and answers:**
 
-_(add here)_
+- _Agent, 2026-09-27._ Two steps toward index-over-folders landed without deciding it: the
+  library folder (decision 58) mirrors browser storage into `junga-library.json` and one file
+  per project, one-way, and Import (decision 57) turns files into projects. What is still
+  missing for the folder to become the source of truth: reading the folder's changes back,
+  per-project folders with native files, and the desktop-shell question above.
 
 ---
 
 ### Q2 — How does everything work with a user base that isn't just me?
 
 **Why it matters.** Several early decisions are cheap now and expensive later — chiefly
-the design system, which currently conflates *product defaults* (Tyler's, committed to
-the repository in `Design/settings.json`) with *user preferences* (theirs, which would
+the design system, which currently conflates _product defaults_ (Tyler's, committed to
+the repository in `Design/settings.json`) with _user preferences_ (theirs, which would
 have to live wherever their data lives). Multi-user also decides whether this project
 ever takes on a server, and with it authentication, other people's data, privacy and
 support.
@@ -99,7 +103,7 @@ support.
 and they do not have to be answered at the same time:
 
 1. **Readers vs authors.** The first people who are not Tyler will encounter Junga as
-   *readers* — a portfolio, a blog post, a published scene. Readers need no account, no
+   _readers_ — a portfolio, a blog post, a published scene. Readers need no account, no
    storage and no sync; they need a static build at a URL, which mostly exists. Treating
    readers as the entire v1 multi-user story defers everything hard and still delivers
    the product's stated purpose.
@@ -185,7 +189,7 @@ _(add here)_
 
 **Why it matters.** Automation pays for itself only where the same work repeats. In this
 project the repeating work is review preparation, record upkeep, and deployment — which
-is a useful filter for the long list of things that *could* be automated.
+is a useful filter for the long list of things that _could_ be automated.
 
 **Initial read.** What exists today: the "Application checks" workflow runs unit tests,
 TypeScript, a production build and Chromium acceptance tests on every PR and every push

@@ -1,0 +1,46 @@
+/* The Library folder dialog and its sidebar line. */
+.home-copy {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 18px;
+}
+.home-copy code {
+  font-family: 'DM Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  background: #f3f5f2;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--ink);
+}
+.home-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fff;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.home-status strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.home-status span {
+  font-size: 11px;
+}
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.home-actions .button {
+  height: 34px;
+  font-size: 11px;
+  padding: 0 12px;
+}

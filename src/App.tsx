@@ -679,6 +679,33 @@ function AddToPortfolioForm({
   )
 }
 
+/** When the library was last downloaded as a backup, kept beside it in this browser. */
+const BACKUP_AT_KEY = 'junga.backup.at'
+function rememberBackup() {
+  try {
+    window.localStorage.setItem(BACKUP_AT_KEY, new Date().toISOString())
+  } catch {
+    /* A note only; the download already happened. */
+  }
+}
+function lastBackup(): string | null {
+  try {
+    return window.localStorage.getItem(BACKUP_AT_KEY)
+  } catch {
+    return null
+  }
+}
+/** "just now", "3 hours ago", "4 days ago", for the sidebar. */
+export function ago(iso: string, now = Date.now()): string {
+  const minutes = Math.round((now - Date.parse(iso)) / 60000)
+  if (minutes < 2) return 'just now'
+  if (minutes < 60) return `${minutes} minutes ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days} ${days === 1 ? 'day' : 'days'} ago`
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 /** Browsers give one site about 5 MB of local storage; say how much of it the library uses. */
 export const STORAGE_BUDGET = 5 * 1024 * 1024
 export function storageUsage(): { bytes: number; share: number } {
@@ -1497,6 +1524,7 @@ export default function App() {
       })
       // Pristine built-ins come with the app, so a backup carries only the ones that changed.
       downloadData(serializeBackup(stripBuiltIns(snapshot)))
+      rememberBackup()
       setToast({
         text:
           notesDraft || graphDraft || pendingSheet || codeDraft || hasModuleDraft || portfolioDraft
@@ -1585,9 +1613,16 @@ export default function App() {
             return true
           }}
           related={relatedDocuments(project)}
+          projects={linkableProjects(project)}
         />
       </Suspense>
     )
+  }
+  /** Titles and ids of the other projects, for editors that offer links to them. */
+  function linkableProjects(project: Project) {
+    return library!.projects
+      .filter((p) => p.id !== project.id && p.status !== 'trashed')
+      .map(({ id, title }) => ({ id, title }))
   }
   function renderDocumentOutputs<K extends DocumentTool>(tool: K, project: Project) {
     const Outputs = editorModules[tool].Outputs as React.ComponentType<
@@ -1874,7 +1909,15 @@ export default function App() {
             </span>
             <div>
               <strong>Your space, on this device</strong>
-              <p>Projects are saved in this browser.</p>
+              <p>
+                Projects are saved in this browser.
+                {activeCount > 0 && (
+                  <>
+                    <br />
+                    {lastBackup() ? `Backed up ${ago(lastBackup()!)}.` : 'Not backed up yet.'}
+                  </>
+                )}
+              </p>
             </div>
             <button
               className="icon-button"
@@ -2782,6 +2825,13 @@ export default function App() {
                       >
                         Create your first project
                         <ArrowRight size={17} />
+                      </button>
+                      <button
+                        className="button secondary welcome-import"
+                        onClick={() => showModal({ kind: 'import' })}
+                      >
+                        <Upload size={16} />
+                        Import existing files
                       </button>
                       <span className="welcome-footnote">Start small. Make it yours.</span>
                     </div>

@@ -42,6 +42,8 @@ export type EditorProps<D> = {
   onBack: () => void
   onChange: (next: D) => boolean
   related?: RelatedDocuments
+  /** The library's other projects, so an editor can offer links to them. */
+  projects?: readonly { id: string; title: string }[]
 }
 export type OutputsProps<D> = {
   project: Project

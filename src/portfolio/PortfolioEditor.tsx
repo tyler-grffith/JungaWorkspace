@@ -486,7 +486,7 @@ function SectionBlock({
         </ol>
       ) : (
         <p className="pfe-empty">
-          No entries in this section yet. Add projects from the library on the right.
+          No entries in this section yet. Add projects from the library picker.
         </p>
       )}
     </section>

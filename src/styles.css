@@ -682,6 +682,9 @@ button:disabled:hover {
   font-size: 11px;
   height: 37px;
 }
+.welcome-import {
+  margin-left: 10px;
+}
 .welcome-footnote {
   display: block;
   color: var(--muted);

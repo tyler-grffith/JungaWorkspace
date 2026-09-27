@@ -345,6 +345,7 @@ export const designGroups = {
         { value: 'updated', label: 'Last updated' },
         { value: 'name', label: 'Name A–Z' },
         { value: 'created', label: 'Newest created' },
+        { value: 'opened', label: 'Recently opened' },
       ]),
       showExamples: toggle(
         'Offer example projects',

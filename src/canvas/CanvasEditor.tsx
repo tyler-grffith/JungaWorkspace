@@ -61,12 +61,12 @@ import {
   type ShapeKind,
 } from './model'
 import {
-  HANDLES,
   angleTo,
   center,
   connectorPoints,
   elementBounds,
   handlePosition,
+  HANDLES,
   hitTest,
   intersects,
   moveElements,
@@ -77,6 +77,7 @@ import {
   selectionBounds,
   snap,
   snapRect,
+  union,
   type Guide,
   type HandleId,
   type Rect,
@@ -184,6 +185,8 @@ export default function CanvasEditor({
   const textArea = useRef<HTMLTextAreaElement>(null)
 
   const doc = live ?? canvas
+  const docRef = useRef(doc)
+  docRef.current = doc
   const page = doc.pages.find((p) => p.id === pageId) ?? doc.pages[0]
   useEffect(() => {
     if (!canvas.pages.some((p) => p.id === pageId)) setPageId(canvas.pages[0].id)
@@ -295,17 +298,27 @@ export default function CanvasEditor({
     if (!el) return
     const rect = el.getBoundingClientRect()
     const pad = 48
+    // A page fits its own size; an unbounded board fits whatever is drawn on it.
+    const current = docRef.current
+    const target = current.pages.find((p) => p.id === pageId)
+    const box =
+      current.page.infinite && target?.elements.length
+        ? (() => {
+            const b = union(target.elements.map((e) => elementBounds(e, target)))
+            return { x: b.x - 40, y: b.y - 40, width: b.width + 80, height: b.height + 80 }
+          })()
+        : { x: 0, y: 0, width: current.page.width, height: current.page.height }
     const zoom = Math.min(
-      (rect.width - pad * 2) / doc.page.width,
-      (rect.height - pad * 2) / doc.page.height,
+      (rect.width - pad * 2) / box.width,
+      (rect.height - pad * 2) / box.height,
       2,
     )
     setView({
       zoom,
-      x: (rect.width - doc.page.width * zoom) / 2,
-      y: (rect.height - doc.page.height * zoom) / 2,
+      x: (rect.width - box.width * zoom) / 2 - box.x * zoom,
+      y: (rect.height - box.height * zoom) / 2 - box.y * zoom,
     })
-  }, [doc.page.width, doc.page.height])
+  }, [doc.page.width, doc.page.height, doc.page.infinite, pageId])
   useEffect(() => {
     fitView()
   }, [fitView, pageId])

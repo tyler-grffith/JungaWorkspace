@@ -125,12 +125,14 @@ export default function DocumentEditor({
   unsaved,
   onBack,
   onChange,
+  projects = [],
 }: {
   title: string
   document: TextDocument
   readOnly: boolean
   unsaved: boolean
   onBack: () => void
+  projects?: readonly { id: string; title: string }[]
   onChange: (next: TextDocument) => boolean
 }) {
   const design = useDesign()
@@ -926,6 +928,22 @@ export default function DocumentEditor({
               if (e.key === 'Escape') setLinkOpen(false)
             }}
           />
+          {projects.length > 0 && (
+            <select
+              aria-label="Link to a project"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) setLinkValue(`#/project/${e.target.value}`)
+              }}
+            >
+              <option value="">Or a project…</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
+          )}
           <button type="submit" className="button primary">
             Apply link
           </button>

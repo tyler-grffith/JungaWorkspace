@@ -113,7 +113,7 @@ describe('slicer model', () => {
     expect(gcode.split('\n').filter((l) => l.startsWith('G1 X')).length).toBeGreaterThan(100)
     expect(formatDuration(3720)).toBe('1h 2m')
     expect(validSlicer({ ...doc, nozzle: 0.5 })).toBe(false)
-  })
+  }, 30000) // slicing three objects with real toolpaths takes ~5 s on a slow runner
   it('places meshes as objects and turns them with their rotation', () => {
     const doc = emptySlicer()
     const part = emptyModeler()
